@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # AWS EC2 Quick Deployment Script
-# This script is optimized for AWS EC2 deployment
+# Supports both Ubuntu/Debian (apt) and Amazon Linux (yum/dnf)
 # Run this ON your EC2 instance
 
 set -e
@@ -15,6 +15,34 @@ if [ "$EUID" -ne 0 ]; then
     echo "Please run with: sudo ./aws-quick-deploy.sh"
     exit 1
 fi
+
+# Detect OS and package manager
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS=$ID
+else
+    echo "Cannot detect OS. Assuming Amazon Linux."
+    OS="amzn"
+fi
+
+echo "Detected OS: $OS"
+
+# Set package manager based on OS
+if [[ "$OS" == "ubuntu" || "$OS" == "debian" ]]; then
+    PKG_MANAGER="apt"
+    UPDATE_CMD="apt update -qq"
+    INSTALL_CMD="apt install -y"
+elif [[ "$OS" == "amzn" || "$OS" == "amazon" ]]; then
+    PKG_MANAGER="yum"
+    UPDATE_CMD="yum update -y -q"
+    INSTALL_CMD="yum install -y"
+else
+    echo "Unsupported OS: $OS"
+    exit 1
+fi
+
+echo "Using package manager: $PKG_MANAGER"
+echo ""
 
 # Get EC2 metadata
 EC2_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4 2>/dev/null || curl -s ifconfig.me)
@@ -53,21 +81,59 @@ fi
 
 # Step 1: Install dependencies
 echo "[1/6] Installing dependencies..."
-apt update -qq
-apt install -y openjdk-17-jdk nodejs npm postgresql postgresql-contrib nginx maven > /dev/null 2>&1
 
-# Install Node.js 18 if not already installed
-if ! node --version | grep -q "v18"; then
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - > /dev/null 2>&1
-    apt install -y nodejs > /dev/null 2>&1
+# Update package lists
+$UPDATE_CMD
+
+# Install Java 17
+if [[ "$OS" == "ubuntu" || "$OS" == "debian" ]]; then
+    $INSTALL_CMD openjdk-17-jdk > /dev/null 2>&1
+elif [[ "$OS" == "amzn" || "$OS" == "amazon" ]]; then
+    # Amazon Linux 2023 uses dnf, older versions use yum
+    if command -v dnf &> /dev/null; then
+        dnf install -y java-17-amazon-corretto-devel > /dev/null 2>&1
+    else
+        yum install -y java-17-amazon-corretto-devel > /dev/null 2>&1
+    fi
+fi
+
+# Install Node.js 18
+if ! command -v node &> /dev/null || ! node --version | grep -q "v18"; then
+    if [[ "$OS" == "ubuntu" || "$OS" == "debian" ]]; then
+        curl -fsSL https://deb.nodesource.com/setup_18.x | bash - > /dev/null 2>&1
+        $INSTALL_CMD nodejs > /dev/null 2>&1
+    elif [[ "$OS" == "amzn" || "$OS" == "amazon" ]]; then
+        curl -fsSL https://rpm.nodesource.com/setup_18.x | bash - > /dev/null 2>&1
+        $INSTALL_CMD nodejs > /dev/null 2>&1
+    fi
+fi
+
+# Install PostgreSQL
+if [[ "$OS" == "ubuntu" || "$OS" == "debian" ]]; then
+    $INSTALL_CMD postgresql postgresql-contrib > /dev/null 2>&1
+    systemctl start postgresql > /dev/null 2>&1
+    systemctl enable postgresql > /dev/null 2>&1
+elif [[ "$OS" == "amzn" || "$OS" == "amazon" ]]; then
+    $INSTALL_CMD postgresql15 postgresql15-server > /dev/null 2>&1
+    /usr/bin/postgresql-setup --initdb > /dev/null 2>&1
+    systemctl start postgresql > /dev/null 2>&1
+    systemctl enable postgresql > /dev/null 2>&1
+fi
+
+# Install Nginx
+$INSTALL_CMD nginx > /dev/null 2>&1
+systemctl start nginx > /dev/null 2>&1
+systemctl enable nginx > /dev/null 2>&1
+
+# Install Maven
+if [[ "$OS" == "ubuntu" || "$OS" == "debian" ]]; then
+    $INSTALL_CMD maven > /dev/null 2>&1
+elif [[ "$OS" == "amzn" || "$OS" == "amazon" ]]; then
+    $INSTALL_CMD maven > /dev/null 2>&1
 fi
 
 # Install PM2 and serve
 npm install -g pm2 serve > /dev/null 2>&1
-
-# Start PostgreSQL
-systemctl start postgresql > /dev/null 2>&1
-systemctl enable postgresql > /dev/null 2>&1
 
 echo "✓ Dependencies installed"
 
@@ -77,7 +143,8 @@ read -sp "Enter database password for 'glassshop_user': " DB_PASSWORD
 echo ""
 
 # Create database and user
-sudo -u postgres psql <<EOF > /dev/null 2>&1
+if [[ "$OS" == "ubuntu" || "$OS" == "debian" ]]; then
+    sudo -u postgres psql <<EOF > /dev/null 2>&1
 CREATE DATABASE glassshop;
 CREATE USER glassshop_user WITH PASSWORD '$DB_PASSWORD';
 GRANT ALL PRIVILEGES ON DATABASE glassshop TO glassshop_user;
@@ -85,10 +152,24 @@ ALTER USER glassshop_user CREATEDB;
 \q
 EOF
 
-sudo -u postgres psql -d glassshop <<EOF > /dev/null 2>&1
+    sudo -u postgres psql -d glassshop <<EOF > /dev/null 2>&1
 GRANT ALL ON SCHEMA public TO glassshop_user;
 \q
 EOF
+elif [[ "$OS" == "amzn" || "$OS" == "amazon" ]]; then
+    sudo -u postgres psql <<EOF > /dev/null 2>&1
+CREATE DATABASE glassshop;
+CREATE USER glassshop_user WITH PASSWORD '$DB_PASSWORD';
+GRANT ALL PRIVILEGES ON DATABASE glassshop TO glassshop_user;
+ALTER USER glassshop_user CREATEDB;
+\q
+EOF
+
+    sudo -u postgres psql -d glassshop <<EOF > /dev/null 2>&1
+GRANT ALL ON SCHEMA public TO glassshop_user;
+\q
+EOF
+fi
 
 echo "✓ Database configured"
 
@@ -162,6 +243,9 @@ echo "✓ Frontend built successfully"
 # Step 5: Setup services
 echo "[5/6] Setting up services..."
 
+# Get current user (ec2-user for Amazon Linux, ubuntu for Ubuntu)
+CURRENT_USER=$(whoami)
+
 # Systemd service for backend
 cat > /etc/systemd/system/glassshop-backend.service <<EOF
 [Unit]
@@ -170,7 +254,7 @@ After=network.target postgresql.service
 
 [Service]
 Type=simple
-User=$SUDO_USER
+User=$CURRENT_USER
 WorkingDirectory=$BACKEND_DIR
 Environment="SPRING_PROFILES_ACTIVE=prod"
 Environment="JAVA_OPTS=-Xms512m -Xmx1024m"
@@ -200,7 +284,7 @@ echo "✓ Services configured"
 # Step 6: Configure Nginx
 echo "[6/6] Configuring Nginx..."
 
-cat > /etc/nginx/sites-available/glassshop <<EOF
+cat > /etc/nginx/conf.d/glassshop.conf <<EOF
 upstream backend {
     server localhost:8080;
 }
@@ -229,17 +313,31 @@ server {
 }
 EOF
 
-rm -f /etc/nginx/sites-enabled/default
-ln -sf /etc/nginx/sites-available/glassshop /etc/nginx/sites-enabled/
+# For Amazon Linux, remove default config
+if [[ "$OS" == "amzn" || "$OS" == "amazon" ]]; then
+    rm -f /etc/nginx/conf.d/default.conf
+fi
+
+# For Ubuntu, remove default site
+if [[ "$OS" == "ubuntu" || "$OS" == "debian" ]]; then
+    rm -f /etc/nginx/sites-enabled/default
+fi
+
 nginx -t > /dev/null 2>&1
 systemctl reload nginx
 
-# Configure firewall
-ufw --force enable > /dev/null 2>&1
-ufw allow 22/tcp > /dev/null 2>&1
-ufw allow 80/tcp > /dev/null 2>&1
-ufw allow 443/tcp > /dev/null 2>&1
-ufw allow 8080/tcp > /dev/null 2>&1
+# Configure firewall (if firewalld is available)
+if command -v firewall-cmd &> /dev/null; then
+    firewall-cmd --permanent --add-service=http > /dev/null 2>&1
+    firewall-cmd --permanent --add-service=https > /dev/null 2>&1
+    firewall-cmd --reload > /dev/null 2>&1
+elif command -v ufw &> /dev/null; then
+    ufw --force enable > /dev/null 2>&1
+    ufw allow 22/tcp > /dev/null 2>&1
+    ufw allow 80/tcp > /dev/null 2>&1
+    ufw allow 443/tcp > /dev/null 2>&1
+    ufw allow 8080/tcp > /dev/null 2>&1
+fi
 
 echo "✓ Nginx configured"
 
@@ -275,4 +373,3 @@ echo "View logs:"
 echo "  Backend: sudo journalctl -u glassshop-backend -f"
 echo "  Frontend: pm2 logs glassshop-frontend"
 echo ""
-
