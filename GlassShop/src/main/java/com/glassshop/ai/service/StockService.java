@@ -125,6 +125,11 @@ public class StockService {
         	    stock.setHeight(request.getHeight());
         	    stock.setWidth(request.getWidth());
         	}
+        	
+        	// ✅ SAVE HSN NUMBER (for both new and existing stock)
+        	if (request.getHsnNo() != null && !request.getHsnNo().trim().isEmpty()) {
+        	    stock.setHsnNo(request.getHsnNo().trim());
+        	}
 
         if ("ADD".equalsIgnoreCase(request.getAction())) {
             stock.setQuantity(stock.getQuantity() + request.getQuantity());

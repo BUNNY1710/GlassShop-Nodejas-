@@ -61,7 +61,14 @@ public class SecurityConfig {
                     "/ai/**"
                 ).hasRole("ADMIN")
 
-                // ✅ ADMIN + STAFF
+                // ✅ ADMIN ONLY - Billing endpoints
+                .requestMatchers(
+                    "/api/customers/**",
+                    "/api/quotations/**",
+                    "/api/invoices/**"
+                ).hasRole("ADMIN")
+
+                // ✅ ADMIN + STAFF - Stock management
                 .requestMatchers(
                     "/stock/recent",
                     "/stock/**"

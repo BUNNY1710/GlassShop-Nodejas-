@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -16,6 +17,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.glassshop.ai.dto.AiRequest;
+import com.glassshop.ai.security.JwtFilter;
+import com.glassshop.ai.security.JwtUtil;
 import com.glassshop.ai.service.AiService;
 import com.glassshop.ai.service.AiStockAdvisorService;
 import com.glassshop.ai.service.InstallationService;
@@ -26,7 +29,8 @@ import com.glassshop.ai.service.StockService;
  * Unit Tests for AiController
  * Tests AI endpoints: ping, stock advice, ask
  */
-@WebMvcTest(AiController.class)
+@WebMvcTest(controllers = AiController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @DisplayName("AiController Unit Tests")
 class AiControllerTest {
 
@@ -50,6 +54,12 @@ class AiControllerTest {
 
     @MockBean
     private AiStockAdvisorService aiStockAdvisorService;
+
+    @MockBean
+    private JwtFilter jwtFilter;
+
+    @MockBean
+    private JwtUtil jwtUtil;
 
     @Test
     @DisplayName("GET /ai/ping - Success: Returns health check")

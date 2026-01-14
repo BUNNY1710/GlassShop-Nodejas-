@@ -298,6 +298,7 @@ function Navbar() {
   const role = localStorage.getItem("role");
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [billingMenuOpen, setBillingMenuOpen] = useState(false);
 
   useEffect(() => {
     const resize = () => setIsMobile(window.innerWidth < 768);
@@ -357,6 +358,72 @@ function Navbar() {
         <NavLink to="/view-stock" style={navLinkStyle} onClick={() => setOpen(false)}>
           <span>📦</span> View Stock
         </NavLink>
+
+        <NavLink to="/stock-transfer" style={navLinkStyle} onClick={() => setOpen(false)}>
+          <span>🔁</span> Transfer Stock
+        </NavLink>
+
+        {/* Billing Dropdown - ADMIN ONLY */}
+        {role === "ROLE_ADMIN" && (
+          <div 
+            style={{
+              position: "relative",
+              ...navLinkStyle({ isActive: false }),
+            }}
+            onMouseEnter={() => setBillingMenuOpen(true)}
+            onMouseLeave={() => setBillingMenuOpen(false)}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+              <span>🧾</span> Billing {billingMenuOpen ? "▲" : "▼"}
+            </div>
+            {billingMenuOpen && (
+              <div 
+                style={billingDropdownNav}
+                onMouseEnter={() => setBillingMenuOpen(true)}
+                onMouseLeave={() => setBillingMenuOpen(false)}
+              >
+                <div style={billingDropdownContent}>
+                  <NavLink 
+                    to="/customers" 
+                    style={billingMenuItemNav} 
+                    onClick={() => {
+                      setOpen(false);
+                      setBillingMenuOpen(false);
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(99, 102, 241, 0.1)"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                  >
+                    <span>👥</span> Customers
+                  </NavLink>
+                  <NavLink 
+                    to="/quotations" 
+                    style={billingMenuItemNav} 
+                    onClick={() => {
+                      setOpen(false);
+                      setBillingMenuOpen(false);
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(99, 102, 241, 0.1)"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                  >
+                    <span>📄</span> Quotations
+                  </NavLink>
+                  <NavLink 
+                    to="/invoices" 
+                    style={billingMenuItemNav} 
+                    onClick={() => {
+                      setOpen(false);
+                      setBillingMenuOpen(false);
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(99, 102, 241, 0.1)"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                  >
+                    <span>🧾</span> Invoices
+                  </NavLink>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {role === "ROLE_ADMIN" && (
           <>
@@ -452,3 +519,39 @@ const hamburger = {
   justifyContent: "center",
   transition: "all 0.2s ease",
 };
+
+const billingDropdownNav = {
+  position: "absolute",
+  top: "100%",
+  left: 0,
+  paddingTop: "8px",
+  background: "transparent",
+  zIndex: 10001,
+  minWidth: "180px",
+  display: "flex",
+  flexDirection: "column",
+};
+
+const billingDropdownContent = {
+  background: "white",
+  borderRadius: "12px",
+  boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+  border: "1px solid rgba(226, 232, 240, 0.8)",
+  overflow: "hidden",
+  display: "flex",
+  flexDirection: "column",
+};
+
+const billingMenuItemNav = ({ isActive }) => ({
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  padding: "12px 16px",
+  textDecoration: "none",
+  color: isActive ? "#4f46e5" : "#475569",
+  fontSize: "14px",
+  fontWeight: isActive ? "600" : "500",
+  transition: "all 0.2s ease",
+  borderBottom: "1px solid rgba(226, 232, 240, 0.5)",
+  backgroundColor: isActive ? "rgba(99, 102, 241, 0.1)" : "transparent",
+});

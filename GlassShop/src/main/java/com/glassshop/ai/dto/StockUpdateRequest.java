@@ -84,6 +84,8 @@ public class StockUpdateRequest {
     private String width;
 
     private String unit;
+    
+    private String hsnNo;
 
     /* ===== GETTERS & SETTERS ===== */
 
@@ -141,5 +143,13 @@ public class StockUpdateRequest {
 
     public void setUnit(String unit) {
         this.unit = unit;
+    }
+
+    public String getHsnNo() {
+        return hsnNo;
+    }
+
+    public void setHsnNo(String hsnNo) {
+        this.hsnNo = hsnNo;
     }
 }

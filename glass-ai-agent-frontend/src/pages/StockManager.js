@@ -18,6 +18,7 @@ function StockManager() {
   const [height, setHeight] = useState("");
   const [width, setWidth] = useState("");
   const [unit, setUnit] = useState("MM");
+  const [hsnNo, setHsnNo] = useState("");
 
   // 🔴 CONFIRM MODAL
   const [showConfirm, setShowConfirm] = useState(false);
@@ -62,7 +63,8 @@ function StockManager() {
       : Number(manualThickness),
   height, // ✅ STRING
   width,  // ✅ STRING
-  unit
+  unit,
+  hsnNo: hsnNo || null
 };
 
 
@@ -87,6 +89,7 @@ function StockManager() {
       setWidth("");
       setManualThickness("");
       setGlassTypeStock("");
+      setHsnNo("");
 
     } catch (error) {
       setStockMessage(error.response?.data || "❌ Failed to update stock");
@@ -218,6 +221,18 @@ function StockManager() {
               value={quantity} 
               onChange={e => setQuantity(e.target.value)} 
             />
+          </div>
+
+          <div style={formGroup}>
+            <label style={label}>HSN No. (Optional)</label>
+            <input 
+              style={input}
+              type="text" 
+              placeholder="e.g., 7003, 7004"
+              value={hsnNo} 
+              onChange={e => setHsnNo(e.target.value)} 
+            />
+            <p style={{ marginTop: "4px", fontSize: "12px", color: "#64748b" }}>📋 HSN code for GST (optional)</p>
           </div>
 
           {/* ✅ SEPARATE ADD & REMOVE BUTTONS */}

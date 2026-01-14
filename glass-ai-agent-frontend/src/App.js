@@ -8,6 +8,10 @@ import AiAssistant from "./pages/AiAssistant";
 import CreateStaff from "./pages/CreateStaff";
 import AuditLog from "./pages/AuditLog";
 import ManageStaff from "./pages/ManageStaff";
+import CustomerManagement from "./pages/CustomerManagement";
+import QuotationManagement from "./pages/QuotationManagement";
+import InvoiceManagement from "./pages/InvoiceManagement";
+import StockTransfer from "./pages/StockTransfer";
 import Login from "./auth/Login";
 import Register from "./auth/Register";
 import Layout from "./layout/Layout";
@@ -68,6 +72,38 @@ function App() {
         <Route
           path="/ai"
           element={<RequireAdmin><AiAssistant /></RequireAdmin>}
+        />
+
+        <Route
+          path="/customers"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
+              <CustomerManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/quotations"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
+              <QuotationManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/invoices"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
+              <InvoiceManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/stock-transfer"
+          element={<ProtectedRoute><StockTransfer /></ProtectedRoute>}
         />
       </Route>
 

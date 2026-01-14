@@ -321,9 +321,14 @@ function StockDashboard() {
   const loadStock = async () => {
     try {
       const res = await api.get("/stock/all");
-      setAllStock(res.data);
+      // Filter out items with quantity = 0 or null
+      const stockWithQuantity = res.data.filter(item => 
+        item.quantity != null && item.quantity > 0
+      );
+      setAllStock(stockWithQuantity);
 
-      res.data.forEach(item => {
+      // Show low stock alerts only for items with quantity > 0
+      stockWithQuantity.forEach(item => {
         if (item.quantity < item.minQuantity) {
           toast.error(
             `🚨 LOW STOCK: ${item.glass?.type} (Stand ${item.standNo})`,
@@ -532,6 +537,11 @@ function StockDashboard() {
 
   /* ================= FILTER ================= */
   const filteredStock = useMemo(() => {
+    // First, filter out items with quantity = 0 or null
+    const stockWithQuantity = allStock.filter(s => 
+      s.quantity != null && s.quantity > 0
+    );
+    
     // Parse search values
     const searchHeightValue = parseDimension(filterHeight);
     const searchWidthValue = parseDimension(filterWidth);
@@ -544,8 +554,8 @@ function StockDashboard() {
       ? convertToMM(searchWidthValue, searchUnit) 
       : null;
 
-    // Filter stock
-    const filtered = allStock.filter(s => {
+    // Filter stock (already filtered for quantity > 0)
+    const filtered = stockWithQuantity.filter(s => {
       // Match glass type
       const matchGlass =
         !filterGlassType ||

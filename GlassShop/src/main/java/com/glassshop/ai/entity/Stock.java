@@ -55,10 +55,16 @@ public class Stock {
     @Column(name = "width", length = 100)
     private String width;
     
-    
-    
-    
-    
+    @Column(name = "hsn_no", length = 20)
+    private String hsnNo;
+
+	public String getHsnNo() {
+		return hsnNo;
+	}
+	
+	public void setHsnNo(String hsnNo) {
+		this.hsnNo = hsnNo;
+	}
 
 	public String getHeight() {
 		return height;

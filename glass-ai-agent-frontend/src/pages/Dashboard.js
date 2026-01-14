@@ -197,11 +197,13 @@
 // export default Dashboard;
 
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
 import dashboardBg from "../assets/dashboard-bg.jpg";
 import api from "../api/api";
 
 function Dashboard() {
+  const navigate = useNavigate();
   const role = localStorage.getItem("role");
   const [auditLogs, setAuditLogs] = useState([]);
   const [stats, setStats] = useState({
@@ -211,6 +213,7 @@ function Dashboard() {
     totalLogs: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [billingMenuOpen, setBillingMenuOpen] = useState(false);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -327,6 +330,76 @@ function Dashboard() {
               Welcome to your smart inventory management system
             </p>
           </div>
+
+              {/* Quick Actions - Billing (ADMIN ONLY) */}
+              {role === "ROLE_ADMIN" && (
+                <div style={quickActionsContainer}>
+                  <div 
+                    style={billingCard}
+                    onMouseEnter={() => setBillingMenuOpen(true)}
+                    onMouseLeave={() => setBillingMenuOpen(false)}
+                  >
+                    <div 
+                      style={billingButton}
+                      onClick={() => setBillingMenuOpen(!billingMenuOpen)}
+                    >
+                      <div style={billingIcon}>🧾</div>
+                      <div style={billingContent}>
+                        <div style={billingTitle}>Billing</div>
+                        <div style={billingSubtitle}>Customer • Quotation • Invoice</div>
+                      </div>
+                      <div style={billingArrow}>{billingMenuOpen ? "▲" : "▼"}</div>
+                    </div>
+                    
+                    {billingMenuOpen && (
+                      <div 
+                        style={billingDropdownWrapper}
+                        onMouseEnter={() => setBillingMenuOpen(true)}
+                        onMouseLeave={() => setBillingMenuOpen(false)}
+                      >
+                        <div style={billingDropdown}>
+                          <div 
+                            style={billingMenuItem}
+                            onClick={() => {
+                              navigate("/customers");
+                              setBillingMenuOpen(false);
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                          >
+                            <span style={menuIcon}>👥</span>
+                            <span>Customers</span>
+                          </div>
+                          <div 
+                            style={billingMenuItem}
+                            onClick={() => {
+                              navigate("/quotations");
+                              setBillingMenuOpen(false);
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                          >
+                            <span style={menuIcon}>📄</span>
+                            <span>Quotations</span>
+                          </div>
+                          <div 
+                            style={{...billingMenuItem, borderBottom: "none"}}
+                            onClick={() => {
+                              navigate("/invoices");
+                              setBillingMenuOpen(false);
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                          >
+                            <span style={menuIcon}>🧾</span>
+                            <span>Invoices</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* KPI Cards */}
               {role === "ROLE_ADMIN" ? (
@@ -717,4 +790,105 @@ const emptyText = {
   color: "#64748b",
   fontSize: "14px",
   margin: 0,
+};
+
+/* Billing Menu Styles */
+const quickActionsContainer = {
+  marginBottom: "32px",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+};
+
+const billingCard = {
+  position: "relative",
+  background: "rgba(255, 255, 255, 0.95)",
+  borderRadius: "16px",
+  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+  border: "1px solid rgba(226, 232, 240, 0.8)",
+  width: "100%",
+  maxWidth: "400px",
+  overflow: "visible",
+};
+
+const billingButton = {
+  display: "flex",
+  alignItems: "center",
+  gap: "16px",
+  padding: "24px",
+  cursor: "pointer",
+  transition: "all 0.2s ease",
+  borderRadius: "16px",
+};
+
+const billingIcon = {
+  width: "64px",
+  height: "64px",
+  borderRadius: "12px",
+  background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "32px",
+  flexShrink: 0,
+  boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
+};
+
+const billingContent = {
+  flex: 1,
+};
+
+const billingTitle = {
+  fontSize: "24px",
+  fontWeight: "700",
+  color: "#0f172a",
+  marginBottom: "4px",
+};
+
+const billingSubtitle = {
+  fontSize: "14px",
+  color: "#64748b",
+  fontWeight: "500",
+};
+
+const billingArrow = {
+  fontSize: "16px",
+  color: "#64748b",
+  transition: "transform 0.2s ease",
+};
+
+const billingDropdownWrapper = {
+  position: "absolute",
+  top: "100%",
+  left: 0,
+  right: 0,
+  paddingTop: "8px",
+  zIndex: 1000,
+};
+
+const billingDropdown = {
+  background: "white",
+  borderRadius: "12px",
+  boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+  border: "1px solid rgba(226, 232, 240, 0.8)",
+  overflow: "hidden",
+  display: "flex",
+  flexDirection: "column",
+};
+
+const billingMenuItem = {
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
+  padding: "16px 24px",
+  cursor: "pointer",
+  transition: "all 0.2s ease",
+  borderBottom: "1px solid rgba(226, 232, 240, 0.5)",
+  fontSize: "15px",
+  fontWeight: "500",
+  color: "#475569",
+};
+
+const menuIcon = {
+  fontSize: "20px",
 };
