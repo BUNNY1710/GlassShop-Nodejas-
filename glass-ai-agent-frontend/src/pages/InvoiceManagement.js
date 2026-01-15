@@ -10,6 +10,10 @@ import {
   getQuotationById,
   downloadTransportChallan,
   printDeliveryChallan,
+  downloadInvoice,
+  downloadBasicInvoice,
+  printInvoice,
+  printBasicInvoice,
 } from "../api/quotationApi";
 import "../styles/design-system.css";
 
@@ -387,7 +391,8 @@ function InvoiceManagement() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              zIndex: 10001,
+              zIndex: 10004,
+              paddingTop: "80px",
             }}
             onClick={() => {
               setShowConvertModal(false);
@@ -402,6 +407,8 @@ function InvoiceManagement() {
                 maxWidth: "700px",
                 width: "100%",
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                position: "relative",
+                zIndex: 10005,
               }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -600,8 +607,9 @@ function InvoiceManagement() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              zIndex: 10001,
-              padding: isMobile ? "15px" : "20px",
+              zIndex: 10004,
+              paddingTop: "80px",
+              padding: isMobile ? "80px 15px 15px 15px" : "80px 20px 20px 20px",
             }}
             onClick={() => {
               setShowPaymentModal(false);
@@ -616,9 +624,11 @@ function InvoiceManagement() {
                 borderRadius: "16px",
                 maxWidth: "700px",
                 width: "100%",
-                maxHeight: "90vh",
+                maxHeight: "calc(100vh - 100px)",
                 overflow: "auto",
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                position: "relative",
+                zIndex: 10005,
               }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -1054,7 +1064,7 @@ function InvoiceManagement() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              zIndex: 10002,
+              zIndex: 10004,
               padding: isMobile ? "80px 15px 15px 15px" : "80px 20px 20px 20px",
             }}
             onClick={() => setSelectedInvoice(null)}
@@ -1070,7 +1080,7 @@ function InvoiceManagement() {
                 overflow: "auto",
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
                 position: "relative",
-                zIndex: 10003,
+                zIndex: 10005,
               }}
               onClick={(e) => e.stopPropagation()}
             >
@@ -1081,6 +1091,148 @@ function InvoiceManagement() {
                     <p style={{ margin: "5px 0 0 0", color: "#6b7280", fontSize: "14px" }}>Complete invoice information and related quotation</p>
                   </div>
                   <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await downloadInvoice(selectedInvoice.id);
+                          const url = window.URL.createObjectURL(new Blob([response.data]));
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.setAttribute('download', `invoice-${selectedInvoice.invoiceNumber}.pdf`);
+                          document.body.appendChild(link);
+                          link.click();
+                          link.remove();
+                          window.URL.revokeObjectURL(url);
+                        } catch (error) {
+                          console.error("Failed to download invoice", error);
+                          alert("Failed to download invoice PDF");
+                        }
+                      }}
+                      style={{
+                        padding: "8px 16px",
+                        backgroundColor: "#6366f1",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseOver={(e) => (e.target.style.backgroundColor = "#4f46e5")}
+                      onMouseOut={(e) => (e.target.style.backgroundColor = "#6366f1")}
+                    >
+                      📄 Download Final Bill
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await printInvoice(selectedInvoice.id);
+                          const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+                          const printWindow = window.open(url, '_blank');
+                          if (printWindow) {
+                            printWindow.onload = () => {
+                              printWindow.print();
+                            };
+                          }
+                        } catch (error) {
+                          console.error("Failed to print invoice", error);
+                          alert("Failed to print invoice PDF");
+                        }
+                      }}
+                      style={{
+                        padding: "8px 16px",
+                        backgroundColor: "#f59e0b",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseOver={(e) => (e.target.style.backgroundColor = "#d97706")}
+                      onMouseOut={(e) => (e.target.style.backgroundColor = "#f59e0b")}
+                    >
+                      🖨️ Print Final Bill
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await downloadBasicInvoice(selectedInvoice.id);
+                          const url = window.URL.createObjectURL(new Blob([response.data]));
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.setAttribute('download', `basic-invoice-${selectedInvoice.invoiceNumber}.pdf`);
+                          document.body.appendChild(link);
+                          link.click();
+                          link.remove();
+                          window.URL.revokeObjectURL(url);
+                        } catch (error) {
+                          console.error("Failed to download basic invoice", error);
+                          alert("Failed to download basic invoice PDF");
+                        }
+                      }}
+                      style={{
+                        padding: "8px 16px",
+                        backgroundColor: "#8b5cf6",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseOver={(e) => (e.target.style.backgroundColor = "#7c3aed")}
+                      onMouseOut={(e) => (e.target.style.backgroundColor = "#8b5cf6")}
+                    >
+                      📋 Download Basic Bill
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await printBasicInvoice(selectedInvoice.id);
+                          const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+                          const printWindow = window.open(url, '_blank');
+                          if (printWindow) {
+                            printWindow.onload = () => {
+                              printWindow.print();
+                            };
+                          }
+                        } catch (error) {
+                          console.error("Failed to print basic invoice", error);
+                          alert("Failed to print basic invoice PDF");
+                        }
+                      }}
+                      style={{
+                        padding: "8px 16px",
+                        backgroundColor: "#a855f7",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseOver={(e) => (e.target.style.backgroundColor = "#9333ea")}
+                      onMouseOut={(e) => (e.target.style.backgroundColor = "#a855f7")}
+                    >
+                      🖨️ Print Basic Bill
+                    </button>
                     <button
                       onClick={async () => {
                         try {

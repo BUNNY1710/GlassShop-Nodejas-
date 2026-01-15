@@ -1,117 +1,174 @@
-# Deployment Files
+# Glass Shop Application - Deployment Scripts
 
-This directory contains all deployment scripts and configuration files for EC2 deployment.
+This directory contains all deployment scripts and configuration files for deploying the Glass Shop Application on AWS EC2.
 
-## Files
+## 📁 Files Overview
 
-- **install-dependencies.sh** - Install all required software (Java, Node.js, PostgreSQL, Nginx, PM2)
-- **deploy.sh** - Complete deployment script (builds and configures everything)
-- **setup-database.sh** - Setup PostgreSQL database and user
-- **quick-deploy.sh** - Quick rebuild and restart (for updates)
-- **glassshop-backend.service** - Systemd service file for backend
-- **ecosystem.config.js** - PM2 configuration for frontend
-- **nginx.conf** - Nginx reverse proxy configuration
+### Deployment Scripts
+- **`aws-quick-deploy.sh`** - Main deployment script (runs on EC2)
+- **`setup-env.sh`** - Environment variable configuration
+- **`update-application.sh`** - Update application after code changes
+- **`backup-database.sh`** - Database backup script
+- **`restore-database.sh`** - Database restore script
 
-## Quick Start
+### Configuration Files
+- **`nginx.conf`** - Nginx reverse proxy configuration
+- **`glassshop-backend.service`** - Systemd service file for backend
+- **`ecosystem.config.js`** - PM2 configuration (optional)
 
-### 1. Initial Setup (First Time)
+### Documentation
+- **`AWS_EC2_DEPLOYMENT_GUIDE.md`** - Complete deployment guide
+- **`README.md`** - This file
 
+## 🚀 Quick Start
+
+### 1. Initial Deployment
 ```bash
-# On your EC2 instance
-cd /opt
-sudo git clone <your-repo-url> glassshop
-# Or upload files manually
-
-cd glassshop
-sudo chmod +x deploy/*.sh
-
-# Install dependencies
-sudo ./deploy/install-dependencies.sh
-
-# Setup database
-sudo -u postgres ./deploy/setup-database.sh
-
-# Configure application properties
-sudo nano GlassShop/src/main/resources/application-prod.properties
-# Add database credentials, JWT secret, etc.
-
-# Run full deployment
-sudo ./deploy/deploy.sh
-```
-
-### 2. Update Application (Subsequent Deployments)
-
-```bash
+# On EC2 instance
 cd /opt/glassshop
-git pull  # or upload new files
-./deploy/quick-deploy.sh
+sudo chmod +x deploy/*.sh
+sudo ./deploy/aws-quick-deploy.sh
 ```
 
-## Manual Steps
-
-### Configure Backend
-
-Edit `GlassShop/src/main/resources/application-prod.properties`:
-
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/glassshop
-spring.datasource.username=glassshop_user
-spring.datasource.password=your_password
-jwt.secret=your-jwt-secret-key
-```
-
-### Configure Frontend
-
-Edit `glass-ai-agent-frontend/.env.production`:
-
-```env
-REACT_APP_API_URL=http://your-ec2-ip:8080
-```
-
-### Configure Nginx
-
-Edit `deploy/nginx.conf` and update:
-- `server_name` with your domain or IP
-- Paths if different from default
-
-Then:
+### 2. Configure Environment
 ```bash
-sudo cp deploy/nginx.conf /etc/nginx/sites-available/glassshop
-sudo ln -s /etc/nginx/sites-available/glassshop /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
+sudo ./deploy/setup-env.sh
 ```
 
-## Service Management
-
-### Backend
+### 3. Update Application
 ```bash
-sudo systemctl start glassshop-backend
-sudo systemctl stop glassshop-backend
-sudo systemctl restart glassshop-backend
-sudo systemctl status glassshop-backend
-sudo journalctl -u glassshop-backend -f
+sudo ./deploy/update-application.sh
 ```
 
-### Frontend
+### 4. Backup Database
 ```bash
-pm2 start glassshop-frontend
-pm2 stop glassshop-frontend
-pm2 restart glassshop-frontend
-pm2 status
+sudo ./deploy/backup-database.sh
+```
+
+## 📖 Detailed Documentation
+
+See `AWS_EC2_DEPLOYMENT_GUIDE.md` for complete step-by-step instructions.
+
+## 🔧 Script Usage
+
+### aws-quick-deploy.sh
+Main deployment script that installs all dependencies and sets up the application.
+
+**Usage:**
+```bash
+sudo ./deploy/aws-quick-deploy.sh
+```
+
+**What it does:**
+- Installs Java 17, Node.js 18, PostgreSQL, Nginx, Maven
+- Sets up database
+- Builds backend and frontend
+- Configures systemd and PM2 services
+- Configures Nginx reverse proxy
+
+### setup-env.sh
+Interactive script to configure environment variables.
+
+**Usage:**
+```bash
+sudo ./deploy/setup-env.sh
+```
+
+**What it does:**
+- Prompts for database credentials
+- Generates JWT secret
+- Configures CORS origins
+- Sets up email and WhatsApp (optional)
+- Updates configuration files
+
+### update-application.sh
+Updates the application after code changes.
+
+**Usage:**
+```bash
+sudo ./deploy/update-application.sh
+```
+
+**Options:**
+- Update backend only
+- Update frontend only
+- Update both (full update)
+
+### backup-database.sh
+Creates a compressed backup of the database.
+
+**Usage:**
+```bash
+sudo ./deploy/backup-database.sh
+```
+
+**Features:**
+- Creates timestamped backup
+- Compresses backup (gzip)
+- Auto-cleans old backups (keeps 7 days)
+- Shows backup size and location
+
+### restore-database.sh
+Restores database from a backup file.
+
+**Usage:**
+```bash
+sudo ./deploy/restore-database.sh
+```
+
+**Features:**
+- Lists available backups
+- Interactive backup selection
+- Safety confirmation
+- Stops/starts backend service automatically
+
+## 📋 Prerequisites
+
+- AWS EC2 instance (Ubuntu 22.04 or Amazon Linux 2023)
+- SSH access to EC2 instance
+- Root/sudo access
+- Application files uploaded to `/opt/glassshop`
+
+## 🔒 Security Notes
+
+1. **Never commit** `.env` files or `application-prod.properties` with real passwords
+2. **Use environment variables** for sensitive data
+3. **Restrict SSH access** to your IP only
+4. **Use SSL/HTTPS** in production
+5. **Regular backups** are essential
+
+## 🆘 Troubleshooting
+
+### Script fails with permission error
+```bash
+sudo chmod +x deploy/*.sh
+```
+
+### Backend won't start
+```bash
+sudo journalctl -u glassshop-backend -n 50
+```
+
+### Frontend won't load
+```bash
 pm2 logs glassshop-frontend
 ```
 
-### Nginx
+### Database connection issues
 ```bash
-sudo systemctl start nginx
-sudo systemctl stop nginx
-sudo systemctl restart nginx
-sudo systemctl status nginx
-sudo nginx -t  # Test configuration
+sudo systemctl status postgresql
+sudo -u postgres psql -d glassshop -c "SELECT 1;"
 ```
 
-## Troubleshooting
+## 📞 Support
 
-See main DEPLOYMENT_GUIDE.md for detailed troubleshooting steps.
+For deployment issues:
+1. Check logs first
+2. Review `AWS_EC2_DEPLOYMENT_GUIDE.md`
+3. Verify all prerequisites are met
+4. Check AWS Security Groups
 
+---
+
+**Last Updated:** After responsive design implementation
+**Version:** 1.0.0

@@ -5,6 +5,7 @@ export const getCustomers = () => api.get("/api/customers");
 export const getCustomerById = (id) => api.get(`/api/customers/${id}`);
 export const createCustomer = (data) => api.post("/api/customers", data);
 export const updateCustomer = (id, data) => api.put(`/api/customers/${id}`, data);
+export const deleteCustomer = (id) => api.delete(`/api/customers/${id}`);
 export const searchCustomers = (query) => api.get(`/api/customers/search?query=${query}`);
 
 // Quotation APIs
@@ -37,6 +38,31 @@ export const printDeliveryChallan = (invoiceId) => {
     responseType: 'blob',
   });
 };
+
+export const downloadInvoice = (invoiceId) => {
+  return api.get(`/api/invoices/${invoiceId}/download-invoice`, {
+    responseType: 'blob',
+  });
+};
+
+export const downloadBasicInvoice = (invoiceId) => {
+  return api.get(`/api/invoices/${invoiceId}/download-basic-invoice`, {
+    responseType: 'blob',
+  });
+};
+
+export const printInvoice = (invoiceId) => {
+  return api.get(`/api/invoices/${invoiceId}/print-invoice`, {
+    responseType: 'blob',
+  });
+};
+
+export const printBasicInvoice = (invoiceId) => {
+  return api.get(`/api/invoices/${invoiceId}/print-basic-invoice`, {
+    responseType: 'blob',
+  });
+};
+
 export const getQuotationsByStatus = (status) => api.get(`/api/quotations/status/${status}`);
 
 // Invoice APIs

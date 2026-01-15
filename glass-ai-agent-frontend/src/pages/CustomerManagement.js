@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import PageWrapper from "../components/PageWrapper";
 import dashboardBg from "../assets/dashboard-bg.jpg";
-import { getCustomers, createCustomer, updateCustomer, searchCustomers } from "../api/quotationApi";
+import { getCustomers, createCustomer, updateCustomer, deleteCustomer, searchCustomers } from "../api/quotationApi";
 import "../styles/design-system.css";
 
 function CustomerManagement() {
@@ -11,7 +11,11 @@ function CustomerManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const isMobile = windowWidth < 768;
+  const isTablet = windowWidth >= 768 && windowWidth < 1024;
+  const isSmallMobile = windowWidth < 480;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -26,7 +30,7 @@ function CustomerManagement() {
 
   useEffect(() => {
     loadCustomers();
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -106,6 +110,18 @@ function CustomerManagement() {
       city: "",
       pincode: "",
     });
+  };
+
+  const handleDelete = async (customerId) => {
+    try {
+      await deleteCustomer(customerId);
+      setMessage("✅ Customer deleted successfully");
+      setConfirmDelete(null);
+      loadCustomers();
+    } catch (error) {
+      setMessage("❌ Failed to delete customer");
+      setConfirmDelete(null);
+    }
   };
 
   return (
@@ -603,17 +619,31 @@ function CustomerManagement() {
                 </p>
               </div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "600px" }}>
+              <div 
+                style={{ 
+                  overflowX: "auto",
+                  WebkitOverflowScrolling: "touch",
+                  width: "100%",
+                  margin: isMobile ? "0 -12px" : "0",
+                  padding: isMobile ? "0 12px" : "0",
+                }}
+                className="table-wrapper"
+              >
+                <table style={{ 
+                  width: "100%", 
+                  borderCollapse: "collapse", 
+                  minWidth: isMobile ? "600px" : "auto",
+                  fontSize: isMobile ? "13px" : "14px",
+                }}>
                   <thead>
                     <tr style={{ backgroundColor: "#f3f4f6" }}>
                       <th
                         style={{
-                          padding: "16px",
+                          padding: isMobile ? "10px 8px" : "16px",
                           textAlign: "left",
                           color: "#374151",
                           fontWeight: "600",
-                          fontSize: "13px",
+                          fontSize: isMobile ? "12px" : "13px",
                           textTransform: "uppercase",
                           letterSpacing: "0.5px",
                         }}
@@ -622,11 +652,11 @@ function CustomerManagement() {
                       </th>
                       <th
                         style={{
-                          padding: "16px",
+                          padding: isMobile ? "10px 8px" : "16px",
                           textAlign: "left",
                           color: "#374151",
                           fontWeight: "600",
-                          fontSize: "13px",
+                          fontSize: isMobile ? "12px" : "13px",
                           textTransform: "uppercase",
                           letterSpacing: "0.5px",
                         }}
@@ -637,11 +667,11 @@ function CustomerManagement() {
                         <>
                           <th
                             style={{
-                              padding: "16px",
+                              padding: isMobile ? "10px 8px" : "16px",
                               textAlign: "left",
                               color: "#374151",
                               fontWeight: "600",
-                              fontSize: "13px",
+                              fontSize: isMobile ? "12px" : "13px",
                               textTransform: "uppercase",
                               letterSpacing: "0.5px",
                             }}
@@ -650,11 +680,11 @@ function CustomerManagement() {
                           </th>
                           <th
                             style={{
-                              padding: "16px",
+                              padding: isMobile ? "10px 8px" : "16px",
                               textAlign: "left",
                               color: "#374151",
                               fontWeight: "600",
-                              fontSize: "13px",
+                              fontSize: isMobile ? "12px" : "13px",
                               textTransform: "uppercase",
                               letterSpacing: "0.5px",
                             }}
@@ -663,11 +693,11 @@ function CustomerManagement() {
                           </th>
                           <th
                             style={{
-                              padding: "16px",
+                              padding: isMobile ? "10px 8px" : "16px",
                               textAlign: "left",
                               color: "#374151",
                               fontWeight: "600",
-                              fontSize: "13px",
+                              fontSize: isMobile ? "12px" : "13px",
                               textTransform: "uppercase",
                               letterSpacing: "0.5px",
                             }}
@@ -678,11 +708,11 @@ function CustomerManagement() {
                       )}
                       <th
                         style={{
-                          padding: "16px",
+                          padding: isMobile ? "10px 8px" : "16px",
                           textAlign: "left",
                           color: "#374151",
                           fontWeight: "600",
-                          fontSize: "13px",
+                          fontSize: isMobile ? "12px" : "13px",
                           textTransform: "uppercase",
                           letterSpacing: "0.5px",
                         }}
@@ -703,8 +733,8 @@ function CustomerManagement() {
                         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = index % 2 === 0 ? "#ffffff" : "#f9fafb")}
                       >
-                        <td style={{ padding: "16px", color: "#1f2937", fontWeight: "500" }}>{customer.name}</td>
-                        <td style={{ padding: "16px", color: "#4b5563" }}>
+                        <td style={{ padding: isMobile ? "10px 8px" : "16px", color: "#1f2937", fontWeight: "500" }}>{customer.name}</td>
+                        <td style={{ padding: isMobile ? "10px 8px" : "16px", color: "#4b5563" }}>
                           {customer.mobile ? (
                             <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                               📱 {customer.mobile}
@@ -715,7 +745,7 @@ function CustomerManagement() {
                         </td>
                         {!isMobile && (
                           <>
-                            <td style={{ padding: "16px", color: "#4b5563" }}>
+                            <td style={{ padding: isMobile ? "10px 8px" : "16px", color: "#4b5563" }}>
                               {customer.email ? (
                                 <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                   📧 {customer.email}
@@ -724,7 +754,7 @@ function CustomerManagement() {
                                 <span style={{ color: "#9ca3af" }}>-</span>
                               )}
                             </td>
-                            <td style={{ padding: "16px", color: "#4b5563" }}>
+                            <td style={{ padding: isMobile ? "10px 8px" : "16px", color: "#4b5563" }}>
                               {customer.gstin ? (
                                 <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                   🧾 {customer.gstin}
@@ -733,7 +763,7 @@ function CustomerManagement() {
                                 <span style={{ color: "#9ca3af" }}>-</span>
                               )}
                             </td>
-                            <td style={{ padding: "16px", color: "#4b5563" }}>
+                            <td style={{ padding: isMobile ? "10px 8px" : "16px", color: "#4b5563" }}>
                               {customer.state || customer.city ? (
                                 <span>
                                   {customer.city && customer.state ? `${customer.city}, ${customer.state}` : customer.city || customer.state}
@@ -744,34 +774,78 @@ function CustomerManagement() {
                             </td>
                           </>
                         )}
-                        <td style={{ padding: "16px" }}>
-                          <button
-                            onClick={() => handleEdit(customer)}
-                            style={{
-                              padding: "8px 16px",
-                              backgroundColor: "#6366f1",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "6px",
-                              cursor: "pointer",
-                              fontSize: "13px",
-                              fontWeight: "500",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "6px",
-                              transition: "all 0.2s",
-                            }}
-                            onMouseOver={(e) => {
-                              e.target.style.backgroundColor = "#4f46e5";
-                              e.target.style.transform = "translateY(-1px)";
-                            }}
-                            onMouseOut={(e) => {
-                              e.target.style.backgroundColor = "#6366f1";
-                              e.target.style.transform = "translateY(0)";
-                            }}
-                          >
-                            ✏️ Edit
-                          </button>
+                        <td style={{ padding: isMobile ? "10px 8px" : "16px" }}>
+                          <div style={{ 
+                            display: "flex", 
+                            gap: isMobile ? "6px" : "8px", 
+                            flexWrap: "wrap",
+                            flexDirection: isSmallMobile ? "column" : "row",
+                          }}>
+                            <button
+                              onClick={() => handleEdit(customer)}
+                              style={{
+                                padding: isMobile ? "10px 14px" : "8px 16px",
+                                backgroundColor: "#6366f1",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontSize: isMobile ? "12px" : "13px",
+                                fontWeight: "500",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "6px",
+                                transition: "all 0.2s",
+                                minHeight: "44px",
+                                minWidth: isSmallMobile ? "100%" : "auto",
+                                flex: isSmallMobile ? "1" : "none",
+                                touchAction: "manipulation",
+                              }}
+                              onMouseOver={(e) => {
+                                e.target.style.backgroundColor = "#4f46e5";
+                                e.target.style.transform = "translateY(-1px)";
+                              }}
+                              onMouseOut={(e) => {
+                                e.target.style.backgroundColor = "#6366f1";
+                                e.target.style.transform = "translateY(0)";
+                              }}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
+                              onClick={() => setConfirmDelete({ id: customer.id, name: customer.name })}
+                              style={{
+                                padding: isMobile ? "10px 14px" : "8px 16px",
+                                backgroundColor: "#ef4444",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "6px",
+                                cursor: "pointer",
+                                fontSize: isMobile ? "12px" : "13px",
+                                fontWeight: "500",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: "6px",
+                                transition: "all 0.2s",
+                                minHeight: "44px",
+                                minWidth: isSmallMobile ? "100%" : "auto",
+                                flex: isSmallMobile ? "1" : "none",
+                                touchAction: "manipulation",
+                              }}
+                              onMouseOver={(e) => {
+                                e.target.style.backgroundColor = "#dc2626";
+                                e.target.style.transform = "translateY(-1px)";
+                              }}
+                              onMouseOut={(e) => {
+                                e.target.style.backgroundColor = "#ef4444";
+                                e.target.style.transform = "translateY(0)";
+                              }}
+                            >
+                              🗑️ Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -779,6 +853,127 @@ function CustomerManagement() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Confirmation Modal */}
+        {confirmDelete && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.7)",
+              display: "flex",
+              alignItems: isMobile ? "flex-end" : "center",
+              justifyContent: "center",
+              zIndex: 10004,
+              padding: isMobile ? "0" : "20px",
+              paddingTop: "80px",
+            }}
+            onClick={() => setConfirmDelete(null)}
+          >
+            <div
+              style={{
+                backgroundColor: "white",
+                padding: isMobile ? "20px 16px" : "35px",
+                borderRadius: isMobile ? "20px 20px 0 0" : "16px",
+                maxWidth: isMobile ? "100%" : isTablet ? "600px" : "500px",
+                width: "100%",
+                maxHeight: isMobile ? "90vh" : "85vh",
+                overflowY: "auto",
+                WebkitOverflowScrolling: "touch",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                position: "relative",
+                zIndex: 10005,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ marginBottom: "20px", textAlign: "center" }}>
+                <div
+                  style={{
+                    fontSize: "48px",
+                    marginBottom: "15px",
+                    color: "#ef4444",
+                  }}
+                >
+                  🗑️
+                </div>
+                <h2
+                  style={{
+                    margin: 0,
+                    color: "#1f2937",
+                    fontSize: isMobile ? "20px" : "24px",
+                    fontWeight: "700",
+                    marginBottom: "10px",
+                  }}
+                >
+                  Delete Customer?
+                </h2>
+                <p style={{ margin: "8px 0 0 0", color: "#6b7280", fontSize: "14px", lineHeight: "1.6" }}>
+                  Are you sure you want to permanently delete customer <strong>"{confirmDelete.name}"</strong>? This action cannot be undone.
+                </p>
+                <div
+                  style={{
+                    marginTop: "15px",
+                    padding: "12px",
+                    backgroundColor: "#fef2f2",
+                    borderRadius: "8px",
+                    textAlign: "left",
+                    border: "1px solid #fecaca",
+                  }}
+                >
+                  <div style={{ fontSize: "13px", color: "#991b1b", marginBottom: "4px", fontWeight: "600" }}>⚠️ Warning:</div>
+                  <div style={{ fontSize: "13px", color: "#7f1d1d" }}>
+                    If this customer has associated quotations or invoices, they may be affected.
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: "12px" }}>
+                <button
+                  onClick={() => handleDelete(confirmDelete.id)}
+                  style={{
+                    flex: 1,
+                    padding: "12px 24px",
+                    backgroundColor: "#ef4444",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                    transition: "all 0.2s",
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.2)",
+                  }}
+                  onMouseOver={(e) => (e.target.style.backgroundColor = "#dc2626")}
+                  onMouseOut={(e) => (e.target.style.backgroundColor = "#ef4444")}
+                >
+                  🗑️ Yes, Delete
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(null)}
+                  style={{
+                    flex: 1,
+                    padding: "12px 24px",
+                    backgroundColor: "#6b7280",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseOver={(e) => (e.target.style.backgroundColor = "#4b5563")}
+                  onMouseOut={(e) => (e.target.style.backgroundColor = "#6b7280")}
+                >
+                  ❌ Cancel
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

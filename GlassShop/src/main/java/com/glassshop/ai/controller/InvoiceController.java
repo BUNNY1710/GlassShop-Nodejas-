@@ -60,18 +60,6 @@ public class InvoiceController {
         }
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<InvoiceResponse> getInvoiceById(@PathVariable Long id) {
-        try {
-            InvoiceResponse invoice = invoiceService.getInvoiceById(id);
-            return ResponseEntity.ok(invoice);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
     @GetMapping("/payment-status/{status}")
     public ResponseEntity<List<InvoiceResponse>> getInvoicesByPaymentStatus(@PathVariable PaymentStatus status) {
         try {
@@ -82,16 +70,71 @@ public class InvoiceController {
         }
     }
 
-    @PostMapping("/{id}/payments")
-    public ResponseEntity<PaymentDto> addPayment(
-            @PathVariable Long id,
-            @Valid @RequestBody AddPaymentRequest request) {
+    // More specific routes should come before generic /{id} route
+    @GetMapping("/{id}/download-invoice")
+    public ResponseEntity<byte[]> downloadInvoice(@PathVariable Long id) {
         try {
-            PaymentDto payment = invoiceService.addPayment(id, request);
-            return ResponseEntity.status(HttpStatus.CREATED).body(payment);
+            byte[] pdfBytes = pdfService.generateInvoicePdf(id);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", "invoice-" + id + ".pdf");
+            return ResponseEntity.ok().headers(headers).body(pdfBytes);
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{id}/download-basic-invoice")
+    public ResponseEntity<byte[]> downloadBasicInvoice(@PathVariable Long id) {
+        try {
+            byte[] pdfBytes = pdfService.generateBasicInvoicePdf(id);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", "basic-invoice-" + id + ".pdf");
+            return ResponseEntity.ok().headers(headers).body(pdfBytes);
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{id}/print-invoice")
+    public ResponseEntity<byte[]> printInvoice(@PathVariable Long id) {
+        try {
+            byte[] pdfBytes = pdfService.generateInvoicePdf(id);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("inline", "invoice-" + id + ".pdf");
+            return ResponseEntity.ok().headers(headers).body(pdfBytes);
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{id}/print-basic-invoice")
+    public ResponseEntity<byte[]> printBasicInvoice(@PathVariable Long id) {
+        try {
+            byte[] pdfBytes = pdfService.generateBasicInvoicePdf(id);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("inline", "basic-invoice-" + id + ".pdf");
+            return ResponseEntity.ok().headers(headers).body(pdfBytes);
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -119,6 +162,32 @@ public class InvoiceController {
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDispositionFormData("inline", "delivery-challan-print-" + id + ".pdf");
             return ResponseEntity.ok().headers(headers).body(pdfBytes);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{id}/payments")
+    public ResponseEntity<PaymentDto> addPayment(
+            @PathVariable Long id,
+            @Valid @RequestBody AddPaymentRequest request) {
+        try {
+            PaymentDto payment = invoiceService.addPayment(id, request);
+            return ResponseEntity.status(HttpStatus.CREATED).body(payment);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<InvoiceResponse> getInvoiceById(@PathVariable Long id) {
+        try {
+            InvoiceResponse invoice = invoiceService.getInvoiceById(id);
+            return ResponseEntity.ok(invoice);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         } catch (Exception e) {

@@ -110,6 +110,19 @@ public class CustomerService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public void deleteCustomer(Long id) {
+        Shop shop = getCurrentShop();
+        Customer customer = customerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+        
+        if (!customer.getShop().getId().equals(shop.getId())) {
+            throw new RuntimeException("Customer does not belong to your shop");
+        }
+        
+        customerRepository.delete(customer);
+    }
+
     private CustomerDto convertToDto(Customer customer) {
         CustomerDto dto = new CustomerDto();
         dto.setId(customer.getId());

@@ -353,7 +353,7 @@ public class PdfService {
         contentStream.endText();
         contentStream.beginText();
         contentStream.newLineAtOffset(margin + 400, tableY);
-        contentStream.showText("₹ " + String.format("%.2f", quotation.getGrandTotal() != null ? quotation.getGrandTotal() : 0.0));
+        contentStream.showText("Rs. " + String.format("%.2f", quotation.getGrandTotal() != null ? quotation.getGrandTotal() : 0.0));
         contentStream.endText();
 
         contentStream.close();
@@ -1036,6 +1036,642 @@ public class PdfService {
 
             tableY -= lineHeight;
         }
+
+        contentStream.close();
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        document.save(baos);
+        document.close();
+
+        return baos.toByteArray();
+    }
+
+    /**
+     * Generate Final Original Invoice PDF (with shop name and all details)
+     */
+    public byte[] generateInvoicePdf(Long invoiceId) throws IOException {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Invoice not found"));
+        
+        Shop shop = getCurrentShop();
+        if (!invoice.getShop().getId().equals(shop.getId())) {
+            throw new RuntimeException("Unauthorized access to invoice");
+        }
+
+        PDDocument document = new PDDocument();
+        PDPage page = new PDPage(PDRectangle.A4);
+        document.addPage(page);
+
+        PDPageContentStream contentStream = new PDPageContentStream(document, page);
+
+        float margin = 50;
+        float yPosition = 750;
+        float lineHeight = 20;
+        float currentY = yPosition;
+
+        // Title
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 24);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        String title = invoice.getBillingType().toString().equals("GST") ? "TAX INVOICE" : "BILL / CASH MEMO";
+        contentStream.showText(title);
+        contentStream.endText();
+        currentY -= lineHeight * 2;
+
+        // Shop Details (From)
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 14);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        contentStream.showText("From:");
+        contentStream.endText();
+        currentY -= lineHeight;
+
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 12);
+        if (shop.getShopName() != null) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin, currentY);
+            contentStream.showText(shop.getShopName());
+            contentStream.endText();
+            currentY -= lineHeight;
+        }
+        
+        contentStream.setFont(PDType1Font.HELVETICA, 10);
+        if (shop.getOwnerName() != null) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin, currentY);
+            contentStream.showText("Owner: " + shop.getOwnerName());
+            contentStream.endText();
+            currentY -= lineHeight;
+        }
+        if (shop.getEmail() != null) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin, currentY);
+            contentStream.showText("Email: " + shop.getEmail());
+            contentStream.endText();
+            currentY -= lineHeight;
+        }
+        if (shop.getWhatsappNumber() != null) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin, currentY);
+            contentStream.showText("Mobile: " + shop.getWhatsappNumber());
+            contentStream.endText();
+            currentY -= lineHeight;
+        }
+
+        currentY -= lineHeight;
+
+        // Customer Details (To)
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 12);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        contentStream.showText("To:");
+        contentStream.endText();
+        currentY -= lineHeight;
+
+        contentStream.setFont(PDType1Font.HELVETICA, 10);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        contentStream.showText(invoice.getCustomerName());
+        contentStream.endText();
+        currentY -= lineHeight;
+
+        if (invoice.getCustomerMobile() != null && !invoice.getCustomerMobile().isEmpty()) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin, currentY);
+            contentStream.showText("Mobile: " + invoice.getCustomerMobile());
+            contentStream.endText();
+            currentY -= lineHeight;
+        }
+
+        if (invoice.getCustomerAddress() != null && !invoice.getCustomerAddress().isEmpty()) {
+            String[] addressLines = invoice.getCustomerAddress().split("\n");
+            for (String line : addressLines) {
+                if (currentY < 100) {
+                    contentStream.close();
+                    page = new PDPage(PDRectangle.A4);
+                    document.addPage(page);
+                    contentStream = new PDPageContentStream(document, page);
+                    currentY = 750;
+                }
+                contentStream.beginText();
+                contentStream.newLineAtOffset(margin, currentY);
+                contentStream.showText(line);
+                contentStream.endText();
+                currentY -= lineHeight;
+            }
+        }
+
+        if (invoice.getCustomerGstin() != null && !invoice.getCustomerGstin().isEmpty()) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin, currentY);
+            contentStream.showText("GSTIN: " + invoice.getCustomerGstin());
+            contentStream.endText();
+            currentY -= lineHeight;
+        }
+
+        currentY -= lineHeight;
+
+        // Invoice Details
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 12);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        contentStream.showText("Invoice Number: " + invoice.getInvoiceNumber());
+        contentStream.endText();
+        currentY -= lineHeight;
+
+        contentStream.setFont(PDType1Font.HELVETICA, 10);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        contentStream.showText("Date: " + invoice.getInvoiceDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
+        contentStream.endText();
+        currentY -= lineHeight;
+
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        contentStream.showText("Invoice Type: " + invoice.getInvoiceType().toString());
+        contentStream.endText();
+        currentY -= lineHeight * 2;
+
+        // Items Table Header
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 10);
+        float tableY = currentY;
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, tableY);
+        contentStream.showText("Sr.");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 50, tableY);
+        contentStream.showText("Item");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 200, tableY);
+        contentStream.showText("Size");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 300, tableY);
+        contentStream.showText("Qty");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 350, tableY);
+        contentStream.showText("Rate");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 450, tableY);
+        contentStream.showText("Amount");
+        contentStream.endText();
+        tableY -= lineHeight;
+
+        // Draw line
+        contentStream.moveTo(margin, tableY);
+        contentStream.lineTo(margin + 500, tableY);
+        contentStream.stroke();
+        tableY -= 5;
+
+        // Items
+        contentStream.setFont(PDType1Font.HELVETICA, 9);
+        int srNo = 1;
+        for (var item : invoice.getItems()) {
+            if (tableY < 100) {
+                contentStream.close();
+                page = new PDPage(PDRectangle.A4);
+                document.addPage(page);
+                contentStream = new PDPageContentStream(document, page);
+                tableY = 750;
+            }
+
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin, tableY);
+            contentStream.showText(String.valueOf(srNo++));
+            contentStream.endText();
+
+            String itemDesc = item.getGlassType() != null ? item.getGlassType() : "";
+            if (item.getThickness() != null) {
+                itemDesc += " (" + item.getThickness() + "mm)";
+            }
+
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 50, tableY);
+            contentStream.showText(itemDesc);
+            contentStream.endText();
+
+            String size = "";
+            if (item.getHeight() != null && item.getWidth() != null) {
+                size = String.format("%.2f", item.getHeight()) + " × " + String.format("%.2f", item.getWidth()) + " ft";
+            }
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 200, tableY);
+            contentStream.showText(size);
+            contentStream.endText();
+
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 300, tableY);
+            contentStream.showText(String.valueOf(item.getQuantity()));
+            contentStream.endText();
+
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 350, tableY);
+            contentStream.showText(String.format("%.2f", item.getRatePerSqft() != null ? item.getRatePerSqft() : 0.0));
+            contentStream.endText();
+
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 450, tableY);
+            contentStream.showText(String.format("%.2f", item.getSubtotal() != null ? item.getSubtotal() : 0.0));
+            contentStream.endText();
+
+            tableY -= lineHeight;
+        }
+
+        tableY -= lineHeight;
+        contentStream.moveTo(margin, tableY);
+        contentStream.lineTo(margin + 500, tableY);
+        contentStream.stroke();
+        tableY -= lineHeight;
+
+        // Totals
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 10);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 350, tableY);
+        contentStream.showText("Subtotal:");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 450, tableY);
+        contentStream.showText(String.format("%.2f", invoice.getSubtotal() != null ? invoice.getSubtotal() : 0.0));
+        contentStream.endText();
+        tableY -= lineHeight;
+
+        if (invoice.getInstallationCharge() != null && invoice.getInstallationCharge() > 0) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 350, tableY);
+            contentStream.showText("Installation:");
+            contentStream.endText();
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 450, tableY);
+            contentStream.showText(String.format("%.2f", invoice.getInstallationCharge()));
+            contentStream.endText();
+            tableY -= lineHeight;
+        }
+
+        if (invoice.getTransportCharge() != null && invoice.getTransportCharge() > 0) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 350, tableY);
+            contentStream.showText("Transport:");
+            contentStream.endText();
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 450, tableY);
+            contentStream.showText(String.format("%.2f", invoice.getTransportCharge()));
+            contentStream.endText();
+            tableY -= lineHeight;
+        }
+
+        if (invoice.getDiscount() != null && invoice.getDiscount() > 0) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 350, tableY);
+            contentStream.showText("Discount:");
+            contentStream.endText();
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 450, tableY);
+            contentStream.showText("-" + String.format("%.2f", invoice.getDiscount()));
+            contentStream.endText();
+            tableY -= lineHeight;
+        }
+
+        if (invoice.getBillingType().toString().equals("GST") && invoice.getGstAmount() != null && invoice.getGstAmount() > 0) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 350, tableY);
+            contentStream.showText("GST (" + (invoice.getGstPercentage() != null ? invoice.getGstPercentage() : 0) + "%):");
+            contentStream.endText();
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 450, tableY);
+            contentStream.showText(String.format("%.2f", invoice.getGstAmount()));
+            contentStream.endText();
+            tableY -= lineHeight;
+        }
+
+        tableY -= lineHeight;
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 12);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 350, tableY);
+        contentStream.showText("Grand Total:");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 450, tableY);
+        contentStream.showText("Rs. " + String.format("%.2f", invoice.getGrandTotal() != null ? invoice.getGrandTotal() : 0.0));
+        contentStream.endText();
+        tableY -= lineHeight * 2;
+
+        // Payment Status
+        contentStream.setFont(PDType1Font.HELVETICA, 10);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, tableY);
+        contentStream.showText("Payment Status: " + invoice.getPaymentStatus().toString());
+        contentStream.endText();
+        tableY -= lineHeight;
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, tableY);
+        contentStream.showText("Paid: Rs. " + String.format("%.2f", invoice.getPaidAmount() != null ? invoice.getPaidAmount() : 0.0));
+        contentStream.endText();
+        tableY -= lineHeight;
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, tableY);
+        contentStream.showText("Due: Rs. " + String.format("%.2f", invoice.getDueAmount() != null ? invoice.getDueAmount() : 0.0));
+        contentStream.endText();
+
+        contentStream.close();
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        document.save(baos);
+        document.close();
+
+        return baos.toByteArray();
+    }
+
+    /**
+     * Generate Basic Invoice PDF (without shop name and logo)
+     */
+    public byte[] generateBasicInvoicePdf(Long invoiceId) throws IOException {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Invoice not found"));
+        
+        Shop shop = getCurrentShop();
+        if (!invoice.getShop().getId().equals(shop.getId())) {
+            throw new RuntimeException("Unauthorized access to invoice");
+        }
+
+        PDDocument document = new PDDocument();
+        PDPage page = new PDPage(PDRectangle.A4);
+        document.addPage(page);
+
+        PDPageContentStream contentStream = new PDPageContentStream(document, page);
+
+        float margin = 50;
+        float yPosition = 750;
+        float lineHeight = 20;
+        float currentY = yPosition;
+
+        // Title (NO SHOP NAME)
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 24);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        String title = invoice.getBillingType().toString().equals("GST") ? "TAX INVOICE" : "BILL / CASH MEMO";
+        contentStream.showText(title);
+        contentStream.endText();
+        currentY -= lineHeight * 2;
+
+        // Customer Details (To) - NO "From" section
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 12);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        contentStream.showText("To:");
+        contentStream.endText();
+        currentY -= lineHeight;
+
+        contentStream.setFont(PDType1Font.HELVETICA, 10);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        contentStream.showText(invoice.getCustomerName());
+        contentStream.endText();
+        currentY -= lineHeight;
+
+        if (invoice.getCustomerMobile() != null && !invoice.getCustomerMobile().isEmpty()) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin, currentY);
+            contentStream.showText("Mobile: " + invoice.getCustomerMobile());
+            contentStream.endText();
+            currentY -= lineHeight;
+        }
+
+        if (invoice.getCustomerAddress() != null && !invoice.getCustomerAddress().isEmpty()) {
+            String[] addressLines = invoice.getCustomerAddress().split("\n");
+            for (String line : addressLines) {
+                if (currentY < 100) {
+                    contentStream.close();
+                    page = new PDPage(PDRectangle.A4);
+                    document.addPage(page);
+                    contentStream = new PDPageContentStream(document, page);
+                    currentY = 750;
+                }
+                contentStream.beginText();
+                contentStream.newLineAtOffset(margin, currentY);
+                contentStream.showText(line);
+                contentStream.endText();
+                currentY -= lineHeight;
+            }
+        }
+
+        if (invoice.getCustomerGstin() != null && !invoice.getCustomerGstin().isEmpty()) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin, currentY);
+            contentStream.showText("GSTIN: " + invoice.getCustomerGstin());
+            contentStream.endText();
+            currentY -= lineHeight;
+        }
+
+        currentY -= lineHeight;
+
+        // Invoice Details
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 12);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        contentStream.showText("Invoice Number: " + invoice.getInvoiceNumber());
+        contentStream.endText();
+        currentY -= lineHeight;
+
+        contentStream.setFont(PDType1Font.HELVETICA, 10);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        contentStream.showText("Date: " + invoice.getInvoiceDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
+        contentStream.endText();
+        currentY -= lineHeight;
+
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, currentY);
+        contentStream.showText("Invoice Type: " + invoice.getInvoiceType().toString());
+        contentStream.endText();
+        currentY -= lineHeight * 2;
+
+        // Items Table Header
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 10);
+        float tableY = currentY;
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, tableY);
+        contentStream.showText("Sr.");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 50, tableY);
+        contentStream.showText("Item");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 200, tableY);
+        contentStream.showText("Size");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 300, tableY);
+        contentStream.showText("Qty");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 350, tableY);
+        contentStream.showText("Rate");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 450, tableY);
+        contentStream.showText("Amount");
+        contentStream.endText();
+        tableY -= lineHeight;
+
+        // Draw line
+        contentStream.moveTo(margin, tableY);
+        contentStream.lineTo(margin + 500, tableY);
+        contentStream.stroke();
+        tableY -= 5;
+
+        // Items
+        contentStream.setFont(PDType1Font.HELVETICA, 9);
+        int srNo = 1;
+        for (var item : invoice.getItems()) {
+            if (tableY < 100) {
+                contentStream.close();
+                page = new PDPage(PDRectangle.A4);
+                document.addPage(page);
+                contentStream = new PDPageContentStream(document, page);
+                tableY = 750;
+            }
+
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin, tableY);
+            contentStream.showText(String.valueOf(srNo++));
+            contentStream.endText();
+
+            String itemDesc = item.getGlassType() != null ? item.getGlassType() : "";
+            if (item.getThickness() != null) {
+                itemDesc += " (" + item.getThickness() + "mm)";
+            }
+
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 50, tableY);
+            contentStream.showText(itemDesc);
+            contentStream.endText();
+
+            String size = "";
+            if (item.getHeight() != null && item.getWidth() != null) {
+                size = String.format("%.2f", item.getHeight()) + " × " + String.format("%.2f", item.getWidth()) + " ft";
+            }
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 200, tableY);
+            contentStream.showText(size);
+            contentStream.endText();
+
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 300, tableY);
+            contentStream.showText(String.valueOf(item.getQuantity()));
+            contentStream.endText();
+
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 350, tableY);
+            contentStream.showText(String.format("%.2f", item.getRatePerSqft() != null ? item.getRatePerSqft() : 0.0));
+            contentStream.endText();
+
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 450, tableY);
+            contentStream.showText(String.format("%.2f", item.getSubtotal() != null ? item.getSubtotal() : 0.0));
+            contentStream.endText();
+
+            tableY -= lineHeight;
+        }
+
+        tableY -= lineHeight;
+        contentStream.moveTo(margin, tableY);
+        contentStream.lineTo(margin + 500, tableY);
+        contentStream.stroke();
+        tableY -= lineHeight;
+
+        // Totals
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 10);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 350, tableY);
+        contentStream.showText("Subtotal:");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 450, tableY);
+        contentStream.showText(String.format("%.2f", invoice.getSubtotal() != null ? invoice.getSubtotal() : 0.0));
+        contentStream.endText();
+        tableY -= lineHeight;
+
+        if (invoice.getInstallationCharge() != null && invoice.getInstallationCharge() > 0) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 350, tableY);
+            contentStream.showText("Installation:");
+            contentStream.endText();
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 450, tableY);
+            contentStream.showText(String.format("%.2f", invoice.getInstallationCharge()));
+            contentStream.endText();
+            tableY -= lineHeight;
+        }
+
+        if (invoice.getTransportCharge() != null && invoice.getTransportCharge() > 0) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 350, tableY);
+            contentStream.showText("Transport:");
+            contentStream.endText();
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 450, tableY);
+            contentStream.showText(String.format("%.2f", invoice.getTransportCharge()));
+            contentStream.endText();
+            tableY -= lineHeight;
+        }
+
+        if (invoice.getDiscount() != null && invoice.getDiscount() > 0) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 350, tableY);
+            contentStream.showText("Discount:");
+            contentStream.endText();
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 450, tableY);
+            contentStream.showText("-" + String.format("%.2f", invoice.getDiscount()));
+            contentStream.endText();
+            tableY -= lineHeight;
+        }
+
+        if (invoice.getBillingType().toString().equals("GST") && invoice.getGstAmount() != null && invoice.getGstAmount() > 0) {
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 350, tableY);
+            contentStream.showText("GST (" + (invoice.getGstPercentage() != null ? invoice.getGstPercentage() : 0) + "%):");
+            contentStream.endText();
+            contentStream.beginText();
+            contentStream.newLineAtOffset(margin + 450, tableY);
+            contentStream.showText(String.format("%.2f", invoice.getGstAmount()));
+            contentStream.endText();
+            tableY -= lineHeight;
+        }
+
+        tableY -= lineHeight;
+        contentStream.setFont(PDType1Font.HELVETICA_BOLD, 12);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 350, tableY);
+        contentStream.showText("Grand Total:");
+        contentStream.endText();
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin + 450, tableY);
+        contentStream.showText("Rs. " + String.format("%.2f", invoice.getGrandTotal() != null ? invoice.getGrandTotal() : 0.0));
+        contentStream.endText();
+        tableY -= lineHeight * 2;
+
+        // Payment Status
+        contentStream.setFont(PDType1Font.HELVETICA, 10);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, tableY);
+        contentStream.showText("Payment Status: " + invoice.getPaymentStatus().toString());
+        contentStream.endText();
+        tableY -= lineHeight;
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, tableY);
+        contentStream.showText("Paid: Rs. " + String.format("%.2f", invoice.getPaidAmount() != null ? invoice.getPaidAmount() : 0.0));
+        contentStream.endText();
+        tableY -= lineHeight;
+        contentStream.beginText();
+        contentStream.newLineAtOffset(margin, tableY);
+        contentStream.showText("Due: Rs. " + String.format("%.2f", invoice.getDueAmount() != null ? invoice.getDueAmount() : 0.0));
+        contentStream.endText();
 
         contentStream.close();
 
