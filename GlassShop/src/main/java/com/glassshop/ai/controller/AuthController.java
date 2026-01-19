@@ -1,12 +1,12 @@
 package com.glassshop.ai.controller;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,13 +15,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import com.glassshop.ai.dto.AuthResponse;
 import com.glassshop.ai.dto.ChangePasswordRequest;
 import com.glassshop.ai.dto.CreateStaffRequest;
 import com.glassshop.ai.dto.LoginRequest;
-import com.glassshop.ai.dto.ProfileResponse;
 import com.glassshop.ai.dto.RegisterShopRequest;
-import com.glassshop.ai.dto.StaffResponse;
 import com.glassshop.ai.entity.Shop;
 import com.glassshop.ai.entity.User;
 import com.glassshop.ai.repository.ShopRepository;
@@ -55,21 +52,56 @@ public class AuthController {
     
     @PostMapping("/register-shop")
     public ResponseEntity<?> registerShop(@RequestBody RegisterShopRequest request) {
+        try {
+            // Validate request
+            if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Username is required");
+            }
+            if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Password is required");
+            }
+            if (request.getShopName() == null || request.getShopName().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body("Shop name is required");
+            }
 
-        Shop shop = new Shop();
-        shop.setShopName(request.getShopName());
-        shop.setEmail(request.getEmail());
-        shop = shopRepository.save(shop);
+            // Check if username already exists
+            if (userRepository.findByUserName(request.getUsername()).isPresent()) {
+                return ResponseEntity
+                        .status(HttpStatus.CONFLICT)
+                        .body("Username already exists. Please choose a different username.");
+            }
 
-        User admin = new User();
-        admin.setUserName(request.getUsername());
-        admin.setPassword(passwordEncoder.encode(request.getPassword()));
-        admin.setRole("ROLE_ADMIN");
-        admin.setShop(shop);
+            // Create shop
+            Shop shop = new Shop();
+            shop.setShopName(request.getShopName());
+            shop.setEmail(request.getEmail());
+            shop = shopRepository.save(shop);
 
-        userRepository.save(admin);
+            // Create admin user
+            User admin = new User();
+            admin.setUserName(request.getUsername());
+            admin.setPassword(passwordEncoder.encode(request.getPassword()));
+            admin.setRole("ROLE_ADMIN");
+            admin.setShop(shop);
 
-        return ResponseEntity.ok("Shop registered successfully");
+            userRepository.save(admin);
+
+            return ResponseEntity.ok("Shop registered successfully");
+        } catch (DataIntegrityViolationException e) {
+            // Handle database constraint violations
+            if (e.getMessage() != null && e.getMessage().contains("user_name")) {
+                return ResponseEntity
+                        .status(HttpStatus.CONFLICT)
+                        .body("Username already exists. Please choose a different username.");
+            }
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body("Registration failed: " + e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Registration failed: " + e.getMessage());
+        }
     }
 
 
@@ -142,31 +174,54 @@ public class AuthController {
        =============================== */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        try {
+            // Validate request
+            if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
+                return ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .body("Username is required");
+            }
+            if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
+                return ResponseEntity
+                        .status(HttpStatus.BAD_REQUEST)
+                        .body("Password is required");
+            }
 
-        User user = userRepository
-                .findByUserName(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+            // Find user
+            Optional<User> optionalUser = userRepository.findByUserName(request.getUsername());
+            if (optionalUser.isEmpty()) {
+                return ResponseEntity
+                        .status(HttpStatus.UNAUTHORIZED)
+                        .body("Invalid username or password");
+            }
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            User user = optionalUser.get();
+
+            // Verify password
+            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+                return ResponseEntity
+                        .status(HttpStatus.UNAUTHORIZED)
+                        .body("Invalid username or password");
+            }
+
+            String role = user.getRole(); // MUST be ROLE_ADMIN / ROLE_STAFF
+
+            String token = jwtUtil.generateToken(
+                    user.getUserName(),
+                    role
+            );
+
+            return ResponseEntity.ok(
+                    Map.of(
+                            "token", token,
+                            "role", role
+                    )
+            );
+        } catch (Exception e) {
             return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .body("Invalid username or password");
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Login failed: " + e.getMessage());
         }
-
-        String role = user.getRole(); // MUST be ROLE_ADMIN / ROLE_STAFF
-
-        String token = jwtUtil.generateToken(
-                user.getUserName(),
-                role
-        );
-
-        return ResponseEntity.ok(
-                Map.of(
-                        "token", token,
-                        "role", role
-                )
-        );
-
     }
     
     
