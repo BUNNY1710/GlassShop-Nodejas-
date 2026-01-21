@@ -92,7 +92,12 @@ function StockManager() {
       setHsnNo("");
 
     } catch (error) {
-      setStockMessage(error.response?.data || "❌ Failed to update stock");
+      // Handle both string and object error responses
+      const errorData = error.response?.data;
+      const errorMessage = typeof errorData === 'string' 
+        ? errorData 
+        : (errorData?.error || errorData?.message || error.message || "❌ Failed to update stock");
+      setStockMessage(errorMessage);
     } finally {
       setShowConfirm(false);
       setPendingPayload(null);
@@ -105,7 +110,11 @@ function StockManager() {
   const undoLastAction = async () => {
     try {
       const res = await api.post("/stock/undo");
-      setStockMessage(res.data);
+      // Handle both string and object responses
+      const responseMessage = typeof res.data === 'string' 
+        ? res.data 
+        : (res.data?.message || "✅ Stock updated successfully");
+      setStockMessage(responseMessage);
       setShowUndo(false);
     } catch {
       setStockMessage("❌ Failed to undo last action");
@@ -263,7 +272,7 @@ function StockManager() {
           )}
 
           {stockMessage && (
-            <div style={message(stockMessage.includes("✅"))}>
+            <div style={message(stockMessage && typeof stockMessage === 'string' && stockMessage.includes("✅"))}>
               {stockMessage}
             </div>
           )}

@@ -14,7 +14,9 @@ import {
   downloadBasicInvoice,
   printInvoice,
   printBasicInvoice,
+  getQuotationsByStatus,
 } from "../api/quotationApi";
+import api from "../api/api";
 import "../styles/design-system.css";
 
 function InvoiceManagement() {
@@ -70,11 +72,48 @@ function InvoiceManagement() {
 
   const loadConfirmedQuotations = async () => {
     try {
+      // Try using the status endpoint first for better filtering
+      try {
+        const statusResponse = await getQuotationsByStatus("CONFIRMED");
+        console.log("Confirmed quotations from status endpoint:", statusResponse.data?.length || 0);
+        setQuotations(statusResponse.data || []);
+        if (!statusResponse.data || statusResponse.data.length === 0) {
+          setMessage("ℹ️ No confirmed quotations available. Please confirm a quotation first.");
+        } else {
+          setMessage(""); // Clear message if quotations found
+        }
+        return;
+      } catch (statusError) {
+        console.log("Status endpoint failed, falling back to filter:", statusError);
+      }
+      
+      // Fallback: Get all and filter
       const response = await getQuotations();
-      const confirmed = response.data.filter((q) => q.status === "CONFIRMED");
+      console.log("All quotations received:", response.data?.map(q => ({ 
+        id: q.id, 
+        number: q.quotationNumber, 
+        status: q.status 
+      })) || []);
+      
+      // Filter for confirmed quotations - handle case variations
+      const confirmed = (response.data || []).filter((q) => {
+        const status = String(q.status || '').toUpperCase().trim();
+        const isConfirmed = status === 'CONFIRMED';
+        console.log(`Quotation ${q.id} (${q.quotationNumber}): status="${q.status}" -> normalized="${status}" -> isConfirmed=${isConfirmed}`);
+        return isConfirmed;
+      });
+      
+      console.log("Filtered confirmed quotations:", confirmed.map(q => ({ 
+        id: q.id, 
+        number: q.quotationNumber, 
+        status: q.status 
+      })));
+      
       setQuotations(confirmed);
       if (confirmed.length === 0) {
         setMessage("ℹ️ No confirmed quotations available. Please confirm a quotation first.");
+      } else {
+        setMessage(""); // Clear message if quotations found
       }
     } catch (error) {
       console.error("Failed to load quotations", error);
@@ -421,10 +460,27 @@ function InvoiceManagement() {
                   Select Quotation * <span style={{ color: "#ef4444" }}>●</span>
                 </label>
                 <select
-                  value={selectedQuotation?.id || ""}
+                  value={selectedQuotation?.id?.toString() || ""}
                   onChange={(e) => {
-                    const quotation = quotations.find((q) => q.id === parseInt(e.target.value));
-                    setSelectedQuotation(quotation);
+                    const selectedId = e.target.value;
+                    console.log("Selected quotation ID:", selectedId, "Type:", typeof selectedId);
+                    console.log("Available quotations:", quotations.map(q => ({ id: q.id, type: typeof q.id })));
+                    
+                    if (!selectedId) {
+                      setSelectedQuotation(null);
+                      return;
+                    }
+                    
+                    // Find quotation by matching id (handle both string and number)
+                    const quotation = quotations.find((q) => {
+                      const qId = String(q.id);
+                      const match = qId === selectedId || q.id === parseInt(selectedId);
+                      console.log(`Comparing: q.id=${q.id} (${typeof q.id}) with selectedId=${selectedId} (${typeof selectedId}) -> match=${match}`);
+                      return match;
+                    });
+                    
+                    console.log("Found quotation:", quotation);
+                    setSelectedQuotation(quotation || null);
                   }}
                   style={{
                     width: "100%",
@@ -444,11 +500,15 @@ function InvoiceManagement() {
                   {quotations.length === 0 ? (
                     <option value="" disabled>No confirmed quotations available</option>
                   ) : (
-                    quotations.map((q) => (
-                      <option key={q.id} value={q.id}>
-                        {q.quotationNumber} - {q.customerName} - ₹{q.grandTotal?.toFixed(2)}
-                      </option>
-                    ))
+                    quotations.map((q) => {
+                      // Ensure id is converted to string for option value
+                      const quotationId = q.id?.toString() || String(q.id);
+                      return (
+                        <option key={quotationId} value={quotationId}>
+                          {q.quotationNumber} - {q.customerName} - ₹{parseFloat(q.grandTotal || 0).toFixed(2)}
+                        </option>
+                      );
+                    })
                   )}
                 </select>
                 {quotations.length === 0 && (

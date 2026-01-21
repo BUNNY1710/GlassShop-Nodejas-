@@ -516,7 +516,11 @@ function StockDashboard() {
         quantity: Number(transferQuantity)
       });
 
-      setTransferMessage("✅ Transfer completed successfully");
+      // Handle both string and object responses
+      const responseMessage = typeof res.data === 'string' 
+        ? res.data 
+        : (res.data?.message || "✅ Transfer completed successfully");
+      setTransferMessage(responseMessage);
       setShowTransferConfirm(false);
 
       // Reload stock list
@@ -529,7 +533,12 @@ function StockDashboard() {
       }, 2000);
 
     } catch (error) {
-      setTransferMessage(error.response?.data || "❌ Transfer failed");
+      // Handle both string and object error responses
+      const errorData = error.response?.data;
+      const errorMessage = typeof errorData === 'string' 
+        ? errorData 
+        : (errorData?.error || error.message || "❌ Transfer failed");
+      setTransferMessage(errorMessage);
       setShowTransferConfirm(false);
       setShowTransferModal(true); // Reopen modal to show error
     }
@@ -933,7 +942,7 @@ function StockDashboard() {
 
               {/* Message */}
               {transferMessage && (
-                <div style={message(transferMessage.includes("✅"))}>
+                <div style={message(transferMessage && typeof transferMessage === 'string' && transferMessage.includes("✅"))}>
                   {transferMessage}
                 </div>
               )}
