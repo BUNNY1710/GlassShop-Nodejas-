@@ -55,6 +55,17 @@ router.post('/create-staff', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { username, password } = req.body;
 
+    // Validate input
+    if (!username || !username.trim()) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+    if (!password || !password.trim()) {
+      return res.status(400).json({ error: 'Password is required' });
+    }
+    if (password.length < 4) {
+      return res.status(400).json({ error: 'Password must be at least 4 characters long' });
+    }
+
     const admin = await User.findOne({
       where: { userName: req.user.username },
       include: [{ model: Shop, as: 'shop' }]
@@ -64,14 +75,20 @@ router.post('/create-staff', authMiddleware, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Admin not found' });
     }
 
-    const existingUser = await User.findOne({ where: { userName: username } });
-    if (existingUser) {
-      return res.status(400).json({ error: 'Username already exists' });
+    if (!admin.shopId) {
+      return res.status(400).json({ error: 'Admin is not linked to a shop' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Check if username already exists
+    const existingUser = await User.findOne({ where: { userName: username.trim() } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username already exists. Please choose a different username.' });
+    }
+
+    // Create staff user
+    const hashedPassword = await bcrypt.hash(password.trim(), 10);
     await User.create({
-      userName: username,
+      userName: username.trim(),
       password: hashedPassword,
       role: 'ROLE_STAFF',
       shopId: admin.shopId
@@ -79,7 +96,16 @@ router.post('/create-staff', authMiddleware, requireAdmin, async (req, res) => {
 
     res.json({ message: 'Staff created successfully' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error creating staff:', error);
+    // Handle Sequelize unique constraint error
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return res.status(400).json({ error: 'Username already exists. Please choose a different username.' });
+    }
+    // Handle other Sequelize errors
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({ error: error.errors.map(e => e.message).join(', ') });
+    }
+    res.status(500).json({ error: 'Failed to create staff: ' + error.message });
   }
 });
 

@@ -114,10 +114,28 @@ function Login() {
       localStorage.setItem("role", res.data.role);
       navigate("/dashboard");
     } catch (err) {
-      // Handle error professionally - show inline message
-      const errorMessage = err.response?.data?.message || 
-                          err.response?.data || 
-                          "Invalid username or password";
+      // Handle error professionally - extract error message as string
+      let errorMessage = "Invalid username or password"; // Default message
+      
+      if (err.response?.data) {
+        const errorData = err.response.data;
+        // Backend returns {error: "message"} format
+        if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        } else if (errorData.error && typeof errorData.error === 'string') {
+          errorMessage = errorData.error;
+        } else if (errorData.message && typeof errorData.message === 'string') {
+          errorMessage = errorData.message;
+        }
+      } else if (err.message && typeof err.message === 'string') {
+        errorMessage = err.message;
+      }
+      
+      // Ensure errorMessage is always a string (never an object)
+      if (typeof errorMessage !== 'string') {
+        errorMessage = "Invalid username or password";
+      }
+      
       setError(errorMessage);
     }
   };

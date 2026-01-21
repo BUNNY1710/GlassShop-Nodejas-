@@ -68,17 +68,20 @@ function CreateStaff() {
 
     try {
       setLoading(true);
-      await api.post("/auth/create-staff", {
-        username,
-        password,
+      setMsg(""); // Clear previous messages
+      const response = await api.post("/auth/create-staff", {
+        username: username.trim(),
+        password: password.trim(),
       });
 
       setMsg("✅ Staff created successfully");
       setUsername("");
       setPassword("");
     } catch (err) {
-      console.error(err);
-      setMsg("❌ Failed to create staff");
+      console.error("Error creating staff:", err);
+      // Extract error message from response
+      const errorMessage = err.response?.data?.error || err.message || "Failed to create staff";
+      setMsg(`❌ ${errorMessage}`);
     } finally {
       setLoading(false);
     }

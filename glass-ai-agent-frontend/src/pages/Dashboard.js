@@ -271,8 +271,12 @@ function Dashboard() {
         }
 
         // Calculate stats
-        // Total stock: count of unique stock items (stands) - for both admin and staff
-        const totalStock = Array.isArray(stockData) ? stockData.length : 0;
+        // Total stock: count of stock items with quantity > 0 (matches View Stock page behavior)
+        // Filter out items with quantity 0 or null to match what's displayed on View Stock page
+        const stockWithQuantity = Array.isArray(stockData) 
+          ? stockData.filter(item => item.quantity != null && item.quantity > 0)
+          : [];
+        const totalStock = stockWithQuantity.length;
         
         // Total staff: count of staff members - only for admin
         const totalStaff = role === "ROLE_ADMIN" && Array.isArray(staffData) ? staffData.length : 0;
