@@ -1,206 +1,9 @@
-// import { useEffect, useState } from "react";
-// import PageWrapper from "../components/PageWrapper";
-// import dashboardBg from "../assets/dashboard-bg.jpg";
-// import api from "../api/api";
-
-
-// function Dashboard() {
-//   const role = localStorage.getItem("role");
-//   const [auditLogs, setAuditLogs] = useState([]);
-
-//   useEffect(() => {
-//     if (role !== "ROLE_ADMIN") return;
-
-//     api
-//       .get("/stock/recent")
-//       .then((res) => {
-//         setAuditLogs(res.data.slice(0, 3));
-//       })
-//       .catch(() => {
-//         console.log("Audit logs not allowed for this role");
-//       });
-//   }, [role]);
-
-//   return (
-//     <PageWrapper background={dashboardBg}>
-//       <div style={centerWrapper}>
-//         <div style={glassCard}>
-//           <h1 style={title}>📊 Glass Shop Dashboard</h1>
-
-//           <p style={subtitle}>
-//             Welcome to your smart inventory management system
-//           </p>
-
-//           <div style={quickInfo}>
-//             <span>✔ Real-time Stock</span>
-//             <span>✔ AI Assistance</span>
-//             <span>✔ Easy Management</span>
-//           </div>
-
-//           {/* 🔐 ADMIN ONLY */}
-//           {role === "ROLE_ADMIN" && (
-//             <div style={auditCard}>
-//               <div style={auditHeader}>
-//                 <h3 style={{ margin: 0 }}>🧾 Recent Stock Activity</h3>
-//                 <span style={auditSub}>Last 3 updates</span>
-//               </div>
-
-//               {auditLogs.length === 0 ? (
-//                 <p style={{ textAlign: "center", opacity: 0.7 }}>
-//                   No recent activity
-//                 </p>
-//               ) : (
-//                 auditLogs.map((log, i) => (
-//                   <div key={i} style={auditItem}>
-//                     <div style={avatar}>
-//                       {log.username?.charAt(0).toUpperCase()}
-//                     </div>
-
-//                     <div style={auditContent}>
-//                       <div style={auditTop}>
-//                         <strong>{log.username}</strong>
-//                         <span style={badge(log.action)}>
-//                           {log.action}
-//                         </span>
-//                       </div>
-
-//                       <div style={auditMid}>
-//                         <span>
-//                           <b>{log.quantity}</b> × {log.glassType}
-//                         </span>
-//                         <span style={{ marginLeft: 10, opacity: 0.8 }}>
-//                           Stand #{log.standNo}
-//                         </span>
-//                       </div>
-
-//                       <div style={auditSize}>
-//                         Size: {log.height} × {log.width} {log.unit}
-//                       </div>
-
-//                       <div style={auditBottom}>
-//                         Role: {log.role} •{" "}
-//                         {new Date(log.timestamp).toLocaleString()}
-//                       </div>
-//                     </div>
-//                   </div>
-//                 ))
-//               )}
-//             </div>
-//           )}
-//         </div>
-//       </div>
-//     </PageWrapper>
-//   );
-// }
-
-// /* ---------- STYLES ---------- */
-
-// const centerWrapper = {
-//   minHeight: "calc(100vh - 60px)",
-//   display: "flex",
-//   alignItems: "center",
-//   justifyContent: "center",
-// };
-
-// const glassCard = {
-//   width: "650px",
-//   padding: "40px",
-//   borderRadius: "16px",
-//   background: "rgba(0, 0, 0, 0.45)",
-//   backdropFilter: "blur(14px)",
-//   color: "white",
-//   textAlign: "center",
-//   boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
-// };
-
-// const title = {
-//   fontSize: "32px",
-//   marginBottom: "10px",
-// };
-
-// const subtitle = {
-//   fontSize: "16px",
-//   opacity: 0.9,
-//   marginBottom: "25px",
-// };
-
-// const quickInfo = {
-//   display: "flex",
-//   justifyContent: "space-around",
-//   fontSize: "14px",
-//   opacity: 0.85,
-// };
-
-// const auditCard = {
-//   marginTop: "35px",
-//   padding: "25px",
-//   background: "linear-gradient(145deg, rgba(0,0,0,0.7), rgba(25,25,25,0.7))",
-//   borderRadius: "18px",
-// };
-
-// const auditHeader = {
-//   display: "flex",
-//   justifyContent: "space-between",
-//   marginBottom: "20px",
-// };
-
-// const auditSub = {
-//   fontSize: "12px",
-//   opacity: 0.7,
-// };
-
-// const auditItem = {
-//   display: "flex",
-//   gap: "14px",
-//   padding: "14px",
-//   borderRadius: "14px",
-//   background: "rgba(255,255,255,0.06)",
-//   marginBottom: "14px",
-// };
-
-// const avatar = {
-//   width: "42px",
-//   height: "42px",
-//   borderRadius: "50%",
-//   background: "linear-gradient(135deg, #22c55e, #16a34a)",
-//   display: "flex",
-//   alignItems: "center",
-//   justifyContent: "center",
-//   fontWeight: "700",
-// };
-
-// const auditContent = { flex: 1 };
-
-// const auditTop = {
-//   display: "flex",
-//   justifyContent: "space-between",
-// };
-
-// const auditMid = { fontSize: "14px" };
-
-// const auditSize = { fontSize: "13px", opacity: 0.85 };
-
-// const auditBottom = { fontSize: "12px", opacity: 0.65 };
-
-// const badge = (action) => ({
-//   padding: "4px 10px",
-//   borderRadius: "999px",
-//   fontSize: "12px",
-//   fontWeight: "600",
-//   color: "white",
-//   background:
-//     action === "ADD"
-//       ? "linear-gradient(135deg, #22c55e, #16a34a)"
-//       : "linear-gradient(135deg, #ef4444, #dc2626)",
-// });
-
-// export default Dashboard;
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
-import dashboardBg from "../assets/dashboard-bg.jpg";
+import { StatCard, Card, Button } from "../components/ui";
 import api from "../api/api";
+import "../styles/design-system.css";
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -214,50 +17,47 @@ function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [billingMenuOpen, setBillingMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
         setLoading(true);
 
-        // Load stock data (for both admin and staff)
         const stockPromise = api.get("/stock/all")
           .then(res => res.data)
           .catch(() => []);
 
-        // Load staff data (only for admin)
         const staffPromise = role === "ROLE_ADMIN"
           ? api.get("/auth/staff")
             .then(res => res.data)
             .catch(() => [])
           : Promise.resolve([]);
 
-        // Load audit logs (only for admin)
         const auditPromise = role === "ROLE_ADMIN"
           ? api.get("/audit/recent")
             .then(res => res.data)
             .catch(() => [])
           : Promise.resolve([]);
 
-        // Load transfer count (for both admin and staff)
         const transferCountPromise = api.get("/audit/transfer-count")
           .then(res => {
-            console.log("Transfer count response:", res.data);
             const count = res.data;
-            // Ensure it's a number
             return typeof count === 'number' ? count : (typeof count === 'string' ? parseInt(count, 10) : 0);
           })
           .catch((error) => {
-            console.error("Error fetching transfer count:", error);
-            // For admin, fallback to counting from auditData
             if (role === "ROLE_ADMIN") {
-              console.log("Falling back to counting transfers from audit logs");
-              return null; // Will be handled below
+              return null;
             }
             return 0;
           });
 
-        // Wait for all API calls
         const [stockData, staffData, auditData, transferCount] = await Promise.all([
           stockPromise,
           staffPromise,
@@ -265,46 +65,34 @@ function Dashboard() {
           transferCountPromise,
         ]);
 
-        // Set recent audit logs (last 3) - only for admin
         if (role === "ROLE_ADMIN") {
           setAuditLogs(auditData.slice(0, 3));
         }
 
-        // Calculate stats
-        // Total stock: count of stock items with quantity > 0 (matches View Stock page behavior)
-        // Filter out items with quantity 0 or null to match what's displayed on View Stock page
         const stockWithQuantity = Array.isArray(stockData) 
           ? stockData.filter(item => item.quantity != null && item.quantity > 0)
           : [];
         const totalStock = stockWithQuantity.length;
         
-        // Total staff: count of staff members - only for admin
         const totalStaff = role === "ROLE_ADMIN" && Array.isArray(staffData) ? staffData.length : 0;
         
-        // Total transfers: use transfer count from API, but verify with audit logs if API returns 0
         let totalTransfers = 0;
         
-        // If API call succeeded and returned a number, use it
         if (transferCount !== null && typeof transferCount === 'number') {
           totalTransfers = transferCount;
           
-          // If API returned 0, double-check with audit logs (in case API has issues)
           if (transferCount === 0 && role === "ROLE_ADMIN" && Array.isArray(auditData)) {
             const auditTransferCount = auditData.filter(log => log && log.action === "TRANSFER").length;
             if (auditTransferCount > 0) {
-              console.log("API returned 0 but audit logs show transfers. Using audit log count:", auditTransferCount);
               totalTransfers = auditTransferCount;
             }
           }
         } else {
-          // API call failed - use fallback from audit logs
           if (role === "ROLE_ADMIN" && Array.isArray(auditData)) {
             totalTransfers = auditData.filter(log => log && log.action === "TRANSFER").length;
-            console.log("API failed. Using fallback transfer count from audit logs:", totalTransfers);
           }
         }
         
-        // Total logs: count all audit logs - only for admin
         const totalLogs = role === "ROLE_ADMIN" && Array.isArray(auditData) ? auditData.length : 0;
 
         setStats({
@@ -324,225 +112,222 @@ function Dashboard() {
   }, [role]);
 
   return (
-    <PageWrapper background={dashboardBg}>
-      <div style={page}>
-        <div style={container}>
-          {/* Header */}
-          <div style={header}>
-            <h1 style={title}>📊 Dashboard</h1>
+    <PageWrapper>
+      <div style={getContainerStyle(isMobile)}>
+        {/* Header Section */}
+        <div style={headerSection}>
+          <div>
+            <h1 style={getMainTitleStyle(isMobile)}>
+              Welcome Back! 👋
+            </h1>
             <p style={subtitle}>
-              Welcome to your smart inventory management system
+              Here's what's happening with your inventory today
             </p>
           </div>
-
-              {/* Quick Actions - Billing (ADMIN ONLY) */}
-              {role === "ROLE_ADMIN" && (
-                <div style={quickActionsContainer}>
-                  <div 
-                    style={billingCard}
-                    onMouseEnter={() => setBillingMenuOpen(true)}
-                    onMouseLeave={() => setBillingMenuOpen(false)}
-                  >
-                    <div 
-                      style={billingButton}
-                      onClick={() => setBillingMenuOpen(!billingMenuOpen)}
-                    >
-                      <div style={billingIcon}>🧾</div>
-                      <div style={billingContent}>
-                        <div style={billingTitle}>Billing</div>
-                        <div style={billingSubtitle}>Customer • Quotation • Invoice</div>
-                      </div>
-                      <div style={billingArrow}>{billingMenuOpen ? "▲" : "▼"}</div>
-                    </div>
-                    
-                    {billingMenuOpen && (
-                      <div 
-                        style={billingDropdownWrapper}
-                        onMouseEnter={() => setBillingMenuOpen(true)}
-                        onMouseLeave={() => setBillingMenuOpen(false)}
-                      >
-                        <div style={billingDropdown}>
-                          <div 
-                            style={billingMenuItem}
-                            onClick={() => {
-                              navigate("/customers");
-                              setBillingMenuOpen(false);
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-                          >
-                            <span style={menuIcon}>👥</span>
-                            <span>Customers</span>
-                          </div>
-                          <div 
-                            style={billingMenuItem}
-                            onClick={() => {
-                              navigate("/quotations");
-                              setBillingMenuOpen(false);
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-                          >
-                            <span style={menuIcon}>📄</span>
-                            <span>Quotations</span>
-                          </div>
-                          <div 
-                            style={{...billingMenuItem, borderBottom: "none"}}
-                            onClick={() => {
-                              navigate("/invoices");
-                              setBillingMenuOpen(false);
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-                          >
-                            <span style={menuIcon}>🧾</span>
-                            <span>Invoices</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* KPI Cards */}
-              {role === "ROLE_ADMIN" ? (
-                <div className="kpi-grid" style={kpiGrid}>
-                  <KPICard
-                    icon="📦"
-                    label="Total Stock"
-                    value={stats.totalStock}
-                    color="#6366f1"
-                    loading={loading}
-                  />
-                  <KPICard
-                    icon="🔄"
-                    label="Transfers"
-                    value={stats.totalTransfers}
-                    color="#3b82f6"
-                    loading={loading}
-                  />
-                  <KPICard
-                    icon="👥"
-                    label="Staff Members"
-                    value={stats.totalStaff}
-                    color="#22c55e"
-                    loading={loading}
-                  />
-                  <KPICard
-                    icon="📜"
-                    label="Activity Logs"
-                    value={stats.totalLogs}
-                    color="#f59e0b"
-                    loading={loading}
-                  />
-                </div>
-              ) : (
-                <div style={staffKpiContainer}>
-                  <KPICard
-                    icon="📦"
-                    label="Total Stock"
-                    value={stats.totalStock}
-                    color="#6366f1"
-                    loading={loading}
-                    isSmall={true}
-                  />
-                </div>
-              )}
-
-          {/* ADMIN ONLY - Recent Activity */}
+          
           {role === "ROLE_ADMIN" && (
-            <div style={auditCard}>
-              <div style={auditHeader}>
-                <h3 style={auditTitle}>🧾 Recent Stock Activity</h3>
-                <span style={auditSub}>Last 3 updates</span>
-              </div>
-
-              {auditLogs.length === 0 ? (
-                <div style={emptyState}>
-                  <div style={emptyIcon}>📋</div>
-                  <p style={emptyText}>No recent activity</p>
-                </div>
-              ) : (
-                <div style={auditList}>
-                  {auditLogs.map((log, i) => (
-                    <div key={i} style={auditItem}>
-                      <div style={avatar}>
-                        {log.username?.charAt(0).toUpperCase()}
-                      </div>
-
-                      <div style={auditContent}>
-                        <div style={auditTop}>
-                          <strong style={username}>{log.username}</strong>
-                          <span style={badge(log.action)}>
-                            {log.action}
-                          </span>
-                        </div>
-
-                        <div style={auditMid}>
-                          <span>
-                            <b>{log.quantity}</b> × {log.glassType}
-                          </span>
-                          <span style={standInfo}>
-                            {" "}• Stand #{log.standNo}
-                          </span>
-                        </div>
-
-                        <div style={auditSize}>
-                          Size:{" "}
-                          {log.height && log.width ? (
-                            <>
-                              {log.height} × {log.width}{" "}
-                              {log.unit || log.glassUnit || "MM"}
-                            </>
-                          ) : (
-                            <span style={{ opacity: 0.6 }}>Not specified</span>
-                          )}
-                        </div>
-
-                        <div style={auditBottom}>
-                          {log.role} •{" "}
-                          {new Date(log.timestamp).toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div style={quickActions}>
+              <Button
+                variant="primary"
+                icon="➕"
+                onClick={() => navigate("/manage-stock")}
+              >
+                Add Stock
+              </Button>
+              <Button
+                variant="outline"
+                icon="📊"
+                onClick={() => navigate("/view-stock")}
+              >
+                View Stock
+              </Button>
             </div>
           )}
         </div>
-      </div>
-    </PageWrapper>
-  );
-}
 
-/* KPI Card Component */
-function KPICard({ icon, label, value, color, loading, isSmall = false }) {
-  const role = localStorage.getItem("role");
-  const isStaff = role !== "ROLE_ADMIN";
-  
-  return (
-    <div style={isStaff ? { ...kpiCard, ...staffKpiCard } : kpiCard}>
-      <div style={{ 
-        ...kpiIcon, 
-        background: `${color}15`, 
-        color, 
-        ...(isStaff ? staffKpiIcon : {}) 
-      }}>
-        {icon}
-      </div>
-      <div style={kpiContent}>
-        <div style={{ ...kpiValue, ...(isStaff ? staffKpiValue : {}) }}>
-          {loading ? (
-            <span style={{ ...skeleton, width: "60px", height: "24px", display: "inline-block" }} />
+        {/* Stats Grid */}
+        <div style={getStatsGridStyle(isMobile, role)}>
+          {role === "ROLE_ADMIN" ? (
+            <>
+              <StatCard
+                icon="📦"
+                label="Total Stock Items"
+                value={stats.totalStock}
+                color="#6366f1"
+                loading={loading}
+              />
+              <StatCard
+                icon="🔄"
+                label="Stock Transfers"
+                value={stats.totalTransfers}
+                color="#3b82f6"
+                loading={loading}
+              />
+              <StatCard
+                icon="👥"
+                label="Staff Members"
+                value={stats.totalStaff}
+                color="#22c55e"
+                loading={loading}
+              />
+              <StatCard
+                icon="📜"
+                label="Activity Logs"
+                value={stats.totalLogs}
+                color="#f59e0b"
+                loading={loading}
+              />
+            </>
           ) : (
-            value
+            <StatCard
+              icon="📦"
+              label="Total Stock Items"
+              value={stats.totalStock}
+              color="#6366f1"
+              loading={loading}
+            />
           )}
         </div>
-        <div style={{ ...kpiLabel, ...(isStaff ? staffKpiLabel : {}) }}>{label}</div>
+
+        {/* Billing Section - Admin Only */}
+        {role === "ROLE_ADMIN" && (
+          <div style={billingSection}>
+            <Card
+              hover
+              onClick={() => setBillingMenuOpen(!billingMenuOpen)}
+              style={{ cursor: 'pointer' }}
+            >
+              <div style={billingCardContent}>
+                <div style={billingIconWrapper}>
+                  <div style={billingIcon}>🧾</div>
+                </div>
+                <div style={billingInfo}>
+                  <h3 style={billingTitle}>Billing Management</h3>
+                  <p style={billingSubtitle}>Manage customers, quotations & invoices</p>
+                </div>
+                <div style={billingArrow}>
+                  {billingMenuOpen ? "▲" : "▼"}
+                </div>
+              </div>
+              
+              {billingMenuOpen && (
+                <div style={billingMenu}>
+                  <div
+                    style={billingMenuItem}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate("/customers");
+                      setBillingMenuOpen(false);
+                    }}
+                  >
+                    <span style={menuItemIcon}>👥</span>
+                    <div>
+                      <div style={menuItemTitle}>Customers</div>
+                      <div style={menuItemSubtitle}>Manage customer database</div>
+                    </div>
+                  </div>
+                  <div
+                    style={billingMenuItem}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate("/quotations");
+                      setBillingMenuOpen(false);
+                    }}
+                  >
+                    <span style={menuItemIcon}>📄</span>
+                    <div>
+                      <div style={menuItemTitle}>Quotations</div>
+                      <div style={menuItemSubtitle}>Create & manage quotations</div>
+                    </div>
+                  </div>
+                  <div
+                    style={{...billingMenuItem, borderBottom: 'none'}}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate("/invoices");
+                      setBillingMenuOpen(false);
+                    }}
+                  >
+                    <span style={menuItemIcon}>🧾</span>
+                    <div>
+                      <div style={menuItemTitle}>Invoices</div>
+                      <div style={menuItemSubtitle}>Track payments & invoices</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
+
+        {/* Recent Activity - Admin Only */}
+        {role === "ROLE_ADMIN" && (
+          <Card style={{ marginTop: '32px' }}>
+            <div style={activityHeader}>
+              <div>
+                <h3 style={activityTitle}>Recent Stock Activity</h3>
+                <p style={activitySubtitle}>Last 3 updates from your team</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/audit")}
+              >
+                View All →
+              </Button>
+            </div>
+
+            {loading ? (
+              <div style={loadingState}>
+                <div style={skeletonItem}></div>
+                <div style={skeletonItem}></div>
+                <div style={skeletonItem}></div>
+              </div>
+            ) : auditLogs.length === 0 ? (
+              <div style={emptyState}>
+                <div style={emptyIcon}>📋</div>
+                <p style={emptyText}>No recent activity</p>
+                <p style={emptySubtext}>Activity will appear here as your team updates stock</p>
+              </div>
+            ) : (
+              <div style={activityList}>
+                {auditLogs.map((log, i) => (
+                  <div key={i} style={activityItem}>
+                    <div style={activityAvatar}>
+                      {log.username?.charAt(0).toUpperCase() || "U"}
+                    </div>
+                    <div style={activityContent}>
+                      <div style={activityTop}>
+                        <span style={activityUsername}>{log.username || "Unknown"}</span>
+                        <span style={getBadgeStyle(log.action)}>
+                          {log.action}
+                        </span>
+                      </div>
+                      <div style={activityDetails}>
+                        <span style={activityQuantity}>
+                          <strong>{log.quantity}</strong> × {log.glassType || "N/A"}
+                        </span>
+                        {log.standNo && (
+                          <span style={activityStand}>Stand #{log.standNo}</span>
+                        )}
+                      </div>
+                      {log.height && log.width && (
+                        <div style={activitySize}>
+                          Size: {log.height} × {log.width} {log.unit || "MM"}
+                        </div>
+                      )}
+                      <div style={activityMeta}>
+                        {log.role} • {new Date(log.timestamp).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
       </div>
-    </div>
+    </PageWrapper>
   );
 }
 
@@ -550,222 +335,255 @@ export default Dashboard;
 
 /* ================= STYLES ================= */
 
-const page = {
-  minHeight: "calc(100vh - 70px)",
-  padding: "32px 16px",
+const getContainerStyle = (isMobile) => ({
   maxWidth: "1400px",
   margin: "0 auto",
-};
-
-const container = {
+  padding: isMobile ? "24px 16px" : "40px 24px",
   width: "100%",
+});
+
+const headerSection = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  marginBottom: "40px",
+  flexWrap: "wrap",
+  gap: "24px",
 };
 
-const header = {
-  textAlign: "center",
-  marginBottom: "32px",
-};
-
-const title = {
-  fontSize: "32px",
-  fontWeight: "700",
+const getMainTitleStyle = (isMobile) => ({
+  fontSize: isMobile ? "32px" : "48px",
+  fontWeight: "800",
   color: "#0f172a",
-  marginBottom: "8px",
-  margin: 0,
-};
+  margin: "0 0 8px 0",
+  lineHeight: "1.2",
+  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+  WebkitBackgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+  backgroundClip: "text",
+});
 
 const subtitle = {
-  fontSize: "16px",
+  fontSize: "18px",
   color: "#64748b",
-  margin: 0,
+  margin: "0",
+  fontWeight: "400",
 };
 
-const kpiGrid = {
+const quickActions = {
+  display: "flex",
+  gap: "12px",
+  flexWrap: "wrap",
+};
+
+const getStatsGridStyle = (isMobile, role) => ({
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+  gridTemplateColumns: isMobile 
+    ? "1fr" 
+    : role === "ROLE_ADMIN" 
+      ? "repeat(auto-fit, minmax(240px, 1fr))" 
+      : "1fr",
+  gap: "24px",
+  marginBottom: "32px",
+});
+
+const billingSection = {
+  marginBottom: "32px",
+};
+
+const billingCardContent = {
+  display: "flex",
+  alignItems: "center",
   gap: "20px",
-  marginBottom: "32px",
 };
 
-const staffKpiContainer = {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  marginBottom: "32px",
-};
-
-const kpiCard = {
-  background: "rgba(255, 255, 255, 0.95)",
-  borderRadius: "12px",
-  padding: "24px",
-  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
-  display: "flex",
-  alignItems: "center",
-  gap: "16px",
-  transition: "all 0.2s ease",
-};
-
-const kpiIcon = {
-  width: "56px",
-  height: "56px",
-  borderRadius: "12px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: "28px",
+const billingIconWrapper = {
   flexShrink: 0,
 };
 
-const kpiContent = {
+const billingIcon = {
+  width: "64px",
+  height: "64px",
+  borderRadius: "16px",
+  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "32px",
+  boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+};
+
+const billingInfo = {
   flex: 1,
 };
 
-const kpiValue = {
-  fontSize: "28px",
+const billingTitle = {
+  fontSize: "24px",
   fontWeight: "700",
   color: "#0f172a",
-  marginBottom: "4px",
-  lineHeight: 1,
+  margin: "0 0 4px 0",
 };
 
-const kpiLabel = {
+const billingSubtitle = {
   fontSize: "14px",
   color: "#64748b",
+  margin: "0",
   fontWeight: "500",
 };
 
-const skeleton = {
-  background: "linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%)",
-  backgroundSize: "200% 100%",
-  animation: "skeleton-loading 1.5s ease-in-out infinite",
-  borderRadius: "4px",
-  display: "inline-block",
-};
-
-/* Staff Dashboard - Small KPI Card Styles */
-const staffKpiCard = {
-  maxWidth: "280px",
-  width: "100%",
-  padding: "20px",
-};
-
-const staffKpiIcon = {
-  width: "48px",
-  height: "48px",
-  fontSize: "24px",
-};
-
-const staffKpiValue = {
-  fontSize: "24px",
-};
-
-const staffKpiLabel = {
-  fontSize: "13px",
-};
-
-const auditCard = {
-  marginTop: "32px",
-  padding: "24px",
-  background: "rgba(255, 255, 255, 0.95)",
-  borderRadius: "16px",
-  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
-};
-
-const auditHeader = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "20px",
-  paddingBottom: "16px",
-  borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
-};
-
-const auditTitle = {
-  margin: 0,
+const billingArrow = {
   fontSize: "20px",
-  fontWeight: "700",
-  color: "#0f172a",
+  color: "#94a3b8",
+  transition: "transform 0.2s ease",
 };
 
-const auditSub = {
-  fontSize: "13px",
-  color: "#64748b",
-  fontWeight: "500",
-};
-
-const auditList = {
+const billingMenu = {
+  marginTop: "20px",
+  paddingTop: "20px",
+  borderTop: "1px solid #e2e8f0",
   display: "flex",
   flexDirection: "column",
-  gap: "12px",
+  gap: "0",
 };
 
-const auditItem = {
+const billingMenuItem = {
   display: "flex",
+  alignItems: "center",
   gap: "16px",
   padding: "16px",
   borderRadius: "12px",
+  cursor: "pointer",
+  transition: "all 0.2s ease",
+  borderBottom: "1px solid #f1f5f9",
+};
+
+const menuItemIcon = {
+  fontSize: "24px",
+  width: "40px",
+  height: "40px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: "10px",
   background: "#f8fafc",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
+  flexShrink: 0,
+};
+
+const menuItemTitle = {
+  fontSize: "16px",
+  fontWeight: "600",
+  color: "#0f172a",
+  marginBottom: "2px",
+};
+
+const menuItemSubtitle = {
+  fontSize: "13px",
+  color: "#64748b",
+};
+
+const activityHeader = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  marginBottom: "24px",
+  flexWrap: "wrap",
+  gap: "16px",
+};
+
+const activityTitle = {
+  fontSize: "20px",
+  fontWeight: "700",
+  color: "#0f172a",
+  margin: "0 0 4px 0",
+};
+
+const activitySubtitle = {
+  fontSize: "14px",
+  color: "#64748b",
+  margin: "0",
+};
+
+const activityList = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "16px",
+};
+
+const activityItem = {
+  display: "flex",
+  gap: "16px",
+  padding: "20px",
+  borderRadius: "12px",
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
   transition: "all 0.2s ease",
 };
 
-const avatar = {
-  width: "44px",
-  height: "44px",
-  borderRadius: "50%",
-  background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+const activityAvatar = {
+  width: "48px",
+  height: "48px",
+  borderRadius: "12px",
+  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   fontWeight: "700",
   color: "white",
-  fontSize: "16px",
+  fontSize: "18px",
   flexShrink: 0,
+  boxShadow: "0 2px 8px rgba(102, 126, 234, 0.3)",
 };
 
-const auditContent = {
+const activityContent = {
   flex: 1,
   fontSize: "14px",
 };
 
-const auditTop = {
+const activityTop = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
   marginBottom: "8px",
+  flexWrap: "wrap",
+  gap: "8px",
 };
 
-const username = {
+const activityUsername = {
   color: "#0f172a",
   fontWeight: "600",
+  fontSize: "15px",
 };
 
-const auditMid = {
+const activityDetails = {
   marginTop: "4px",
   color: "#475569",
   fontSize: "14px",
+  display: "flex",
+  gap: "12px",
+  flexWrap: "wrap",
 };
 
-const standInfo = {
+const activityQuantity = {
+  fontWeight: "500",
+};
+
+const activityStand = {
   color: "#64748b",
-  marginLeft: "8px",
 };
 
-const auditSize = {
+const activitySize = {
   fontSize: "13px",
   color: "#64748b",
-  marginTop: "4px",
+  marginTop: "6px",
 };
 
-const auditBottom = {
+const activityMeta = {
   fontSize: "12px",
   color: "#94a3b8",
   marginTop: "8px",
 };
 
-const badge = (action) => ({
+const getBadgeStyle = (action) => ({
   padding: "4px 12px",
   borderRadius: "999px",
   fontSize: "11px",
@@ -777,122 +595,43 @@ const badge = (action) => ({
       : action === "TRANSFER"
       ? "linear-gradient(135deg, #3b82f6, #2563eb)"
       : "linear-gradient(135deg, #ef4444, #dc2626)",
+  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
 });
 
 const emptyState = {
   textAlign: "center",
-  padding: "40px 20px",
+  padding: "60px 20px",
 };
 
 const emptyIcon = {
-  fontSize: "48px",
-  marginBottom: "12px",
-  opacity: 0.4,
+  fontSize: "64px",
+  marginBottom: "16px",
+  opacity: 0.3,
 };
 
 const emptyText = {
-  color: "#64748b",
-  fontSize: "14px",
-  margin: 0,
-};
-
-/* Billing Menu Styles */
-const quickActionsContainer = {
-  marginBottom: "32px",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-};
-
-const billingCard = {
-  position: "relative",
-  background: "rgba(255, 255, 255, 0.95)",
-  borderRadius: "16px",
-  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
-  width: "100%",
-  maxWidth: "400px",
-  overflow: "visible",
-};
-
-const billingButton = {
-  display: "flex",
-  alignItems: "center",
-  gap: "16px",
-  padding: "24px",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  borderRadius: "16px",
-};
-
-const billingIcon = {
-  width: "64px",
-  height: "64px",
-  borderRadius: "12px",
-  background: "linear-gradient(135deg, #6366f1, #4f46e5)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: "32px",
-  flexShrink: 0,
-  boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
-};
-
-const billingContent = {
-  flex: 1,
-};
-
-const billingTitle = {
-  fontSize: "24px",
-  fontWeight: "700",
-  color: "#0f172a",
-  marginBottom: "4px",
-};
-
-const billingSubtitle = {
-  fontSize: "14px",
-  color: "#64748b",
-  fontWeight: "500",
-};
-
-const billingArrow = {
+  color: "#475569",
   fontSize: "16px",
-  color: "#64748b",
-  transition: "transform 0.2s ease",
+  fontWeight: "600",
+  margin: "0 0 8px 0",
 };
 
-const billingDropdownWrapper = {
-  position: "absolute",
-  top: "100%",
-  left: 0,
-  right: 0,
-  paddingTop: "8px",
-  zIndex: 1000,
+const emptySubtext = {
+  color: "#94a3b8",
+  fontSize: "14px",
+  margin: "0",
 };
 
-const billingDropdown = {
-  background: "white",
-  borderRadius: "12px",
-  boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
-  overflow: "hidden",
+const loadingState = {
   display: "flex",
   flexDirection: "column",
+  gap: "16px",
 };
 
-const billingMenuItem = {
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-  padding: "16px 24px",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  borderBottom: "1px solid rgba(226, 232, 240, 0.5)",
-  fontSize: "15px",
-  fontWeight: "500",
-  color: "#475569",
-};
-
-const menuIcon = {
-  fontSize: "20px",
+const skeletonItem = {
+  height: "80px",
+  borderRadius: "12px",
+  background: "linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)",
+  backgroundSize: "200% 100%",
+  animation: "shimmer 1.5s infinite",
 };

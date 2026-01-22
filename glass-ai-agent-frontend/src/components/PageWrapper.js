@@ -37,37 +37,44 @@
 
 // export default PageWrapper;
 
-function PageWrapper({ background, children }) {
+function PageWrapper({ background, children, backgroundImage }) {
+  const bg = background || backgroundImage;
+  
   return (
     <div
       style={{
         minHeight: "100vh",
-        backgroundImage: background ? `url(${background})` : "none",
+        backgroundImage: bg ? `url(${bg})` : "none",
         backgroundSize: "cover",
         backgroundPosition: "center",
+        backgroundAttachment: "fixed",
         position: "relative",
+        paddingTop: "70px", // Account for fixed navbar
       }}
     >
-      {/* Overlay - Lighter for modern theme */}
+      {/* Modern Gradient Overlay */}
       <div
         style={{
           position: "absolute",
           inset: 0,
-          background: background 
-            ? "rgba(0,0,0,0.3)" 
-            : "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+          background: bg 
+            ? "linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.75) 100%)" 
+            : "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)",
           zIndex: 0,
         }}
       />
 
-      {/* Content */}
+      {/* Content Container */}
       <div
         style={{
           position: "relative",
           zIndex: 1,
-          minHeight: "calc(100vh - 64px)",
-          padding: "clamp(12px, 4vw, 40px)", // ✅ RESPONSIVE PADDING
-          color: "white",
+          minHeight: "calc(100vh - 70px)",
+          padding: "clamp(16px, 4vw, 40px)",
+          color: bg ? "white" : "#0f172a",
+          maxWidth: "1600px",
+          margin: "0 auto",
+          width: "100%",
         }}
       >
         {children}

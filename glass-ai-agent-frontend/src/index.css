@@ -28,6 +28,7 @@ code {
 @import './styles/design-system.css';
 @import './styles/responsive.css';
 @import './styles/responsive-mobile.css';
+@import './styles/responsive-utilities.css';
 
 /* ================= GLOBAL RESET ================= */
 
@@ -163,6 +164,37 @@ table {
   }
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
   }
 }
 

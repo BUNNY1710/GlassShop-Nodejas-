@@ -1,254 +1,28 @@
-
-
-// import { useEffect, useState, useMemo } from "react";
-// import { toast } from "react-toastify";
-// import api from "../api/api";
-// import PageWrapper from "../components/PageWrapper";
-// import stockBg from "../assets/stock-bg.jpg";
-
-// function StockDashboard() {
-//   const [allStock, setAllStock] = useState([]);
-
-//   const [filterGlassType, setFilterGlassType] = useState("");
-//   const [filterHeight, setFilterHeight] = useState("");
-//   const [filterWidth, setFilterWidth] = useState("");
-
-//   /* ================= LOAD STOCK ================= */
-//   const loadStock = async () => {
-//     try {
-//       const res = await api.get("/stock/all");
-//       setAllStock(res.data);
-
-//       res.data.forEach(item => {
-//         if (item.quantity < item.minQuantity) {
-//           toast.error(
-//             `🚨 LOW STOCK: ${item.glass?.type} (Stand ${item.standNo})`,
-//             { toastId: `${item.standNo}-${item.glass?.type}` }
-//           );
-//         }
-//       });
-//     } catch (err) {
-//       console.error(err);
-//     }
-//   };
-
-//   useEffect(() => {
-//     loadStock();
-//   }, []);
-
-//   /* ================= LIVE FILTERING ================= */
-//   const filteredStock = useMemo(() => {
-//   const h = Number(filterHeight);
-//   const w = Number(filterWidth);
-
-//   return allStock.filter(s => {
-//     const matchGlass =
-//       !filterGlassType ||
-//       s.glass?.type?.toLowerCase().includes(filterGlassType.toLowerCase());
-
-//     const matchHeight =
-//       !filterHeight ||
-//       (Number(s.height) >= h && Number(s.height) <= h + 3);
-
-//     const matchWidth =
-//       !filterWidth ||
-//       (Number(s.width) >= w && Number(s.width) <= w + 3);
-
-//     return matchGlass && matchHeight && matchWidth;
-//   });
-// }, [allStock, filterGlassType, filterHeight, filterWidth]);
-
-//   <button
-//   style={downloadBtn}
-//   onClick={() =>
-//     window.open("http://localhost:8080/stock/download", "_blank")
-//   }
-// >
-//   ⬇ Download Stock Report
-// </button>
-
-
-//   /* ================= UI ================= */
-//   return (
-//     <PageWrapper background={stockBg}>
-//       <div style={tableCard}>
-//         <h2 style={{ textAlign: "center", marginBottom: "15px" }}>
-//           📦 View Stock
-//         </h2>
-
-//         {/* 🔍 SEARCH BAR */}
-//         <div style={filterBar}>
-//           <input
-//             type="text"
-//             placeholder="Glass Type (5MM)"
-//             value={filterGlassType}
-//             onChange={e => setFilterGlassType(e.target.value)}
-//           />
-
-//           <input
-//             type="number"
-//             placeholder="Height (5 → 8)"
-//             value={filterHeight}
-//             onChange={e => setFilterHeight(e.target.value)}
-//           />
-
-//           <input
-//             type="number"
-//             placeholder="Width (5 → 8)"
-//             value={filterWidth}
-//             onChange={e => setFilterWidth(e.target.value)}
-//           />
-
-//           <button
-//             onClick={() => {
-//               setFilterGlassType("");
-//               setFilterHeight("");
-//               setFilterWidth("");
-//             }}
-//           >
-//             Clear
-//           </button>
-//         </div>
-
-//         {/* 📊 TABLE */}
-//         <table style={tableStyle}>
-//           <thead>
-//             <tr>
-//               <th>Stand</th>
-//               <th>Glass</th>
-//               <th>Thickness</th>
-//               <th>Height</th>
-//               <th>Width</th>
-//               <th>Qty</th>
-//               <th>Status</th>
-//             </tr>
-//           </thead>
-
-//           <tbody>
-//             {filteredStock.length === 0 ? (
-//               <tr>
-//                 <td colSpan="7">No stock found</td>
-//               </tr>
-//             ) : (
-//               filteredStock.map((s, i) => {
-//                 const isLow = s.quantity < s.minQuantity;
-
-//                 return (
-//                   <tr
-//                     key={i}
-//                     style={{
-//                       backgroundColor: isLow
-//                         ? "rgba(255, 0, 0, 0.25)"
-//                         : "transparent",
-//                       color: isLow ? "#ff4d4d" : "white",
-//                       animation: isLow ? "blink 1s infinite" : "none",
-//                       fontWeight: isLow ? "bold" : "normal"
-//                     }}
-//                   >
-//                     <td>{s.standNo}</td>
-//                     <td>{s.glass?.type}</td>
-//                     <td>{s.glass?.thickness} mm</td>
-
-//                     <td>
-//   {s.height}{" "}
-//   {s.glass?.unit === "FEET" && "ft"}
-//   {s.glass?.unit === "INCH" && "in"}
-//   {s.glass?.unit === "MM" && "mm"}
-// </td>
-
-// <td>
-//   {s.width}{" "}
-//   {s.glass?.unit === "FEET" && "ft"}
-//   {s.glass?.unit === "INCH" && "in"}
-//   {s.glass?.unit === "MM" && "mm"}
-// </td>
-
-
-//                     <td>{s.quantity}</td>
-
-//                     <td>
-//                       {isLow ? "🔴 LOW" : "✅ OK"}
-//                     </td>
-//                   </tr>
-//                 );
-//               })
-//             )}
-//           </tbody>
-//         </table>
-//       </div>
-//     </PageWrapper>
-//   );
-// }
-
-// /* ================= STYLES ================= */
-
-// const downloadBtn = {
-//   padding: "10px 18px",
-//   marginBottom: "15px",
-//   borderRadius: "10px",
-//   background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-//   color: "white",
-//   fontWeight: "600",
-//   border: "none",
-//   cursor: "pointer",
-// };
-
-
-// const tableCard = {
-//   width: "90%",
-//   margin: "auto",
-//   padding: "20px",
-//   background: "rgba(0,0,0,0.6)",
-//   borderRadius: "12px",
-// };
-
-// const filterBar = {
-//   display: "flex",
-//   gap: "8px",
-//   marginBottom: "15px",
-//   justifyContent: "center",
-//   flexWrap: "wrap",
-// };
-
-// const tableStyle = {
-//   width: "100%",
-//   color: "white",
-//   textAlign: "center",
-//   borderCollapse: "collapse",
-// };
-
-// export default StockDashboard;
-
-
 import { useEffect, useState, useMemo } from "react";
 import { toast } from "react-toastify";
 import api from "../api/api";
 import PageWrapper from "../components/PageWrapper";
-import stockBg from "../assets/stock-bg.jpg";
+import { Card, Button, Input, Select, StatCard } from "../components/ui";
 import ConfirmModal from "../components/ConfirmModal";
+import "../styles/design-system.css";
 
-/* ================= UNIT CONVERSION FUNCTIONS ================= */
-
-/**
- * Parse dimension string (handles fractions like "26 1/4" or "5.5" or "5")
- * Returns the numeric value in the given unit
- */
-const parseDimension = (dimensionStr) => {
-  if (!dimensionStr || dimensionStr.trim() === "") return null;
+// Helper functions for dimension parsing and conversion
+const parseDimension = (value) => {
+  if (!value || value.trim() === "") return null;
   
-  const str = dimensionStr.trim();
+  const trimmed = value.trim();
   
-  // Handle fraction format: "26 1/4" or "1/4"
-  const fractionMatch = str.match(/(\d+)?\s*(\d+)\/(\d+)/);
+  // Handle fraction format (e.g., "5 1/4")
+  const fractionMatch = trimmed.match(/^(\d+)\s+(\d+)\/(\d+)$/);
   if (fractionMatch) {
-    const wholePart = fractionMatch[1] ? parseFloat(fractionMatch[1]) : 0;
+    const whole = parseFloat(fractionMatch[1]);
     const numerator = parseFloat(fractionMatch[2]);
     const denominator = parseFloat(fractionMatch[3]);
-    return wholePart + (numerator / denominator);
+    return whole + (numerator / denominator);
   }
   
-  // Handle decimal format: "5.5" or "127"
-  const decimal = parseFloat(str);
+  // Handle decimal format (e.g., "5.5")
+  const decimal = parseFloat(trimmed);
   if (!isNaN(decimal)) {
     return decimal;
   }
@@ -256,31 +30,25 @@ const parseDimension = (dimensionStr) => {
   return null;
 };
 
-/**
- * Convert value from source unit to MM
- */
-const convertToMM = (value, fromUnit) => {
-  if (value === null || value === undefined || isNaN(value)) return null;
+const convertToMM = (value, unit) => {
+  if (value === null || value === undefined) return null;
   
-  switch (fromUnit?.toUpperCase()) {
+  switch (unit?.toUpperCase()) {
     case "MM":
       return value;
     case "INCH":
-      return value * 25.4; // 1 inch = 25.4 mm
+      return value * 25.4;
     case "FEET":
-      return value * 304.8; // 1 foot = 304.8 mm (12 inches)
+      return value * 304.8;
     default:
-      return value; // Default to MM if unit not recognized
+      return value;
   }
 };
 
-/**
- * Convert value from MM to target unit
- */
-const convertFromMM = (valueInMM, toUnit) => {
-  if (valueInMM === null || valueInMM === undefined || isNaN(valueInMM)) return null;
+const convertFromMM = (valueInMM, targetUnit) => {
+  if (valueInMM === null || valueInMM === undefined) return null;
   
-  switch (toUnit?.toUpperCase()) {
+  switch (targetUnit?.toUpperCase()) {
     case "MM":
       return valueInMM;
     case "INCH":
@@ -294,11 +62,12 @@ const convertFromMM = (valueInMM, toUnit) => {
 
 function StockDashboard() {
   const [allStock, setAllStock] = useState([]);
-
   const [filterGlassType, setFilterGlassType] = useState("");
   const [filterHeight, setFilterHeight] = useState("");
   const [filterWidth, setFilterWidth] = useState("");
-  const [searchUnit, setSearchUnit] = useState("MM"); // Unit for search (MM, INCH, FEET)
+  const [searchUnit, setSearchUnit] = useState("MM");
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [loading, setLoading] = useState(true);
 
   // Add/Remove Modal State
   const [showAddRemoveModal, setShowAddRemoveModal] = useState(false);
@@ -317,17 +86,21 @@ function StockDashboard() {
   const [transferMessage, setTransferMessage] = useState("");
   const [showTransferConfirm, setShowTransferConfirm] = useState(false);
 
-  /* ================= LOAD STOCK ================= */
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const loadStock = async () => {
     try {
+      setLoading(true);
       const res = await api.get("/stock/all");
-      // Filter out items with quantity = 0 or null
       const stockWithQuantity = res.data.filter(item => 
         item.quantity != null && item.quantity > 0
       );
       setAllStock(stockWithQuantity);
 
-      // Show low stock alerts only for items with quantity > 0
       stockWithQuantity.forEach(item => {
         if (item.quantity < item.minQuantity) {
           toast.error(
@@ -338,11 +111,11 @@ function StockDashboard() {
       });
     } catch (err) {
       console.error(err);
-      // If it's a 401, the interceptor will handle redirect
-      // For other errors, show a message
       if (err.response?.status !== 401) {
         toast.error("Failed to load stock. Please try again.");
       }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -350,9 +123,6 @@ function StockDashboard() {
     loadStock();
   }, []);
 
-  /* ===============================
-     OPEN ADD/REMOVE MODAL
-     =============================== */
   const openAddRemoveModal = (stock) => {
     setSelectedStock(stock);
     setQuantity("");
@@ -367,9 +137,6 @@ function StockDashboard() {
     setStockMessage("");
   };
 
-  /* ===============================
-     UPDATE STOCK (ADD / REMOVE)
-     =============================== */
   const updateStock = (action) => {
     setStockMessage("");
 
@@ -396,59 +163,38 @@ function StockDashboard() {
 
     setPendingPayload(payload);
     setShowConfirm(true);
-    // Close the add/remove modal when confirm modal opens
     setShowAddRemoveModal(false);
   };
 
-  /* ===============================
-     CONFIRM & SAVE
-     =============================== */
   const confirmSaveStock = async () => {
     try {
       await api.post("/stock/update", pendingPayload);
-
-      // Close confirm modal first
       setShowConfirm(false);
       setPendingPayload(null);
-
-      // Show success message in a toast or alert
       toast.success("✅ Stock updated successfully");
       setShowUndo(true);
-
-      // Reload stock list
       await loadStock();
-
-      // Reset and close add/remove modal
       closeAddRemoveModal();
       setShowUndo(false);
-
     } catch (error) {
       setShowConfirm(false);
       setPendingPayload(null);
-      // Reopen add/remove modal to show error
       setShowAddRemoveModal(true);
       setStockMessage(error.response?.data || "❌ Failed to update stock");
     }
   };
 
-  /* ===============================
-     UNDO LAST ACTION
-     =============================== */
   const undoLastAction = async () => {
     try {
       const res = await api.post("/stock/undo");
       setStockMessage(res.data);
       setShowUndo(false);
-      // Reload stock list
       await loadStock();
     } catch {
       setStockMessage("❌ Failed to undo last action");
     }
   };
 
-  /* ===============================
-     TRANSFER MODAL FUNCTIONS
-     =============================== */
   const openTransferModal = (stock) => {
     setTransferStock(stock);
     setToStand("");
@@ -488,14 +234,12 @@ function StockDashboard() {
       return;
     }
 
-    // Format glass type
     let formattedGlassType = transferStock.glass?.type || "";
     if (formattedGlassType && /^\d+$/.test(formattedGlassType.trim())) {
       formattedGlassType = formattedGlassType.trim() + "MM";
     }
 
     setShowTransferConfirm(true);
-    // Close transfer modal when confirm opens
     setShowTransferModal(false);
   };
 
@@ -516,46 +260,35 @@ function StockDashboard() {
         quantity: Number(transferQuantity)
       });
 
-      // Handle both string and object responses
       const responseMessage = typeof res.data === 'string' 
         ? res.data 
         : (res.data?.message || "✅ Transfer completed successfully");
       setTransferMessage(responseMessage);
       setShowTransferConfirm(false);
-
-      // Reload stock list
       await loadStock();
-
-      // Reset and close
       setTimeout(() => {
         closeTransferModal();
         setTransferMessage("");
       }, 2000);
-
     } catch (error) {
-      // Handle both string and object error responses
       const errorData = error.response?.data;
       const errorMessage = typeof errorData === 'string' 
         ? errorData 
         : (errorData?.error || error.message || "❌ Transfer failed");
       setTransferMessage(errorMessage);
       setShowTransferConfirm(false);
-      setShowTransferModal(true); // Reopen modal to show error
+      setShowTransferModal(true);
     }
   };
 
-  /* ================= FILTER ================= */
   const filteredStock = useMemo(() => {
-    // First, filter out items with quantity = 0 or null
     const stockWithQuantity = allStock.filter(s => 
       s.quantity != null && s.quantity > 0
     );
     
-    // Parse search values
     const searchHeightValue = parseDimension(filterHeight);
     const searchWidthValue = parseDimension(filterWidth);
     
-    // Convert search values to MM for comparison
     const searchHeightMM = searchHeightValue !== null 
       ? convertToMM(searchHeightValue, searchUnit) 
       : null;
@@ -563,22 +296,17 @@ function StockDashboard() {
       ? convertToMM(searchWidthValue, searchUnit) 
       : null;
 
-    // Filter stock (already filtered for quantity > 0)
     const filtered = stockWithQuantity.filter(s => {
-      // Match glass type
       const matchGlass =
         !filterGlassType ||
         s.glass?.type?.toLowerCase().includes(filterGlassType.toLowerCase());
 
-      // Match height with unit conversion - show all stock >= search value
       let matchHeight = true;
       if (searchHeightMM !== null) {
         const stockHeightValue = parseDimension(s.height);
         if (stockHeightValue !== null) {
-          // Convert stock height to MM based on its stored unit
           const stockHeightMM = convertToMM(stockHeightValue, s.glass?.unit);
           if (stockHeightMM !== null) {
-            // Show all stock with height >= search value
             matchHeight = stockHeightMM >= searchHeightMM;
           } else {
             matchHeight = false;
@@ -588,15 +316,12 @@ function StockDashboard() {
         }
       }
 
-      // Match width with unit conversion - show all stock >= search value
       let matchWidth = true;
       if (searchWidthMM !== null) {
         const stockWidthValue = parseDimension(s.width);
         if (stockWidthValue !== null) {
-          // Convert stock width to MM based on its stored unit
           const stockWidthMM = convertToMM(stockWidthValue, s.glass?.unit);
           if (stockWidthMM !== null) {
-            // Show all stock with width >= search value
             matchWidth = stockWidthMM >= searchWidthMM;
           } else {
             matchWidth = false;
@@ -609,403 +334,487 @@ function StockDashboard() {
       return matchGlass && matchHeight && matchWidth;
     });
 
-    // Sort results by height first, then width (both ascending)
     return filtered.sort((a, b) => {
-      // Parse and convert heights to MM for comparison
       const aHeightValue = parseDimension(a.height);
       const bHeightValue = parseDimension(b.height);
-      const aHeightMM = aHeightValue !== null ? convertToMM(aHeightValue, a.glass?.unit) : 0;
-      const bHeightMM = bHeightValue !== null ? convertToMM(bHeightValue, b.glass?.unit) : 0;
-
-      // If heights are different, sort by height
-      if (aHeightMM !== bHeightMM) {
-        return aHeightMM - bHeightMM;
-      }
-
-      // If heights are same, sort by width
       const aWidthValue = parseDimension(a.width);
       const bWidthValue = parseDimension(b.width);
+      
+      const aHeightMM = aHeightValue !== null ? convertToMM(aHeightValue, a.glass?.unit) : 0;
+      const bHeightMM = bHeightValue !== null ? convertToMM(bHeightValue, b.glass?.unit) : 0;
       const aWidthMM = aWidthValue !== null ? convertToMM(aWidthValue, a.glass?.unit) : 0;
       const bWidthMM = bWidthValue !== null ? convertToMM(bWidthValue, b.glass?.unit) : 0;
 
+      if (aHeightMM !== bHeightMM) {
+        return aHeightMM - bHeightMM;
+      }
       return aWidthMM - bWidthMM;
     });
   }, [allStock, filterGlassType, filterHeight, filterWidth, searchUnit]);
 
+  // Calculate stats
+  const totalStock = filteredStock.length;
+  const lowStockCount = filteredStock.filter(s => s.quantity < s.minQuantity).length;
+  const totalQuantity = filteredStock.reduce((sum, s) => sum + (s.quantity || 0), 0);
+
   return (
-    <PageWrapper background={stockBg}>
-      <div style={card}>
-        <h2 style={title}>📦 View Stock</h2>
-
-        {/* 🔍 FILTERS */}
-        <div className="filter-grid" style={filters}>
-          <input
-            style={input}
-            placeholder="Glass Type (5MM)"
-            value={filterGlassType}
-            onChange={e => setFilterGlassType(e.target.value)}
-          />
-
-          <input
-            style={input}
-            type="text"
-            placeholder="Height (e.g. 5, 5.5, 5 1/4)"
-            value={filterHeight}
-            onChange={e => setFilterHeight(e.target.value)}
-          />
-
-          <input
-            style={input}
-            type="text"
-            placeholder="Width (e.g. 7, 7.5, 7 3/8)"
-            value={filterWidth}
-            onChange={e => setFilterWidth(e.target.value)}
-          />
-
-          <select
-            style={input}
-            value={searchUnit}
-            onChange={e => setSearchUnit(e.target.value)}
-            title="Select unit for height and width search"
-          >
-            <option value="MM">MM</option>
-            <option value="INCH">INCH</option>
-            <option value="FEET">FEET</option>
-          </select>
-
-          <button
-            style={clearBtn}
-            onClick={() => {
-              setFilterGlassType("");
-              setFilterHeight("");
-              setFilterWidth("");
-              setSearchUnit("MM");
-            }}
-          >
-            Clear
-          </button>
+    <PageWrapper>
+      <div style={getContainerStyle(isMobile)}>
+        {/* Header Section */}
+        <div style={headerSection}>
+          <div>
+            <h1 style={getPageTitleStyle(isMobile)}>View Stock</h1>
+            <p style={pageSubtitle}>Browse and manage your inventory</p>
+          </div>
         </div>
 
-        {/* 📊 TABLE (SCROLLABLE) */}
-        <div className="table-wrapper" style={tableWrapper}>
-          <table style={table}>
-            <thead>
-              <tr>
-                <th>Stand</th>
-                <th>Glass</th>
-                <th>Thickness</th>
-                <th>Height</th>
-                <th>Width</th>
-                <th>Qty</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
+        {/* Stats Cards */}
+        <div style={getStatsGridStyle(isMobile)}>
+          <StatCard
+            icon="📦"
+            label="Total Items"
+            value={totalStock}
+            color="#6366f1"
+            loading={loading}
+          />
+          <StatCard
+            icon="⚠️"
+            label="Low Stock"
+            value={lowStockCount}
+            color="#ef4444"
+            loading={loading}
+            subtitle={lowStockCount > 0 ? "Needs attention" : "All good"}
+          />
+          <StatCard
+            icon="🔢"
+            label="Total Quantity"
+            value={totalQuantity.toLocaleString()}
+            color="#22c55e"
+            loading={loading}
+          />
+        </div>
 
-            <tbody>
-              {filteredStock.length === 0 ? (
-                <tr>
-                  <td colSpan="8">
-                    <div style={emptyState}>
-                      <div style={emptyIcon}>📦</div>
-                      <p style={emptyText}>No stock found</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                filteredStock.map((s, i) => {
-                  const isLow = s.quantity < s.minQuantity;
+        {/* Filters Card */}
+        <Card style={getFilterCardStyle(isMobile)}>
+          <div style={filterHeader}>
+            <div style={filterIcon}>🔍</div>
+            <div>
+              <h3 style={filterTitle}>Search & Filter</h3>
+              <p style={filterSubtitle}>Filter stock by type, dimensions, or unit</p>
+            </div>
+          </div>
 
-                  return (
-                    <tr
-                      key={i}
-                      className={isLow ? "low-stock" : ""}
-                      style={{
-                        fontWeight: isLow ? "600" : "400",
-                      }}
-                    >
-                      <td>{s.standNo}</td>
-                      <td>{s.glass?.type}</td>
-                      <td>{s.glass?.thickness} mm</td>
+          <div style={getFilterGridStyle(isMobile)}>
+            <Input
+              placeholder="Glass Type (e.g., 5MM)"
+              value={filterGlassType}
+              onChange={e => setFilterGlassType(e.target.value)}
+              icon="🔷"
+            />
+            <Input
+              type="text"
+              placeholder="Height (e.g. 5, 5.5, 5 1/4)"
+              value={filterHeight}
+              onChange={e => setFilterHeight(e.target.value)}
+              icon="📏"
+            />
+            <Input
+              type="text"
+              placeholder="Width (e.g. 7, 7.5, 7 3/8)"
+              value={filterWidth}
+              onChange={e => setFilterWidth(e.target.value)}
+              icon="📐"
+            />
+            <Select
+              value={searchUnit}
+              onChange={e => setSearchUnit(e.target.value)}
+              icon="📏"
+            >
+              <option value="MM">MM</option>
+              <option value="INCH">INCH</option>
+              <option value="FEET">FEET</option>
+            </Select>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setFilterGlassType("");
+                setFilterHeight("");
+                setFilterWidth("");
+                setSearchUnit("MM");
+              }}
+              fullWidth={isMobile}
+            >
+              Clear Filters
+            </Button>
+          </div>
+        </Card>
 
-                      <td>
-                        {s.height}{" "}
-                        {s.glass?.unit === "FEET" && "ft"}
-                        {s.glass?.unit === "INCH" && "in"}
-                        {s.glass?.unit === "MM" && "mm"}
-                      </td>
+        {/* Stock Table Card */}
+        <Card style={getTableCardStyle(isMobile)}>
+          <div style={tableHeader}>
+            <div>
+              <h3 style={tableTitle}>Stock Inventory</h3>
+              <p style={tableSubtitle}>
+                {filteredStock.length} {filteredStock.length === 1 ? "item" : "items"} found
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              icon="🔄"
+              onClick={loadStock}
+            >
+              Refresh
+            </Button>
+          </div>
 
-                      <td>
-                        {s.width}{" "}
-                        {s.glass?.unit === "FEET" && "ft"}
-                        {s.glass?.unit === "INCH" && "in"}
-                        {s.glass?.unit === "MM" && "mm"}
-                      </td>
-
-                      <td>
-                        <span style={quantityBadge(isLow)}>{s.quantity}</span>
-                      </td>
-                      <td>
-                        <span style={statusBadge(isLow)}>
-                          {isLow ? "🔴 LOW" : "✅ OK"}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="action-buttons-container" style={actionButtonsContainer}>
-                          <button
-                            className="action-btn add-remove-btn"
-                            style={actionButton}
-                            onClick={() => openAddRemoveModal(s)}
-                            title="Add or Remove Stock"
-                          >
-                            <span className="btn-icon">➕➖</span>
-                            <span className="btn-text">Add/Remove</span>
-                          </button>
-                          <button
-                            className="action-btn transfer-btn"
-                            style={transferButton}
-                            onClick={() => openTransferModal(s)}
-                            title="Transfer Stock"
-                          >
-                            <span className="btn-icon">🔄</span>
-                            <span className="btn-text">Transfer</span>
-                          </button>
-                        </div>
-                      </td>
+          <div style={tableWrapper}>
+            {loading ? (
+              <div style={loadingState}>
+                <div style={skeletonRow}></div>
+                <div style={skeletonRow}></div>
+                <div style={skeletonRow}></div>
+              </div>
+            ) : filteredStock.length === 0 ? (
+              <div style={emptyState}>
+                <div style={emptyIcon}>📦</div>
+                <p style={emptyText}>No stock found</p>
+                <p style={emptySubtext}>
+                  {filterGlassType || filterHeight || filterWidth 
+                    ? "Try adjusting your filters" 
+                    : "Add stock to get started"}
+                </p>
+              </div>
+            ) : (
+              <div style={tableContainer}>
+                <table style={table}>
+                  <thead>
+                    <tr>
+                      <th>Stand</th>
+                      <th>Glass Type</th>
+                      <th>Thickness</th>
+                      <th>Height</th>
+                      <th>Width</th>
+                      <th>Quantity</th>
+                      <th>Status</th>
+                      <th>Actions</th>
                     </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                  </thead>
+                  <tbody>
+                    {filteredStock.map((s, i) => {
+                      const isLow = s.quantity < s.minQuantity;
+                      return (
+                        <tr
+                          key={i}
+                          className={isLow ? "low-stock" : ""}
+                          style={getTableRowStyle(isLow)}
+                        >
+                          <td>
+                            <span style={standBadge}>#{s.standNo}</span>
+                          </td>
+                          <td style={glassTypeCell}>
+                            <strong>{s.glass?.type || "N/A"}</strong>
+                          </td>
+                          <td>{s.glass?.thickness || "N/A"} mm</td>
+                          <td>
+                            {s.height || "N/A"}{" "}
+                            {s.glass?.unit === "FEET" && "ft"}
+                            {s.glass?.unit === "INCH" && "in"}
+                            {s.glass?.unit === "MM" && "mm"}
+                          </td>
+                          <td>
+                            {s.width || "N/A"}{" "}
+                            {s.glass?.unit === "FEET" && "ft"}
+                            {s.glass?.unit === "INCH" && "in"}
+                            {s.glass?.unit === "MM" && "mm"}
+                          </td>
+                          <td>
+                            <span style={getQuantityBadgeStyle(isLow)}>
+                              {s.quantity}
+                            </span>
+                          </td>
+                          <td>
+                            <span style={getStatusBadgeStyle(isLow)}>
+                              {isLow ? "🔴 LOW" : "✅ OK"}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={actionButtonsContainer}>
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                icon="➕➖"
+                                onClick={() => openAddRemoveModal(s)}
+                                style={{ minWidth: "auto" }}
+                              >
+                                {!isMobile && "Add/Remove"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                icon="🔄"
+                                onClick={() => openTransferModal(s)}
+                                style={{ minWidth: "auto" }}
+                              >
+                                {!isMobile && "Transfer"}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </Card>
       </div>
 
       {/* Add/Remove Modal */}
       {showAddRemoveModal && selectedStock && (
         <div style={modalOverlay} onClick={closeAddRemoveModal}>
-          <div style={modalCard} onClick={(e) => e.stopPropagation()}>
+          <Card style={getModalCardStyle(isMobile)} onClick={(e) => e.stopPropagation()}>
             <div style={modalHeader}>
-              <h3 style={modalTitle}>➕➖ Add/Remove Stock</h3>
+              <div>
+                <h3 style={modalTitle}>Add/Remove Stock</h3>
+                <p style={modalSubtitle}>Update stock quantity</p>
+              </div>
               <button style={closeModalBtn} onClick={closeAddRemoveModal}>✕</button>
             </div>
 
             <div style={modalContent}>
-              {/* Stock Info Display */}
-              <div style={stockInfoCard}>
+              <Card style={stockInfoCard}>
                 <h4 style={infoTitle}>Stock Details</h4>
-                <div style={infoRow}>
-                  <span style={infoLabel}>Glass Type:</span>
-                  <span style={infoValue}>{selectedStock.glass?.type}</span>
+                <div style={infoGrid}>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>Glass Type:</span>
+                    <span style={infoValue}>{selectedStock.glass?.type}</span>
+                  </div>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>Thickness:</span>
+                    <span style={infoValue}>{selectedStock.glass?.thickness} mm</span>
+                  </div>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>Size:</span>
+                    <span style={infoValue}>
+                      {selectedStock.height} × {selectedStock.width} {selectedStock.glass?.unit || "MM"}
+                    </span>
+                  </div>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>Stand No:</span>
+                    <span style={infoValue}>#{selectedStock.standNo}</span>
+                  </div>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>Current Quantity:</span>
+                    <span style={infoValue}>{selectedStock.quantity} units</span>
+                  </div>
                 </div>
-                <div style={infoRow}>
-                  <span style={infoLabel}>Thickness:</span>
-                  <span style={infoValue}>{selectedStock.glass?.thickness} mm</span>
-                </div>
-                <div style={infoRow}>
-                  <span style={infoLabel}>Size:</span>
-                  <span style={infoValue}>
-                    {selectedStock.height} × {selectedStock.width} {selectedStock.glass?.unit || "MM"}
-                  </span>
-                </div>
-                <div style={infoRow}>
-                  <span style={infoLabel}>Stand No:</span>
-                  <span style={infoValue}>#{selectedStock.standNo}</span>
-                </div>
-                <div style={infoRow}>
-                  <span style={infoLabel}>Current Quantity:</span>
-                  <span style={infoValue}>{selectedStock.quantity} units</span>
-                </div>
-              </div>
+              </Card>
 
-              {/* Quantity Input */}
-              <div style={formGroup}>
-                <label style={label}>Quantity</label>
-                <input
-                  style={modalInput}
-                  type="number"
-                  placeholder="Enter quantity"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  min="1"
-                />
-              </div>
+              <Input
+                label="Quantity"
+                type="number"
+                placeholder="Enter quantity"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                icon="🔢"
+                required
+                min="1"
+              />
 
-              {/* Action Buttons */}
               <div style={buttonGroup}>
-                <button
-                  style={addButton}
+                <Button
+                  variant="success"
+                  icon="➕"
+                  fullWidth={isMobile}
                   onClick={() => updateStock("ADD")}
                 >
-                  ➕ Add Stock
-                </button>
-
-                <button
-                  style={removeButton}
+                  Add Stock
+                </Button>
+                <Button
+                  variant="danger"
+                  icon="➖"
+                  fullWidth={isMobile}
                   onClick={() => updateStock("REMOVE")}
                 >
-                  ➖ Remove Stock
-                </button>
+                  Remove Stock
+                </Button>
               </div>
 
-              {/* Undo Button */}
               {showUndo && (
-                <button
-                  style={undoButton}
+                <Button
+                  variant="outline"
+                  icon="↩"
+                  fullWidth
                   onClick={undoLastAction}
                 >
-                  ↩ Undo Last Action
-                </button>
+                  Undo Last Action
+                </Button>
               )}
 
-              {/* Message */}
               {stockMessage && (
-                <div style={message(stockMessage.includes("✅"))}>
-                  {stockMessage}
+                <div style={getMessageStyle(stockMessage.includes("✅"))}>
+                  <span style={messageIcon}>
+                    {stockMessage.includes("✅") ? "✅" : "❌"}
+                  </span>
+                  <span>{stockMessage.replace("✅", "").replace("❌", "").trim()}</span>
                 </div>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Transfer Modal */}
       {showTransferModal && transferStock && (
         <div style={modalOverlay} onClick={closeTransferModal}>
-          <div style={modalCard} onClick={(e) => e.stopPropagation()}>
+          <Card style={getModalCardStyle(isMobile)} onClick={(e) => e.stopPropagation()}>
             <div style={modalHeader}>
-              <h3 style={modalTitle}>🔄 Transfer Stock</h3>
+              <div>
+                <h3 style={modalTitle}>Transfer Stock</h3>
+                <p style={modalSubtitle}>Move stock between stands</p>
+              </div>
               <button style={closeModalBtn} onClick={closeTransferModal}>✕</button>
             </div>
 
             <div style={modalContent}>
-              {/* Stock Info Display */}
-              <div style={stockInfoCard}>
+              <Card style={stockInfoCard}>
                 <h4 style={infoTitle}>Stock Details</h4>
-                <div style={infoRow}>
-                  <span style={infoLabel}>Glass Type:</span>
-                  <span style={infoValue}>{transferStock.glass?.type}</span>
+                <div style={infoGrid}>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>Glass Type:</span>
+                    <span style={infoValue}>{transferStock.glass?.type}</span>
+                  </div>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>Thickness:</span>
+                    <span style={infoValue}>{transferStock.glass?.thickness} mm</span>
+                  </div>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>Size:</span>
+                    <span style={infoValue}>
+                      {transferStock.height} × {transferStock.width} {transferStock.glass?.unit || "MM"}
+                    </span>
+                  </div>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>From Stand:</span>
+                    <span style={infoValue}>#{transferStock.standNo}</span>
+                  </div>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>Available:</span>
+                    <span style={infoValue}>{transferStock.quantity} units</span>
+                  </div>
                 </div>
-                <div style={infoRow}>
-                  <span style={infoLabel}>Thickness:</span>
-                  <span style={infoValue}>{transferStock.glass?.thickness} mm</span>
-                </div>
-                <div style={infoRow}>
-                  <span style={infoLabel}>Size:</span>
-                  <span style={infoValue}>
-                    {transferStock.height} × {transferStock.width} {transferStock.glass?.unit || "MM"}
-                  </span>
-                </div>
-                <div style={infoRow}>
-                  <span style={infoLabel}>From Stand:</span>
-                  <span style={infoValue}>#{transferStock.standNo}</span>
-                </div>
-                <div style={infoRow}>
-                  <span style={infoLabel}>Current Quantity:</span>
-                  <span style={infoValue}>{transferStock.quantity} units</span>
-                </div>
-              </div>
+              </Card>
 
-              {/* Transfer Fields */}
-              <div style={formGroup}>
-                <label style={label}>To Stand</label>
-                <input
-                  style={modalInput}
-                  type="number"
-                  placeholder="Enter destination stand number"
-                  value={toStand}
-                  onChange={(e) => setToStand(e.target.value)}
-                  min="1"
-                />
-              </div>
+              <Input
+                label="To Stand Number"
+                type="number"
+                placeholder="Enter destination stand number"
+                value={toStand}
+                onChange={(e) => setToStand(e.target.value)}
+                icon="🏷️"
+                required
+                min="1"
+              />
 
-              <div style={formGroup}>
-                <label style={label}>Quantity</label>
-                <input
-                  style={modalInput}
-                  type="number"
-                  placeholder="Enter quantity to transfer"
-                  value={transferQuantity}
-                  onChange={(e) => setTransferQuantity(e.target.value)}
-                  min="1"
-                  max={transferStock.quantity}
-                />
-              </div>
+              <Input
+                label="Quantity to Transfer"
+                type="number"
+                placeholder="Enter quantity"
+                value={transferQuantity}
+                onChange={(e) => setTransferQuantity(e.target.value)}
+                icon="🔢"
+                required
+                min="1"
+                helperText={`Maximum: ${transferStock.quantity} units`}
+              />
 
-              {/* Transfer Button */}
-              <button
-                style={transferSubmitButton}
+              <Button
+                variant="primary"
+                icon="🔄"
+                fullWidth
                 onClick={handleTransfer}
               >
-                🔄 Transfer Stock
-              </button>
+                Transfer Stock
+              </Button>
 
-              {/* Message */}
               {transferMessage && (
-                <div style={message(transferMessage && typeof transferMessage === 'string' && transferMessage.includes("✅"))}>
-                  {transferMessage}
+                <div style={getMessageStyle(transferMessage && typeof transferMessage === 'string' && transferMessage.includes("✅"))}>
+                  <span style={messageIcon}>
+                    {transferMessage.includes("✅") ? "✅" : "❌"}
+                  </span>
+                  <span>{transferMessage.replace("✅", "").replace("❌", "").trim()}</span>
                 </div>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Transfer Confirm Modal */}
       {showTransferConfirm && transferStock && (
         <div style={modalOverlay} onClick={() => setShowTransferConfirm(false)}>
-          <div style={modalCard} onClick={(e) => e.stopPropagation()}>
+          <Card style={getModalCardStyle(isMobile)} onClick={(e) => e.stopPropagation()}>
             <div style={modalHeader}>
-              <h3 style={modalTitle}>⚠️ Confirm Stock Transfer</h3>
+              <div>
+                <h3 style={modalTitle}>Confirm Transfer</h3>
+                <p style={modalSubtitle}>Review transfer details</p>
+              </div>
               <button style={closeModalBtn} onClick={() => setShowTransferConfirm(false)}>✕</button>
             </div>
 
             <div style={modalContent}>
-              <div style={stockInfoCard}>
+              <Card style={stockInfoCard}>
                 <h4 style={infoTitle}>Transfer Summary</h4>
-                <div style={infoRow}>
-                  <span style={infoLabel}>Glass Type:</span>
-                  <span style={infoValue}>{transferStock.glass?.type}</span>
+                <div style={infoGrid}>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>Glass Type:</span>
+                    <span style={infoValue}>{transferStock.glass?.type}</span>
+                  </div>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>Size:</span>
+                    <span style={infoValue}>
+                      {transferStock.height} × {transferStock.width} {transferStock.glass?.unit || "MM"}
+                    </span>
+                  </div>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>From Stand:</span>
+                    <span style={infoValue}>#{transferStock.standNo}</span>
+                  </div>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>To Stand:</span>
+                    <span style={infoValue}>#{toStand}</span>
+                  </div>
+                  <div style={infoItem}>
+                    <span style={infoLabel}>Quantity:</span>
+                    <span style={infoValue}>{transferQuantity} units</span>
+                  </div>
                 </div>
-                <div style={infoRow}>
-                  <span style={infoLabel}>Size:</span>
-                  <span style={infoValue}>
-                    {transferStock.height} × {transferStock.width} {transferStock.glass?.unit || "MM"}
-                  </span>
-                </div>
-                <div style={infoRow}>
-                  <span style={infoLabel}>From Stand:</span>
-                  <span style={infoValue}>#{transferStock.standNo}</span>
-                </div>
-                <div style={infoRow}>
-                  <span style={infoLabel}>To Stand:</span>
-                  <span style={infoValue}>#{toStand}</span>
-                </div>
-                <div style={infoRow}>
-                  <span style={infoLabel}>Quantity:</span>
-                  <span style={infoValue}>{transferQuantity} units</span>
-                </div>
-              </div>
+              </Card>
 
               <div style={buttonGroup}>
-                <button
-                  style={cancelButton}
+                <Button
+                  variant="secondary"
+                  fullWidth={isMobile}
                   onClick={() => {
                     setShowTransferConfirm(false);
                     setShowTransferModal(true);
                   }}
                 >
                   Cancel
-                </button>
-                <button
-                  style={confirmTransferButton}
+                </Button>
+                <Button
+                  variant="primary"
+                  icon="✅"
+                  fullWidth={isMobile}
                   onClick={confirmTransfer}
                 >
-                  ✅ Confirm Transfer
-                </button>
+                  Confirm Transfer
+                </Button>
               </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
 
@@ -1024,158 +833,213 @@ export default StockDashboard;
 
 /* ================= STYLES ================= */
 
-const card = {
+const getContainerStyle = (isMobile) => ({
+  maxWidth: "1400px",
+  margin: "0 auto",
+  padding: isMobile ? "24px 16px" : "40px 24px",
   width: "100%",
-  maxWidth: "1200px",
-  margin: "auto",
-  padding: "clamp(16px, 4vw, 24px)",
-  background: "rgba(255, 255, 255, 0.95)",
-  borderRadius: "16px",
-  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
+});
+
+const headerSection = {
+  marginBottom: "32px",
 };
 
-const title = {
-  textAlign: "center",
-  marginBottom: "clamp(16px, 4vw, 24px)",
-  fontSize: "clamp(20px, 5vw, 24px)",
+const getPageTitleStyle = (isMobile) => ({
+  fontSize: isMobile ? "32px" : "48px",
+  fontWeight: "800",
+  color: "#0f172a",
+  margin: "0 0 8px 0",
+  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+  WebkitBackgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+  backgroundClip: "text",
+});
+
+const pageSubtitle = {
+  fontSize: "16px",
+  color: "#64748b",
+  margin: "0",
+  fontWeight: "400",
+};
+
+const getStatsGridStyle = (isMobile) => ({
+  display: "grid",
+  gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+  gap: "24px",
+  marginBottom: "32px",
+});
+
+const getFilterCardStyle = (isMobile) => ({
+  padding: isMobile ? "24px" : "32px",
+  marginBottom: "32px",
+});
+
+const filterHeader = {
+  display: "flex",
+  alignItems: "center",
+  gap: "16px",
+  marginBottom: "24px",
+};
+
+const filterIcon = {
+  width: "48px",
+  height: "48px",
+  borderRadius: "12px",
+  background: "linear-gradient(135deg, #667eea15, #764ba225)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "24px",
+  flexShrink: 0,
+};
+
+const filterTitle = {
+  fontSize: "20px",
   fontWeight: "700",
   color: "#0f172a",
+  margin: "0 0 4px 0",
 };
 
-const filters = {
+const filterSubtitle = {
+  fontSize: "14px",
+  color: "#64748b",
+  margin: "0",
+};
+
+const getFilterGridStyle = (isMobile) => ({
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-  gap: "clamp(8px, 2vw, 12px)",
-  marginBottom: "clamp(16px, 4vw, 24px)",
+  gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(200px, 1fr))",
+  gap: "16px",
+});
+
+const getTableCardStyle = (isMobile) => ({
+  padding: isMobile ? "24px" : "32px",
+});
+
+const tableHeader = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  marginBottom: "24px",
+  flexWrap: "wrap",
+  gap: "16px",
 };
 
-const input = {
-  padding: "12px 16px",
-  borderRadius: "8px",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
-  background: "#ffffff",
+const tableTitle = {
+  fontSize: "20px",
+  fontWeight: "700",
   color: "#0f172a",
-  outline: "none",
-  fontSize: "14px",
-  transition: "all 0.2s ease",
+  margin: "0 0 4px 0",
 };
 
-const clearBtn = {
-  padding: "12px 20px",
-  borderRadius: "8px",
-  border: "none",
-  background: "linear-gradient(135deg, #64748b, #475569)",
-  color: "white",
-  cursor: "pointer",
-  fontWeight: "600",
+const tableSubtitle = {
   fontSize: "14px",
-  transition: "all 0.2s ease",
+  color: "#64748b",
+  margin: "0",
 };
 
 const tableWrapper = {
   width: "100%",
+};
+
+const tableContainer = {
   overflowX: "auto",
-  maxHeight: "600px",
-  overflowY: "auto",
+  borderRadius: "12px",
+  border: "1px solid #e2e8f0",
 };
 
 const table = {
   width: "100%",
   minWidth: "900px",
   borderCollapse: "collapse",
-  textAlign: "center",
+  background: "#ffffff",
 };
 
-const quantityBadge = (isLow) => ({
+const getTableRowStyle = (isLow) => ({
+  borderBottom: "1px solid #e2e8f0",
+  transition: "all 0.2s ease",
+  backgroundColor: isLow ? "rgba(239, 68, 68, 0.05)" : "transparent",
+});
+
+const standBadge = {
   display: "inline-block",
-  padding: "4px 12px",
-  borderRadius: "6px",
+  padding: "6px 12px",
+  borderRadius: "8px",
+  background: "linear-gradient(135deg, #667eea15, #764ba225)",
+  color: "#667eea",
   fontWeight: "600",
   fontSize: "13px",
+};
+
+const glassTypeCell = {
+  fontWeight: "600",
+  color: "#0f172a",
+};
+
+const getQuantityBadgeStyle = (isLow) => ({
+  display: "inline-block",
+  padding: "6px 12px",
+  borderRadius: "8px",
+  fontWeight: "600",
+  fontSize: "14px",
   background: isLow ? "rgba(239, 68, 68, 0.1)" : "rgba(34, 197, 94, 0.1)",
   color: isLow ? "#dc2626" : "#16a34a",
 });
 
-const statusBadge = (isLow) => ({
+const getStatusBadgeStyle = (isLow) => ({
   display: "inline-block",
-  padding: "4px 12px",
-  borderRadius: "6px",
+  padding: "6px 12px",
+  borderRadius: "8px",
   fontWeight: "600",
   fontSize: "12px",
   background: isLow ? "rgba(239, 68, 68, 0.1)" : "rgba(34, 197, 94, 0.1)",
   color: isLow ? "#dc2626" : "#16a34a",
 });
 
-const emptyState = {
-  textAlign: "center",
-  padding: "40px 20px",
-};
-
-const emptyIcon = {
-  fontSize: "48px",
-  marginBottom: "12px",
-  opacity: 0.4,
-};
-
-const emptyText = {
-  color: "#64748b",
-  fontSize: "14px",
-  margin: 0,
-};
-
-/* ================= MODAL STYLES ================= */
-
 const actionButtonsContainer = {
   display: "flex",
   gap: "8px",
   justifyContent: "center",
-  alignItems: "center",
   flexWrap: "wrap",
 };
 
-const actionButton = {
-  padding: "10px 16px",
-  borderRadius: "10px",
-  border: "none",
-  background: "linear-gradient(135deg, #6366f1, #4f46e5)",
-  color: "white",
-  fontWeight: "600",
-  fontSize: "13px",
-  cursor: "pointer",
-  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-  boxShadow: "0 2px 8px rgba(99, 102, 241, 0.3), 0 1px 3px rgba(0, 0, 0, 0.1)",
-  whiteSpace: "nowrap",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "6px",
-  minHeight: "40px",
-  minWidth: "120px",
-  position: "relative",
-  overflow: "hidden",
+const emptyState = {
+  textAlign: "center",
+  padding: "60px 20px",
 };
 
-const transferButton = {
-  padding: "10px 16px",
-  borderRadius: "10px",
-  border: "none",
-  background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-  color: "white",
+const emptyIcon = {
+  fontSize: "64px",
+  marginBottom: "16px",
+  opacity: 0.3,
+};
+
+const emptyText = {
+  color: "#475569",
+  fontSize: "18px",
   fontWeight: "600",
-  fontSize: "13px",
-  cursor: "pointer",
-  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-  boxShadow: "0 2px 8px rgba(59, 130, 246, 0.3), 0 1px 3px rgba(0, 0, 0, 0.1)",
-  whiteSpace: "nowrap",
+  margin: "0 0 8px 0",
+};
+
+const emptySubtext = {
+  color: "#94a3b8",
+  fontSize: "14px",
+  margin: "0",
+};
+
+const loadingState = {
   display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "6px",
-  minHeight: "40px",
-  minWidth: "120px",
-  position: "relative",
-  overflow: "hidden",
+  flexDirection: "column",
+  gap: "12px",
+  padding: "20px",
+};
+
+const skeletonRow = {
+  height: "60px",
+  borderRadius: "8px",
+  background: "linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)",
+  backgroundSize: "200% 100%",
+  animation: "shimmer 1.5s infinite",
 };
 
 const modalOverlay = {
@@ -1190,35 +1054,38 @@ const modalOverlay = {
   alignItems: "center",
   zIndex: 10000,
   backdropFilter: "blur(4px)",
+  padding: "20px",
 };
 
-const modalCard = {
-  background: "rgba(255, 255, 255, 0.98)",
-  borderRadius: "16px",
-  padding: "28px",
-  width: "90%",
+const getModalCardStyle = (isMobile) => ({
+  width: "100%",
   maxWidth: "500px",
   maxHeight: "90vh",
   overflowY: "auto",
-  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
-  animation: "slideIn 0.3s ease-out",
-};
+  padding: isMobile ? "24px" : "32px",
+  animation: "fadeIn 0.3s ease-out",
+});
 
 const modalHeader = {
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "center",
+  alignItems: "flex-start",
   marginBottom: "24px",
-  paddingBottom: "16px",
-  borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
+  paddingBottom: "20px",
+  borderBottom: "1px solid #e2e8f0",
 };
 
 const modalTitle = {
-  fontSize: "22px",
+  fontSize: "24px",
   fontWeight: "700",
   color: "#0f172a",
-  margin: 0,
+  margin: "0 0 4px 0",
+};
+
+const modalSubtitle = {
+  fontSize: "14px",
+  color: "#64748b",
+  margin: "0",
 };
 
 const closeModalBtn = {
@@ -1228,8 +1095,13 @@ const closeModalBtn = {
   color: "#64748b",
   cursor: "pointer",
   padding: "4px 8px",
-  borderRadius: "6px",
+  borderRadius: "8px",
   transition: "all 0.2s ease",
+  width: "32px",
+  height: "32px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
 };
 
 const modalContent = {
@@ -1240,25 +1112,29 @@ const modalContent = {
 
 const stockInfoCard = {
   background: "#f8fafc",
-  borderRadius: "12px",
   padding: "20px",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
+  border: "1px solid #e2e8f0",
 };
 
 const infoTitle = {
   fontSize: "16px",
   fontWeight: "700",
   color: "#0f172a",
-  margin: 0,
-  marginBottom: "12px",
+  margin: "0 0 16px 0",
 };
 
-const infoRow = {
+const infoGrid = {
+  display: "grid",
+  gridTemplateColumns: "1fr",
+  gap: "12px",
+};
+
+const infoItem = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
   padding: "8px 0",
-  borderBottom: "1px solid rgba(226, 232, 240, 0.5)",
+  borderBottom: "1px solid #e2e8f0",
 };
 
 const infoLabel = {
@@ -1273,131 +1149,28 @@ const infoValue = {
   color: "#0f172a",
 };
 
-const formGroup = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "8px",
-};
-
-const label = {
-  fontSize: "13px",
-  fontWeight: "600",
-  color: "#475569",
-  marginBottom: "4px",
-};
-
-const modalInput = {
-  padding: "12px 16px",
-  borderRadius: "8px",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
-  background: "#ffffff",
-  color: "#0f172a",
-  outline: "none",
-  fontSize: "14px",
-  transition: "all 0.2s ease",
-};
-
 const buttonGroup = {
   display: "flex",
   gap: "12px",
-  marginTop: "8px",
+  flexWrap: "wrap",
 };
 
-const addButton = {
-  flex: 1,
-  padding: "14px 20px",
-  borderRadius: "8px",
-  border: "none",
-  background: "linear-gradient(135deg, #22c55e, #16a34a)",
-  color: "white",
-  fontWeight: "600",
-  fontSize: "14px",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  boxShadow: "0 2px 4px rgba(34, 197, 94, 0.2)",
-};
-
-const removeButton = {
-  flex: 1,
-  padding: "14px 20px",
-  borderRadius: "8px",
-  border: "none",
-  background: "linear-gradient(135deg, #ef4444, #dc2626)",
-  color: "white",
-  fontWeight: "600",
-  fontSize: "14px",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  boxShadow: "0 2px 4px rgba(239, 68, 68, 0.2)",
-};
-
-const undoButton = {
-  width: "100%",
-  padding: "12px 20px",
-  borderRadius: "8px",
-  border: "none",
-  background: "linear-gradient(135deg, #f59e0b, #d97706)",
-  color: "white",
-  fontWeight: "600",
-  fontSize: "14px",
-  cursor: "pointer",
-  marginTop: "8px",
-  transition: "all 0.2s ease",
-};
-
-const message = (isSuccess) => ({
-  textAlign: "center",
-  fontWeight: "600",
-  fontSize: "14px",
-  padding: "12px 16px",
-  borderRadius: "8px",
-  marginTop: "8px",
+const getMessageStyle = (isSuccess) => ({
+  padding: "16px",
+  borderRadius: "12px",
   background: isSuccess 
     ? "rgba(34, 197, 94, 0.1)" 
     : "rgba(239, 68, 68, 0.1)",
+  border: `1.5px solid ${isSuccess ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
   color: isSuccess ? "#16a34a" : "#dc2626",
-  border: `1px solid ${isSuccess ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
+  fontSize: "14px",
+  fontWeight: "500",
+  display: "flex",
+  alignItems: "center",
+  gap: "12px",
 });
 
-const transferSubmitButton = {
-  width: "100%",
-  padding: "14px 20px",
-  borderRadius: "8px",
-  border: "none",
-  background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-  color: "white",
-  fontWeight: "600",
-  fontSize: "14px",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  boxShadow: "0 2px 4px rgba(59, 130, 246, 0.2)",
-  marginTop: "8px",
+const messageIcon = {
+  fontSize: "20px",
+  flexShrink: 0,
 };
-
-const cancelButton = {
-  flex: 1,
-  padding: "12px 20px",
-  borderRadius: "8px",
-  border: "none",
-  background: "#64748b",
-  color: "white",
-  fontWeight: "600",
-  fontSize: "14px",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-};
-
-const confirmTransferButton = {
-  flex: 1,
-  padding: "12px 20px",
-  borderRadius: "8px",
-  border: "none",
-  background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-  color: "white",
-  fontWeight: "600",
-  fontSize: "14px",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  boxShadow: "0 2px 4px rgba(59, 130, 246, 0.2)",
-};
-
