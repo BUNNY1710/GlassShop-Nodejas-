@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
-import { StatCard, Card, Button } from "../components/ui";
+import { StatCard, Card, Button, PageHeader } from "../components/ui";
 import api from "../api/api";
 import "../styles/design-system.css";
 
@@ -41,7 +41,7 @@ function Dashboard() {
           : Promise.resolve([]);
 
         const auditPromise = role === "ROLE_ADMIN"
-          ? api.get("/audit/recent")
+          ? api.get("/stock/recent")
             .then(res => res.data)
             .catch(() => [])
           : Promise.resolve([]);
@@ -115,35 +115,32 @@ function Dashboard() {
     <PageWrapper>
       <div style={getContainerStyle(isMobile)}>
         {/* Header Section */}
-        <div style={headerSection}>
-          <div>
-            <h1 style={getMainTitleStyle(isMobile)}>
-              Welcome Back! 👋
-            </h1>
-            <p style={subtitle}>
-              Here's what's happening with your inventory today
-            </p>
-          </div>
-          
-          {role === "ROLE_ADMIN" && (
-            <div style={quickActions}>
-              <Button
-                variant="primary"
-                icon="➕"
-                onClick={() => navigate("/manage-stock")}
-              >
-                Add Stock
-              </Button>
-              <Button
-                variant="outline"
-                icon="📊"
-                onClick={() => navigate("/view-stock")}
-              >
-                View Stock
-              </Button>
-            </div>
-          )}
-        </div>
+        <PageHeader
+          icon="📊"
+          title="Welcome Back! 👋"
+          subtitle="Here's what's happening with your inventory today"
+          isMobile={isMobile}
+          actions={
+            role === "ROLE_ADMIN" ? (
+              <>
+                <Button
+                  variant="primary"
+                  icon="➕"
+                  onClick={() => navigate("/manage-stock")}
+                >
+                  Add Stock
+                </Button>
+                <Button
+                  variant="outline"
+                  icon="📦"
+                  onClick={() => navigate("/view-stock")}
+                >
+                  View Stock
+                </Button>
+              </>
+            ) : null
+          }
+        />
 
         {/* Stats Grid */}
         <div style={getStatsGridStyle(isMobile, role)}>

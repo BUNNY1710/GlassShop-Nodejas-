@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { toast } from "react-toastify";
 import api from "../api/api";
 import PageWrapper from "../components/PageWrapper";
-import { Card, Button, Input, Select, StatCard } from "../components/ui";
+import { Card, Button, Input, Select, StatCard, PageHeader } from "../components/ui";
 import ConfirmModal from "../components/ConfirmModal";
 import "../styles/design-system.css";
 
@@ -361,12 +361,13 @@ function StockDashboard() {
     <PageWrapper>
       <div style={getContainerStyle(isMobile)}>
         {/* Header Section */}
-        <div style={headerSection}>
-          <div>
-            <h1 style={getPageTitleStyle(isMobile)}>View Stock</h1>
-            <p style={pageSubtitle}>Browse and manage your inventory</p>
-          </div>
-        </div>
+        <PageHeader
+          icon="📦"
+          title="View Stock"
+          subtitle="Browse and manage your inventory"
+          breadcrumbs={["Dashboard", "Stock Management", "View Stock"]}
+          isMobile={isMobile}
+        />
 
         {/* Stats Cards */}
         <div style={getStatsGridStyle(isMobile)}>

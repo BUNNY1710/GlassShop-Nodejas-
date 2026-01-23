@@ -16,9 +16,19 @@ const StatCard = ({
   };
 
   return (
-    <Card hover className="stat-card" style={{ position: 'relative', overflow: 'visible' }}>
-      {/* Decorative gradient circle */}
+    <Card 
+      hover 
+      animated
+      className="stat-card animate-fadeInUp" 
+      style={{ 
+        position: 'relative', 
+        overflow: 'visible',
+        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+      }}
+    >
+      {/* Animated Decorative gradient circle */}
       <div
+        className="animate-pulse"
         style={{
           position: 'absolute',
           top: '-20px',
@@ -26,13 +36,30 @@ const StatCard = ({
           width: '120px',
           height: '120px',
           borderRadius: '50%',
-          background: `radial-gradient(circle, ${color}10 0%, transparent 70%)`,
+          background: `radial-gradient(circle, ${color}15 0%, ${color}08 40%, transparent 70%)`,
           pointerEvents: 'none',
+          animation: 'pulse 3s ease-in-out infinite',
+        }}
+      />
+      
+      {/* Secondary glow effect */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '-30px',
+          right: '-30px',
+          width: '140px',
+          height: '140px',
+          borderRadius: '50%',
+          background: `radial-gradient(circle, ${color}05 0%, transparent 60%)`,
+          pointerEvents: 'none',
+          animation: 'float 4s ease-in-out infinite',
         }}
       />
       
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
         <div
+          className="animate-scaleIn"
           style={{
             width: '56px',
             height: '56px',
@@ -43,7 +70,18 @@ const StatCard = ({
             fontSize: '24px',
             fontWeight: '600',
             ...iconBg,
-            boxShadow: `0 4px 12px ${color}20`,
+            boxShadow: `0 4px 12px ${color}25, 0 2px 4px ${color}15`,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            position: 'relative',
+            zIndex: 1,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'scale(1.1) rotate(5deg)';
+            e.currentTarget.style.boxShadow = `0 8px 20px ${color}35, 0 4px 8px ${color}20`;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'scale(1) rotate(0deg)';
+            e.currentTarget.style.boxShadow = `0 4px 12px ${color}25, 0 2px 4px ${color}15`;
           }}
         >
           {icon}
@@ -87,17 +125,22 @@ const StatCard = ({
               borderRadius: '8px',
               background: 'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)',
               backgroundSize: '200% 100%',
-              animation: 'shimmer 1.5s infinite',
+              animation: 'skeleton-loading 1.5s ease-in-out infinite',
             }}
           />
         ) : (
           <div
+            className="animate-fadeIn"
             style={{
               fontSize: '36px',
               fontWeight: '800',
-              color: '#0f172a',
+              background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
               lineHeight: '1.2',
               marginBottom: subtitle ? '4px' : '0',
+              transition: 'all 0.3s ease',
             }}
           >
             {typeof value === 'number' ? value.toLocaleString() : value}

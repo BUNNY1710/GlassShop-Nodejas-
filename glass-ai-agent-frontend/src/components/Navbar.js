@@ -454,27 +454,32 @@ const navBar = {
   top: 0,
   left: 0,
   right: 0,
-  height: "70px",
+  height: "72px",
   zIndex: 10000,
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  padding: "0 24px",
-  background: "rgba(255, 255, 255, 0.95)",
-  backdropFilter: "blur(12px)",
-  boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
-  borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
+  padding: "0 clamp(16px, 4vw, 32px)",
+  background: "linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(249, 250, 251, 0.95) 100%)",
+  backdropFilter: "blur(20px) saturate(180%)",
+  WebkitBackdropFilter: "blur(20px) saturate(180%)",
+  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)",
+  borderBottom: "1px solid rgba(226, 232, 240, 0.6)",
 };
 
 const logo = {
   color: "#4f46e5",
   fontWeight: "800",
-  fontSize: "20px",
+  fontSize: "22px",
   cursor: "pointer",
   display: "flex",
   alignItems: "center",
-  gap: "8px",
-  transition: "all 0.2s ease",
+  gap: "10px",
+  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+  padding: "8px 12px",
+  borderRadius: "12px",
+  background: "linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(79, 70, 229, 0.05) 100%)",
+  border: "1px solid rgba(99, 102, 241, 0.15)",
 };
 
 const rightBar = {
@@ -493,17 +498,21 @@ const navLinkStyle = ({ isActive }) => ({
   color: isActive ? "#4f46e5" : "#64748b",
   textDecoration: "none",
   fontSize: "14px",
-  fontWeight: isActive ? "600" : "500",
-  padding: "10px 16px",
-  borderRadius: "8px",
+  fontWeight: isActive ? "700" : "500",
+  padding: "10px 18px",
+  borderRadius: "10px",
   background: isActive 
-    ? "rgba(99, 102, 241, 0.1)" 
+    ? "linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(79, 70, 229, 0.1) 100%)" 
     : "transparent",
-  transition: "all 0.2s ease",
+  transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
   display: "flex",
   alignItems: "center",
-  gap: "6px",
+  gap: "8px",
   position: "relative",
+  border: isActive ? "1px solid rgba(99, 102, 241, 0.2)" : "1px solid transparent",
+  boxShadow: isActive 
+    ? "0 2px 4px -1px rgba(99, 102, 241, 0.2), 0 1px 2px -1px rgba(99, 102, 241, 0.1)" 
+    : "none",
 });
 
 const hamburger = {

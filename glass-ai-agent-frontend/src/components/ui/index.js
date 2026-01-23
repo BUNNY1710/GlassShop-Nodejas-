@@ -3,4 +3,6 @@ export { default as StatCard } from './StatCard';
 export { default as Button } from './Button';
 export { default as Input } from './Input';
 export { default as Select } from './Select';
+export { default as PageHeader } from './PageHeader';
+export { default as SkeletonLoader, SkeletonCard, SkeletonTable } from './SkeletonLoader';
 

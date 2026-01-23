@@ -18,9 +18,11 @@ const Input = ({
     border: error ? '2px solid #ef4444' : '1.5px solid #e2e8f0',
     background: '#ffffff',
     color: '#0f172a',
-    transition: 'all 0.2s ease',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
     fontFamily: 'inherit',
     boxSizing: 'border-box',
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+    willChange: 'transform, box-shadow, border-color',
   };
 
   const inputWrapperStyle = {
@@ -71,14 +73,26 @@ const Input = ({
           onFocus={(e) => {
             e.currentTarget.style.borderColor = error ? '#ef4444' : '#667eea';
             e.currentTarget.style.boxShadow = error 
-              ? '0 0 0 3px rgba(239, 68, 68, 0.1)' 
-              : '0 0 0 3px rgba(102, 126, 234, 0.1)';
+              ? '0 0 0 4px rgba(239, 68, 68, 0.1), 0 4px 6px -1px rgba(239, 68, 68, 0.1)' 
+              : '0 0 0 4px rgba(102, 126, 234, 0.1), 0 4px 6px -1px rgba(102, 126, 234, 0.1)';
             e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.borderWidth = '2px';
           }}
           onBlur={(e) => {
             e.currentTarget.style.borderColor = error ? '#ef4444' : '#e2e8f0';
-            e.currentTarget.style.boxShadow = 'none';
+            e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
             e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.borderWidth = '1.5px';
+          }}
+          onMouseEnter={(e) => {
+            if (document.activeElement !== e.currentTarget) {
+              e.currentTarget.style.borderColor = error ? '#ef4444' : '#cbd5e1';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (document.activeElement !== e.currentTarget) {
+              e.currentTarget.style.borderColor = error ? '#ef4444' : '#e2e8f0';
+            }
           }}
           {...props}
         />

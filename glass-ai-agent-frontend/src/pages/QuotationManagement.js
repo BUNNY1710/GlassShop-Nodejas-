@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import PageWrapper from "../components/PageWrapper";
+import { PageHeader, Button } from "../components/ui";
 import dashboardBg from "../assets/dashboard-bg.jpg";
 import {
   getCustomers,
@@ -26,6 +27,7 @@ function QuotationManagement() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showStockDropdown, setShowStockDropdown] = useState({});
   const [confirmAction, setConfirmAction] = useState(null); // { type: 'CONFIRM'|'REJECT'|'DELETE', quotationId: number, quotationNumber: string }
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const getDefaultValidUntil = (quotationDate) => {
     if (!quotationDate) return "";
@@ -56,8 +58,18 @@ function QuotationManagement() {
         thickness: "",
         height: "",
         width: "",
-        heightUnit: "FEET",
-        widthUnit: "FEET",
+        heightUnit: "INCH",
+        widthUnit: "INCH",
+        sizeInMM: false,
+        heightTableNumber: 6,
+        widthTableNumber: 6,
+        selectedHeightTableValue: null,
+        selectedWidthTableValue: null,
+        polishSelection: [],
+        polishRates: { P: 15, H: 75, B: 75 },
+        polish: "",
+        heightOriginal: "",
+        widthOriginal: "",
         quantity: 1,
         ratePerSqft: "",
         design: "",
@@ -116,8 +128,18 @@ function QuotationManagement() {
           thickness: "",
           height: "",
           width: "",
-          heightUnit: "FEET",
-          widthUnit: "FEET",
+          heightUnit: "INCH",
+          widthUnit: "INCH",
+          sizeInMM: false,
+          heightTableNumber: 6,
+          widthTableNumber: 6,
+          selectedHeightTableValue: null,
+          selectedWidthTableValue: null,
+          polishSelection: [],
+          polishRates: { P: 15, H: 75, B: 75 },
+          polish: "",
+          heightOriginal: "",
+          widthOriginal: "",
           quantity: 1,
           ratePerSqft: "",
           design: "",
@@ -196,39 +218,293 @@ function QuotationManagement() {
     }
   };
 
+  // Helper function to parse fraction strings (e.g., "9 1/2" -> 9.5)
+  const parseFraction = (input) => {
+    if (!input || typeof input !== 'string') return parseFloat(input) || 0;
+    
+    // Remove extra spaces
+    const cleaned = input.trim();
+    
+    // Check for fraction pattern: "number number/number" or "number/number"
+    const fractionMatch = cleaned.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+    if (fractionMatch) {
+      const whole = parseFloat(fractionMatch[1]);
+      const numerator = parseFloat(fractionMatch[2]);
+      const denominator = parseFloat(fractionMatch[3]);
+      return whole + (numerator / denominator);
+    }
+    
+    // Check for simple fraction: "number/number"
+    const simpleFractionMatch = cleaned.match(/^(\d+)\/(\d+)$/);
+    if (simpleFractionMatch) {
+      const numerator = parseFloat(simpleFractionMatch[1]);
+      const denominator = parseFloat(simpleFractionMatch[2]);
+      return numerator / denominator;
+    }
+    
+    // Try parsing as decimal
+    return parseFloat(cleaned) || 0;
+  };
+
+  // Generate table values based on table number (e.g., table 6: [6, 12, 18, 24, ...])
+  const generateTableValues = (tableNumber) => {
+    const table = parseInt(tableNumber) || 6;
+    return Array.from({ length: 12 }, (_, i) => table * (i + 1));
+  };
+
+  // Find exact match or next greater value in table
+  const findNextTableValue = (value, tableValues) => {
+    const numValue = parseFloat(value) || 0;
+    if (numValue === 0) return null;
+    
+    // Check for exact match first
+    const exactMatch = tableValues.find(tv => Math.abs(tv - numValue) < 0.01);
+    if (exactMatch !== undefined) return exactMatch;
+    
+    // Find next greater value
+    const nextGreater = tableValues.find(tv => tv > numValue);
+    return nextGreater || tableValues[tableValues.length - 1];
+  };
+
+  // Convert MM to Inch
+  const mmToInch = (value) => {
+    return parseFloat(value) / 25.4;
+  };
+
+  // Convert Inch to MM
+  const inchToMM = (value) => {
+    return parseFloat(value) * 25.4;
+  };
+
+  // Initialize polish selection for an item
+  const initializePolishSelection = (selectedHeightValue, selectedWidthValue) => {
+    const sides = [
+      { side: 'Height', sideNumber: 1, number: selectedHeightValue },
+      { side: 'Width', sideNumber: 1, number: selectedWidthValue },
+      { side: 'Height', sideNumber: 2, number: selectedHeightValue },
+      { side: 'Width', sideNumber: 2, number: selectedWidthValue },
+    ];
+    
+    return sides.map(side => ({
+      side: side.side,
+      sideNumber: side.sideNumber,
+      number: side.number,
+      checked: false,
+      type: null, // 'P', 'H', or 'B'
+    }));
+  };
+
   const handleItemChange = (index, field, value) => {
     const newItems = [...formData.items];
-    newItems[index][field] = value;
+    const item = newItems[index];
+    
+    // Handle sizeInMM toggle
+    if (field === "sizeInMM") {
+      item.sizeInMM = value;
+      if (value) {
+        // Switching to MM
+        item.heightUnit = "MM";
+        item.widthUnit = "MM";
+        // Convert current values if they exist
+        if (item.height && item.heightUnit === "INCH") {
+          item.height = inchToMM(parseFraction(item.height)).toString();
+          item.heightOriginal = item.height;
+        }
+        if (item.width && item.widthUnit === "INCH") {
+          item.width = inchToMM(parseFraction(item.width)).toString();
+          item.widthOriginal = item.width;
+        }
+      } else {
+        // Switching to INCH
+        item.heightUnit = "INCH";
+        item.widthUnit = "INCH";
+        // Convert current values if they exist
+        if (item.height && item.heightUnit === "MM") {
+          item.height = mmToInch(parseFloat(item.height)).toString();
+          item.heightOriginal = item.height;
+        }
+        if (item.width && item.widthUnit === "MM") {
+          item.width = mmToInch(parseFloat(item.width)).toString();
+          item.widthOriginal = item.width;
+        }
+      }
+    } else {
+      item[field] = value;
+    }
+
+    // Handle height/width input changes with fraction parsing
+    if (field === "height" || field === "width") {
+      // Store original input string
+      item[field + "Original"] = value;
+      
+      // Parse fraction to decimal for calculations
+      const parsedValue = item.sizeInMM ? parseFloat(value) : parseFraction(value);
+      item[field] = parsedValue.toString();
+      
+      // Auto-select table value
+      if (field === "height" && parsedValue) {
+        const tableValues = generateTableValues(item.heightTableNumber || 6);
+        const selectedValue = findNextTableValue(parsedValue, tableValues);
+        item.selectedHeightTableValue = selectedValue;
+        
+        // Initialize polish selection if both values are set
+        if (item.selectedHeightTableValue && item.selectedWidthTableValue) {
+          if (!item.polishSelection || item.polishSelection.length === 0) {
+            item.polishSelection = initializePolishSelection(
+              item.selectedHeightTableValue,
+              item.selectedWidthTableValue
+            );
+          }
+        }
+      } else if (field === "width" && parsedValue) {
+        const tableValues = generateTableValues(item.widthTableNumber || 6);
+        const selectedValue = findNextTableValue(parsedValue, tableValues);
+        item.selectedWidthTableValue = selectedValue;
+        
+        // Initialize polish selection if both values are set
+        if (item.selectedHeightTableValue && item.selectedWidthTableValue) {
+          if (!item.polishSelection || item.polishSelection.length === 0) {
+            item.polishSelection = initializePolishSelection(
+              item.selectedHeightTableValue,
+              item.selectedWidthTableValue
+            );
+          }
+        }
+      }
+    }
+
+    // Handle table number changes
+    if (field === "heightTableNumber" || field === "widthTableNumber") {
+      const tableNumber = parseInt(value) || 6;
+      item[field] = tableNumber;
+      
+      // Regenerate table values and re-select
+      if (field === "heightTableNumber" && item.height) {
+        const tableValues = generateTableValues(tableNumber);
+        const parsedHeight = item.sizeInMM ? parseFloat(item.height) : parseFraction(item.height);
+        item.selectedHeightTableValue = findNextTableValue(parsedHeight, tableValues);
+        
+        // Update polish selection
+        if (item.selectedHeightTableValue && item.selectedWidthTableValue) {
+          item.polishSelection = initializePolishSelection(
+            item.selectedHeightTableValue,
+            item.selectedWidthTableValue
+          );
+        }
+      } else if (field === "widthTableNumber" && item.width) {
+        const tableValues = generateTableValues(tableNumber);
+        const parsedWidth = item.sizeInMM ? parseFloat(item.width) : parseFraction(item.width);
+        item.selectedWidthTableValue = findNextTableValue(parsedWidth, tableValues);
+        
+        // Update polish selection
+        if (item.selectedHeightTableValue && item.selectedWidthTableValue) {
+          item.polishSelection = initializePolishSelection(
+            item.selectedHeightTableValue,
+            item.selectedWidthTableValue
+          );
+        }
+      }
+    }
 
     // Auto-calculate area and subtotal
-    if (field === "height" || field === "width" || field === "heightUnit" || field === "widthUnit") {
+    if (field === "height" || field === "width" || field === "heightUnit" || field === "widthUnit" || field === "sizeInMM") {
       // Calculate area in the input unit for display
       const areaInUnit = calculateAreaInUnit(
-        newItems[index].height,
-        newItems[index].width,
-        newItems[index].heightUnit || "FEET",
-        newItems[index].widthUnit || "FEET"
+        item.height,
+        item.width,
+        item.heightUnit || "INCH",
+        item.widthUnit || "INCH"
       );
-      newItems[index].area = areaInUnit;
+      item.area = areaInUnit;
       
       // For subtotal calculation, we need area in feet (since rate is per SqFt)
-      const heightInFeet = convertToFeet(newItems[index].height || 0, newItems[index].heightUnit || "FEET");
-      const widthInFeet = convertToFeet(newItems[index].width || 0, newItems[index].widthUnit || "FEET");
+      const heightInFeet = convertToFeet(item.height || 0, item.heightUnit || "INCH");
+      const widthInFeet = convertToFeet(item.width || 0, item.widthUnit || "INCH");
       const areaInFeet = heightInFeet * widthInFeet;
-      const rate = parseFloat(newItems[index].ratePerSqft) || 0;
-      const qty = parseInt(newItems[index].quantity) || 0;
-      newItems[index].subtotal = areaInFeet * rate * qty;
+      const rate = parseFloat(item.ratePerSqft) || 0;
+      const qty = parseInt(item.quantity) || 0;
+      item.subtotal = areaInFeet * rate * qty;
     }
 
     if (field === "ratePerSqft" || field === "quantity") {
       // Recalculate subtotal when rate or quantity changes
-      const heightInFeet = convertToFeet(newItems[index].height || 0, newItems[index].heightUnit || "FEET");
-      const widthInFeet = convertToFeet(newItems[index].width || 0, newItems[index].widthUnit || "FEET");
+      const heightInFeet = convertToFeet(item.height || 0, item.heightUnit || "INCH");
+      const widthInFeet = convertToFeet(item.width || 0, item.widthUnit || "INCH");
       const areaInFeet = heightInFeet * widthInFeet;
-      const rate = parseFloat(newItems[index].ratePerSqft) || 0;
-      const qty = parseInt(newItems[index].quantity) || 0;
-      newItems[index].subtotal = areaInFeet * rate * qty;
+      const rate = parseFloat(item.ratePerSqft) || 0;
+      const qty = parseInt(item.quantity) || 0;
+      item.subtotal = areaInFeet * rate * qty;
     }
+
+    setFormData({ ...formData, items: newItems });
+  };
+
+  // Handle polish selection checkbox toggle
+  const handlePolishCheckboxChange = (itemIndex, polishIndex, checked) => {
+    const newItems = [...formData.items];
+    if (newItems[itemIndex].polishSelection && newItems[itemIndex].polishSelection[polishIndex]) {
+      newItems[itemIndex].polishSelection[polishIndex].checked = checked;
+      // If unchecking, also clear the type
+      if (!checked) {
+        newItems[itemIndex].polishSelection[polishIndex].type = null;
+      }
+    }
+    setFormData({ ...formData, items: newItems });
+  };
+
+  // Handle polish type radio button selection
+  const handlePolishTypeChange = (itemIndex, polishIndex, type) => {
+    const newItems = [...formData.items];
+    if (newItems[itemIndex].polishSelection && newItems[itemIndex].polishSelection[polishIndex]) {
+      newItems[itemIndex].polishSelection[polishIndex].type = type;
+      newItems[itemIndex].polishSelection[polishIndex].checked = true;
+    }
+    setFormData({ ...formData, items: newItems });
+  };
+
+  // Handle "Select All" for polish types
+  const handlePolishSelectAll = (itemIndex, type) => {
+    const newItems = [...formData.items];
+    if (newItems[itemIndex].polishSelection) {
+      newItems[itemIndex].polishSelection = newItems[itemIndex].polishSelection.map(p => ({
+        ...p,
+        checked: true,
+        type: type,
+      }));
+    }
+    setFormData({ ...formData, items: newItems });
+  };
+
+  // Handle table value click selection
+  const handleTableValueClick = (itemIndex, dimension, value) => {
+    const newItems = [...formData.items];
+    if (dimension === "height") {
+      newItems[itemIndex].selectedHeightTableValue = value;
+      newItems[itemIndex].height = value.toString();
+      newItems[itemIndex].heightOriginal = value.toString();
+    } else if (dimension === "width") {
+      newItems[itemIndex].selectedWidthTableValue = value;
+      newItems[itemIndex].width = value.toString();
+      newItems[itemIndex].widthOriginal = value.toString();
+    }
+    
+    // Update polish selection if both values are set
+    if (newItems[itemIndex].selectedHeightTableValue && newItems[itemIndex].selectedWidthTableValue) {
+      newItems[itemIndex].polishSelection = initializePolishSelection(
+        newItems[itemIndex].selectedHeightTableValue,
+        newItems[itemIndex].selectedWidthTableValue
+      );
+    }
+    
+    // Recalculate area and subtotal
+    const item = newItems[itemIndex];
+    const heightInFeet = convertToFeet(item.height || 0, item.heightUnit || "INCH");
+    const widthInFeet = convertToFeet(item.width || 0, item.widthUnit || "INCH");
+    const areaInFeet = heightInFeet * widthInFeet;
+    const rate = parseFloat(item.ratePerSqft) || 0;
+    const qty = parseInt(item.quantity) || 0;
+    item.subtotal = areaInFeet * rate * qty;
+    item.area = calculateAreaInUnit(item.height, item.width, item.heightUnit || "INCH", item.widthUnit || "INCH");
 
     setFormData({ ...formData, items: newItems });
   };
@@ -286,26 +562,45 @@ function QuotationManagement() {
           const areaInUnit = calculateAreaInUnit(
             item.height,
             item.width,
-            item.heightUnit || "FEET",
-            item.widthUnit || "FEET"
+            item.heightUnit || "INCH",
+            item.widthUnit || "INCH"
           );
           
           // Convert to feet for rate calculation (rate is per SqFt)
-          const heightInFeet = convertToFeet(item.height, item.heightUnit || "FEET");
-          const widthInFeet = convertToFeet(item.width, item.widthUnit || "FEET");
+          const heightInFeet = convertToFeet(item.height, item.heightUnit || "INCH");
+          const widthInFeet = convertToFeet(item.width, item.widthUnit || "INCH");
           const areaInFeet = heightInFeet * widthInFeet;
           const subtotal = areaInFeet * parseFloat(item.ratePerSqft || 0) * parseInt(item.quantity || 1);
 
+          // Build polish data object for JSON storage
+          const polishData = {
+            heightTableNumber: item.heightTableNumber || 6,
+            widthTableNumber: item.widthTableNumber || 6,
+            selectedHeightTableValue: item.selectedHeightTableValue,
+            selectedWidthTableValue: item.selectedWidthTableValue,
+            polishSelection: item.polishSelection || [],
+            polishRates: item.polishRates || { P: 15, H: 75, B: 75 },
+            itemPolish: item.polish || "",
+            heightOriginal: item.heightOriginal || item.height?.toString() || "",
+            widthOriginal: item.widthOriginal || item.width?.toString() || "",
+            sizeInMM: item.sizeInMM || false,
+          };
+
           return {
-            ...item,
+            glassType: item.glassType,
+            thickness: item.thickness || "",
             height: parseFloat(item.height),
             width: parseFloat(item.width),
             quantity: parseInt(item.quantity),
             ratePerSqft: parseFloat(item.ratePerSqft),
             area: areaInFeet, // Store area in feet for backend (since rate is per SqFt)
             subtotal: subtotal,
-            heightUnit: item.heightUnit || "FEET",
-            widthUnit: item.widthUnit || "FEET",
+            heightUnit: item.heightUnit || "INCH",
+            widthUnit: item.widthUnit || "INCH",
+            hsnCode: item.hsnCode || "",
+            description: JSON.stringify(polishData), // Store all polish data as JSON
+            // Keep design field for backward compatibility (but it's being replaced by polish selection)
+            design: item.design || "",
           };
         }),
       };
@@ -322,22 +617,22 @@ function QuotationManagement() {
 
   const handleConfirm = async (quotationId, action) => {
     try {
-      let rejectionReason = null;
-      if (action === "REJECTED") {
-        const reason = prompt("Enter rejection reason:");
-        if (reason === null) return; // User cancelled
-        rejectionReason = reason;
+      if (action === "REJECTED" && !rejectionReason.trim()) {
+        setMessage("❌ Please provide a rejection reason");
+        return;
       }
       await confirmQuotation(quotationId, {
         action: action,
-        rejectionReason: rejectionReason,
+        rejectionReason: action === "REJECTED" ? rejectionReason : null,
       });
       setMessage("✅ Quotation " + (action === "CONFIRMED" ? "confirmed" : "rejected"));
       setConfirmAction(null);
+      setRejectionReason("");
       loadQuotations();
     } catch (error) {
       setMessage("❌ Failed to update quotation");
       setConfirmAction(null);
+      setRejectionReason("");
     }
   };
 
@@ -360,6 +655,7 @@ function QuotationManagement() {
       quotationNumber: quotation.quotationNumber,
       customerName: quotation.customerName,
     });
+    setRejectionReason(""); // Reset rejection reason when opening modal
   };
 
   const handleView = async (id) => {
@@ -457,63 +753,43 @@ function QuotationManagement() {
   return (
     <PageWrapper backgroundImage={dashboardBg}>
       <div style={{ padding: isMobile ? "15px" : "20px", maxWidth: "1400px", margin: "0 auto" }}>
-        <div style={{ marginBottom: "25px", padding: "20px", backgroundColor: "rgba(0,0,0,0.5)", borderRadius: "12px", backdropFilter: "blur(10px)" }}>
-          <h1 style={{ color: "#fff", marginBottom: "8px", fontSize: isMobile ? "26px" : "32px", fontWeight: "800", textShadow: "2px 2px 4px rgba(0,0,0,0.5)" }}>
-            📄 Quotation Management
-          </h1>
-          <p style={{ color: "#fff", fontSize: "15px", margin: 0, fontWeight: "500", textShadow: "1px 1px 2px rgba(0,0,0,0.5)" }}>
-            Create and manage quotations for your customers
-          </p>
-        </div>
+        <PageHeader
+          icon="📄"
+          title="Quotation Management"
+          subtitle="Create and manage quotations for your customers"
+          breadcrumbs={["Dashboard", "Billing", "Quotations"]}
+          isMobile={isMobile}
+          gradient={false}
+          actions={
+            <Button
+              variant="primary"
+              icon="➕"
+              onClick={() => {
+                setShowForm(true);
+                resetForm();
+              }}
+            >
+              Create Quotation
+            </Button>
+          }
+        />
 
         {message && (
           <div
             style={{
-              padding: "10px",
+              padding: "12px 16px",
               marginBottom: "20px",
-              backgroundColor: message.includes("✅") ? "#4caf50" : "#f44336",
+              backgroundColor: message.includes("✅") ? "#22c55e" : "#ef4444",
               color: "white",
-              borderRadius: "4px",
+              borderRadius: "8px",
+              fontSize: "14px",
+              fontWeight: "500",
+              boxShadow: "0 2px 4px -1px rgba(0, 0, 0, 0.1)",
             }}
           >
             {message}
           </div>
         )}
-
-        <button
-          onClick={() => {
-            setShowForm(true);
-            resetForm();
-          }}
-          style={{
-            padding: "12px 24px",
-            backgroundColor: "#22c55e",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            marginBottom: "20px",
-            fontSize: "15px",
-            fontWeight: "600",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            boxShadow: "0 4px 6px -1px rgba(34, 197, 94, 0.3)",
-            transition: "all 0.2s",
-          }}
-          onMouseOver={(e) => {
-            e.target.style.backgroundColor = "#16a34a";
-            e.target.style.boxShadow = "0 6px 8px -1px rgba(34, 197, 94, 0.4)";
-            e.target.style.transform = "translateY(-1px)";
-          }}
-          onMouseOut={(e) => {
-            e.target.style.backgroundColor = "#22c55e";
-            e.target.style.boxShadow = "0 4px 6px -1px rgba(34, 197, 94, 0.3)";
-            e.target.style.transform = "translateY(0)";
-          }}
-        >
-          ➕ Create New Quotation
-        </button>
 
         {showForm && (
           <div
@@ -1238,21 +1514,35 @@ function QuotationManagement() {
                           onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                         />
                       </div>
+                      {/* Size Input with Unit Selection */}
+                      <div style={{ gridColumn: isMobile ? "1" : "1 / -1", marginBottom: "10px" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+                          <input
+                            type="checkbox"
+                            checked={item.sizeInMM || false}
+                            onChange={(e) => handleItemChange(index, "sizeInMM", e.target.checked)}
+                            style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                          />
+                          <span style={{ color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                            Size in mm
+                          </span>
+                        </label>
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>
+                          {item.sizeInMM ? "Enter dimensions in millimeters" : "Enter dimensions in inches (supports fractions like '9 1/2')"}
+                        </p>
+                      </div>
                       <div>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                           Height * <span style={{ color: "#ef4444" }}>●</span>
                         </label>
-                        <div style={{ display: "flex", gap: "10px" }}>
                           <input
-                            type="number"
+                          type="text"
                             required
-                            min="0"
-                            step="0.01"
-                            value={item.height}
+                          value={item.heightOriginal || item.height || ""}
                             onChange={(e) => handleItemChange(index, "height", e.target.value)}
-                            placeholder="e.g., 6.5"
+                          placeholder={item.sizeInMM ? "e.g., 240" : "e.g., 9 1/2 or 9.5"}
                             style={{
-                              flex: 1,
+                            width: "100%",
                               padding: "12px",
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
@@ -1263,44 +1553,22 @@ function QuotationManagement() {
                             onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                             onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                           />
-                          <select
-                            value={item.heightUnit || "FEET"}
-                            onChange={(e) => handleItemChange(index, "heightUnit", e.target.value)}
-                            style={{
-                              padding: "12px",
-                              borderRadius: "8px",
-                              border: "1px solid #d1d5db",
-                              fontSize: "14px",
-                              backgroundColor: "#fff",
-                              cursor: "pointer",
-                              transition: "all 0.2s",
-                              minWidth: "100px",
-                            }}
-                            onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                            onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                          >
-                            <option value="MM">MM</option>
-                            <option value="INCH">Inch</option>
-                            <option value="FEET">Feet</option>
-                          </select>
-                        </div>
-                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>📏 Height measurement</p>
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>
+                          📏 Height in {item.sizeInMM ? "MM" : "INCH"} {item.sizeInMM ? "" : "(supports fractions)"}
+                        </p>
                       </div>
                       <div>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                           Width * <span style={{ color: "#ef4444" }}>●</span>
                         </label>
-                        <div style={{ display: "flex", gap: "10px" }}>
                           <input
-                            type="number"
+                          type="text"
                             required
-                            min="0"
-                            step="0.01"
-                            value={item.width}
+                          value={item.widthOriginal || item.width || ""}
                             onChange={(e) => handleItemChange(index, "width", e.target.value)}
-                            placeholder="e.g., 4.0"
+                          placeholder={item.sizeInMM ? "e.g., 400" : "e.g., 15 3/4 or 15.75"}
                             style={{
-                              flex: 1,
+                            width: "100%",
                               padding: "12px",
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
@@ -1311,28 +1579,152 @@ function QuotationManagement() {
                             onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                             onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                           />
-                          <select
-                            value={item.widthUnit || "FEET"}
-                            onChange={(e) => handleItemChange(index, "widthUnit", e.target.value)}
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>
+                          📏 Width in {item.sizeInMM ? "MM" : "INCH"} {item.sizeInMM ? "" : "(supports fractions)"}
+                        </p>
+                      </div>
+                      
+                      {/* Table Selection */}
+                      <div style={{ gridColumn: isMobile ? "1" : "1 / -1", marginTop: "10px", marginBottom: "10px" }}>
+                        <h4 style={{ color: "#374151", fontSize: "14px", fontWeight: "600", marginBottom: "15px" }}>
+                          Table Selection
+                        </h4>
+                        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "20px", marginBottom: "15px" }}>
+                          <div>
+                            <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "13px" }}>
+                              Height Table Number
+                            </label>
+                            <input
+                              type="text"
+                              value={item.heightTableNumber || 6}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 6;
+                                const clamped = Math.max(1, Math.min(12, val));
+                                handleItemChange(index, "heightTableNumber", clamped);
+                              }}
                             style={{
-                              padding: "12px",
-                              borderRadius: "8px",
+                                width: "100%",
+                                padding: "10px",
+                                borderRadius: "6px",
                               border: "1px solid #d1d5db",
                               fontSize: "14px",
-                              backgroundColor: "#fff",
-                              cursor: "pointer",
-                              transition: "all 0.2s",
-                              minWidth: "100px",
-                            }}
-                            onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                            onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                          >
-                            <option value="MM">MM</option>
-                            <option value="INCH">Inch</option>
-                            <option value="FEET">Feet</option>
-                          </select>
+                              }}
+                            />
+                            <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>Table number (1-12)</p>
+                            {item.selectedHeightTableValue && (
+                              <p style={{ marginTop: "5px", color: "#6366f1", fontSize: "12px", fontWeight: "500" }}>
+                                Selected: {item.selectedHeightTableValue}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "13px" }}>
+                              Width Table Number
+                            </label>
+                            <input
+                              type="text"
+                              value={item.widthTableNumber || 6}
+                              onChange={(e) => {
+                                const val = parseInt(e.target.value) || 6;
+                                const clamped = Math.max(1, Math.min(12, val));
+                                handleItemChange(index, "widthTableNumber", clamped);
+                              }}
+                              style={{
+                                width: "100%",
+                                padding: "10px",
+                                borderRadius: "6px",
+                                border: "1px solid #d1d5db",
+                                fontSize: "14px",
+                              }}
+                            />
+                            <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>Table number (1-12)</p>
+                            {item.selectedWidthTableValue && (
+                              <p style={{ marginTop: "5px", color: "#6366f1", fontSize: "12px", fontWeight: "500" }}>
+                                Selected: {item.selectedWidthTableValue}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>📏 Width measurement</p>
+                        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "20px" }}>
+                          <div>
+                            <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "13px" }}>
+                              Height Table Values (Click to select)
+                            </label>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                              {generateTableValues(item.heightTableNumber || 6).map((val) => (
+                                <button
+                                  key={val}
+                                  type="button"
+                                  onClick={() => handleTableValueClick(index, "height", val)}
+                                  style={{
+                                    padding: "8px 12px",
+                                    borderRadius: "6px",
+                                    border: item.selectedHeightTableValue === val ? "2px solid #6366f1" : "1px solid #d1d5db",
+                                    backgroundColor: item.selectedHeightTableValue === val ? "#eef2ff" : "white",
+                                    color: item.selectedHeightTableValue === val ? "#6366f1" : "#374151",
+                              cursor: "pointer",
+                                    fontSize: "13px",
+                                    fontWeight: item.selectedHeightTableValue === val ? "600" : "400",
+                              transition: "all 0.2s",
+                                  }}
+                                  onMouseOver={(e) => {
+                                    if (item.selectedHeightTableValue !== val) {
+                                      e.target.style.borderColor = "#6366f1";
+                                      e.target.style.backgroundColor = "#f3f4f6";
+                                    }
+                                  }}
+                                  onMouseOut={(e) => {
+                                    if (item.selectedHeightTableValue !== val) {
+                                      e.target.style.borderColor = "#d1d5db";
+                                      e.target.style.backgroundColor = "white";
+                                    }
+                                  }}
+                                >
+                                  {val}
+                                </button>
+                              ))}
+                        </div>
+                          </div>
+                          <div>
+                            <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "13px" }}>
+                              Width Table Values (Click to select)
+                            </label>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                              {generateTableValues(item.widthTableNumber || 6).map((val) => (
+                                <button
+                                  key={val}
+                                  type="button"
+                                  onClick={() => handleTableValueClick(index, "width", val)}
+                                  style={{
+                                    padding: "8px 12px",
+                                    borderRadius: "6px",
+                                    border: item.selectedWidthTableValue === val ? "2px solid #6366f1" : "1px solid #d1d5db",
+                                    backgroundColor: item.selectedWidthTableValue === val ? "#eef2ff" : "white",
+                                    color: item.selectedWidthTableValue === val ? "#6366f1" : "#374151",
+                                    cursor: "pointer",
+                                    fontSize: "13px",
+                                    fontWeight: item.selectedWidthTableValue === val ? "600" : "400",
+                                    transition: "all 0.2s",
+                                  }}
+                                  onMouseOver={(e) => {
+                                    if (item.selectedWidthTableValue !== val) {
+                                      e.target.style.borderColor = "#6366f1";
+                                      e.target.style.backgroundColor = "#f3f4f6";
+                                    }
+                                  }}
+                                  onMouseOut={(e) => {
+                                    if (item.selectedWidthTableValue !== val) {
+                                      e.target.style.borderColor = "#d1d5db";
+                                      e.target.style.backgroundColor = "white";
+                                    }
+                                  }}
+                                >
+                                  {val}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       <div>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
@@ -1384,34 +1776,246 @@ function QuotationManagement() {
                         />
                         <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>💰 Price per square foot</p>
                       </div>
-                      <div>
-                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
-                          Design (Optional)
+                      {/* Polish Type Selection */}
+                      <div style={{ gridColumn: isMobile ? "1" : "1 / -1", marginTop: "10px", marginBottom: "10px" }}>
+                        <label style={{ display: "block", marginBottom: "10px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                          Polish Type
                         </label>
-                        <select
-                          value={item.design || ""}
-                          onChange={(e) => handleItemChange(index, "design", e.target.value)}
+                        <div style={{ display: "flex", gap: "20px" }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                            <input
+                              type="radio"
+                              name={`polish-${index}`}
+                              value="Hash-Polish"
+                              checked={item.polish === "Hash-Polish"}
+                              onChange={(e) => handleItemChange(index, "polish", e.target.value)}
+                              style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                            />
+                            <span style={{ color: "#374151", fontSize: "14px" }}>Hash-Polish</span>
+                          </label>
+                          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                            <input
+                              type="radio"
+                              name={`polish-${index}`}
+                              value="CNC Polish"
+                              checked={item.polish === "CNC Polish"}
+                              onChange={(e) => handleItemChange(index, "polish", e.target.value)}
+                              style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                            />
+                            <span style={{ color: "#374151", fontSize: "14px" }}>CNC Polish</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Polish Selection Section */}
+                      {item.selectedHeightTableValue && item.selectedWidthTableValue && (
+                        <div style={{ gridColumn: isMobile ? "1" : "1 / -1", marginTop: "15px", marginBottom: "15px" }}>
+                          <h4 style={{ color: "#374151", fontSize: "14px", fontWeight: "600", marginBottom: "15px" }}>
+                            Polish Selection
+                          </h4>
+                          
+                          {/* Rate Configuration */}
+                          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: "15px", marginBottom: "15px" }}>
+                      <div>
+                              <label style={{ display: "block", marginBottom: "5px", color: "#374151", fontWeight: "500", fontSize: "13px" }}>
+                                P Rate (₹)
+                        </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.polishRates?.P || 15}
+                                onChange={(e) => {
+                                  const newItems = [...formData.items];
+                                  newItems[index].polishRates = {
+                                    ...newItems[index].polishRates,
+                                    P: parseFloat(e.target.value) || 15,
+                                  };
+                                  setFormData({ ...formData, items: newItems });
+                                }}
                           style={{
                             width: "100%",
-                            padding: "12px",
-                            borderRadius: "8px",
+                                  padding: "8px",
+                                  borderRadius: "6px",
                             border: "1px solid #d1d5db",
-                            fontSize: "14px",
-                            backgroundColor: "#fff",
-                            cursor: "pointer",
-                            transition: "all 0.2s",
-                            boxSizing: "border-box",
-                          }}
-                          onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                          onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                        >
-                          <option value="">Select Design</option>
-                          <option value="POLISH">1. Polish</option>
-                          <option value="BEVELING">2. Beveling</option>
-                          <option value="HALF_ROUND">3. Half Round</option>
-                        </select>
-                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>✨ Select glass edge design type</p>
+                                  fontSize: "13px",
+                                }}
+                              />
                       </div>
+                            <div>
+                              <label style={{ display: "block", marginBottom: "5px", color: "#374151", fontWeight: "500", fontSize: "13px" }}>
+                                H Rate (₹)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.polishRates?.H || 75}
+                                onChange={(e) => {
+                                  const newItems = [...formData.items];
+                                  newItems[index].polishRates = {
+                                    ...newItems[index].polishRates,
+                                    H: parseFloat(e.target.value) || 75,
+                                  };
+                                  setFormData({ ...formData, items: newItems });
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: "8px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #d1d5db",
+                                  fontSize: "13px",
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: "block", marginBottom: "5px", color: "#374151", fontWeight: "500", fontSize: "13px" }}>
+                                B Rate (₹)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.polishRates?.B || 75}
+                                onChange={(e) => {
+                                  const newItems = [...formData.items];
+                                  newItems[index].polishRates = {
+                                    ...newItems[index].polishRates,
+                                    B: parseFloat(e.target.value) || 75,
+                                  };
+                                  setFormData({ ...formData, items: newItems });
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: "8px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #d1d5db",
+                                  fontSize: "13px",
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Polish Selection Table */}
+                          {item.polishSelection && item.polishSelection.length > 0 && (
+                            <div style={{ border: "1px solid #e5e7eb", borderRadius: "8px", overflow: "hidden" }}>
+                              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                <thead>
+                                  <tr style={{ backgroundColor: "#f3f4f6" }}>
+                                    <th style={{ padding: "10px", textAlign: "left", fontSize: "12px", fontWeight: "600", color: "#374151", borderBottom: "1px solid #e5e7eb" }}>
+                                      Number
+                                    </th>
+                                    <th style={{ padding: "10px", textAlign: "center", fontSize: "12px", fontWeight: "600", color: "#374151", borderBottom: "1px solid #e5e7eb" }}>
+                                      <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", cursor: "pointer" }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={item.polishSelection.every(p => p.checked && p.type === "P")}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              handlePolishSelectAll(index, "P");
+                                            }
+                                          }}
+                                          style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                                        />
+                                        P
+                                      </label>
+                                    </th>
+                                    <th style={{ padding: "10px", textAlign: "center", fontSize: "12px", fontWeight: "600", color: "#374151", borderBottom: "1px solid #e5e7eb" }}>
+                                      <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", cursor: "pointer" }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={item.polishSelection.every(p => p.checked && p.type === "H")}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              handlePolishSelectAll(index, "H");
+                                            }
+                                          }}
+                                          style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                                        />
+                                        H
+                                      </label>
+                                    </th>
+                                    <th style={{ padding: "10px", textAlign: "center", fontSize: "12px", fontWeight: "600", color: "#374151", borderBottom: "1px solid #e5e7eb" }}>
+                                      <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "5px", cursor: "pointer" }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={item.polishSelection.every(p => p.checked && p.type === "B")}
+                                          onChange={(e) => {
+                                            if (e.target.checked) {
+                                              handlePolishSelectAll(index, "B");
+                                            }
+                                          }}
+                                          style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                                        />
+                                        B
+                                      </label>
+                                    </th>
+                                    <th style={{ padding: "10px", textAlign: "center", fontSize: "12px", fontWeight: "600", color: "#374151", borderBottom: "1px solid #e5e7eb" }}>
+                                      Rate (₹)
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {item.polishSelection.map((polish, pIndex) => (
+                                    <tr key={pIndex} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                                      <td style={{ padding: "10px", fontSize: "12px", color: "#374151" }}>
+                                        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                                          <input
+                                            type="checkbox"
+                                            checked={polish.checked || false}
+                                            onChange={(e) => handlePolishCheckboxChange(index, pIndex, e.target.checked)}
+                                            style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                                          />
+                                          {polish.side} {polish.sideNumber} ({polish.number})
+                                        </label>
+                                      </td>
+                                      <td style={{ padding: "10px", textAlign: "center" }}>
+                                        <input
+                                          type="radio"
+                                          name={`polish-type-${index}-${pIndex}`}
+                                          value="P"
+                                          checked={polish.type === "P"}
+                                          onChange={() => handlePolishTypeChange(index, pIndex, "P")}
+                                          disabled={!polish.checked}
+                                          style={{ width: "16px", height: "16px", cursor: polish.checked ? "pointer" : "not-allowed" }}
+                                        />
+                                      </td>
+                                      <td style={{ padding: "10px", textAlign: "center" }}>
+                                        <input
+                                          type="radio"
+                                          name={`polish-type-${index}-${pIndex}`}
+                                          value="H"
+                                          checked={polish.type === "H"}
+                                          onChange={() => handlePolishTypeChange(index, pIndex, "H")}
+                                          disabled={!polish.checked}
+                                          style={{ width: "16px", height: "16px", cursor: polish.checked ? "pointer" : "not-allowed" }}
+                                        />
+                                      </td>
+                                      <td style={{ padding: "10px", textAlign: "center" }}>
+                                        <input
+                                          type="radio"
+                                          name={`polish-type-${index}-${pIndex}`}
+                                          value="B"
+                                          checked={polish.type === "B"}
+                                          onChange={() => handlePolishTypeChange(index, pIndex, "B")}
+                                          disabled={!polish.checked}
+                                          style={{ width: "16px", height: "16px", cursor: polish.checked ? "pointer" : "not-allowed" }}
+                                        />
+                                      </td>
+                                      <td style={{ padding: "10px", textAlign: "center", fontSize: "12px", color: "#6b7280" }}>
+                                        {polish.type === "P" && `₹${item.polishRates?.P || 15}`}
+                                        {polish.type === "H" && `₹${item.polishRates?.H || 75}`}
+                                        {polish.type === "B" && `₹${item.polishRates?.B || 75}`}
+                                        {!polish.type && "-"}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <div>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                           Area ({getAreaUnitLabel(item.heightUnit, item.widthUnit)}) 🔒
@@ -1423,8 +2027,8 @@ function QuotationManagement() {
                             calculateAreaInUnit(
                               item.height || 0,
                               item.width || 0,
-                              item.heightUnit || "FEET",
-                              item.widthUnit || "FEET"
+                              item.heightUnit || "INCH",
+                              item.widthUnit || "INCH"
                             ).toFixed(2) || "0.00"
                           }
                           style={{
@@ -1440,7 +2044,7 @@ function QuotationManagement() {
                           }}
                         />
                         <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>
-                          ✨ Auto-calculated in {getAreaUnitLabel(item.heightUnit, item.widthUnit)} (rate calculation uses SqFt)
+                          ✨ Auto-calculated in {getAreaUnitLabel(item.heightUnit || "INCH", item.widthUnit || "INCH")} (rate calculation uses SqFt)
                         </p>
                       </div>
                       <div>
@@ -1452,8 +2056,8 @@ function QuotationManagement() {
                           readOnly
                           value={
                             (
-                              convertToFeet(item.height || 0, item.heightUnit || "FEET") *
-                              convertToFeet(item.width || 0, item.widthUnit || "FEET") *
+                              convertToFeet(item.height || 0, item.heightUnit || "INCH") *
+                              convertToFeet(item.width || 0, item.widthUnit || "INCH") *
                               (parseFloat(item.ratePerSqft) || 0) *
                               (parseInt(item.quantity) || 0)
                             ).toFixed(2)
@@ -2090,6 +2694,34 @@ function QuotationManagement() {
                 </div>
               </div>
 
+              {/* Rejection Reason Input */}
+              {confirmAction.type === "REJECT" && (
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                    Rejection Reason * <span style={{ color: "#ef4444" }}>●</span>
+                  </label>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="Please provide a reason for rejecting this quotation..."
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      borderRadius: "8px",
+                      border: "1px solid #d1d5db",
+                      fontSize: "14px",
+                      minHeight: "100px",
+                      resize: "vertical",
+                      fontFamily: "inherit",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
+                    onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+                  />
+                </div>
+              )}
+
               <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: "12px" }}>
                 <button
                   onClick={() => {
@@ -2146,7 +2778,10 @@ function QuotationManagement() {
                     : "🗑️ Yes, Delete"}
                 </button>
                 <button
-                  onClick={() => setConfirmAction(null)}
+                  onClick={() => {
+                    setConfirmAction(null);
+                    setRejectionReason("");
+                  }}
                   style={{
                     flex: 1,
                     padding: "12px 24px",

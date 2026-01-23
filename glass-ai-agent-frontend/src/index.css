@@ -25,6 +25,8 @@ code {
 } */
 
 /* Import Design System */
+@import './styles/premium-design-system.css';
+@import './styles/premium-animations.css';
 @import './styles/design-system.css';
 @import './styles/responsive.css';
 @import './styles/responsive-mobile.css';

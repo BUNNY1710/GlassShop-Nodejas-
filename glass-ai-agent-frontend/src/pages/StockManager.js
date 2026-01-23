@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import PageWrapper from "../components/PageWrapper";
-import { Card, Button, Input, Select } from "../components/ui";
+import { Card, Button, Input, Select, PageHeader } from "../components/ui";
 import api from "../api/api";
 import ConfirmModal from "../components/ConfirmModal";
 import "../styles/design-system.css";
@@ -116,12 +116,13 @@ function StockManager() {
     <PageWrapper>
       <div style={getContainerStyle(isMobile)}>
         {/* Header Section */}
-        <div style={headerSection}>
-          <div>
-            <h1 style={pageTitle}>Manage Stock</h1>
-            <p style={pageSubtitle}>Add or remove stock from your inventory</p>
-          </div>
-        </div>
+        <PageHeader
+          icon="➕"
+          title="Manage Stock"
+          subtitle="Add or remove stock from your inventory"
+          breadcrumbs={["Dashboard", "Stock Management", "Manage Stock"]}
+          isMobile={isMobile}
+        />
 
         {/* Main Form Card */}
         <Card style={getFormCardStyle(isMobile)}>
