@@ -18,6 +18,141 @@ const parsePolishData = (description) => {
 };
 
 /**
+ * Helper function to format glass type with MM suffix
+ */
+const formatGlassType = (glassType) => {
+  if (!glassType) return '';
+  const trimmed = glassType.trim();
+  // If it's just a number, add MM
+  if (/^\d+$/.test(trimmed)) {
+    return trimmed + 'MM';
+  }
+  // If it's a number followed by "mm" (case insensitive), convert to "MM"
+  const numberMmMatch = trimmed.match(/^(\d+)\s*mm$/i);
+  if (numberMmMatch) {
+    return numberMmMatch[1] + 'MM';
+  }
+  // If it already has "MM", return as is
+  if (trimmed.toUpperCase().endsWith('MM')) {
+    return trimmed;
+  }
+  // Otherwise, if it starts with a number, add MM
+  const numberStartMatch = trimmed.match(/^(\d+)/);
+  if (numberStartMatch && !trimmed.toUpperCase().includes('MM')) {
+    return trimmed + 'MM';
+  }
+  return trimmed;
+};
+
+/**
+ * Helper function to convert value to feet based on unit
+ */
+const convertToFeet = (value, unit) => {
+  if (!value || value === 0) return 0;
+  const numValue = parseFloat(value) || 0;
+  if (unit === 'FEET') return numValue;
+  if (unit === 'INCH') return numValue / 12;
+  if (unit === 'MM') return numValue / 304.8;
+  return numValue; // Default assume feet
+};
+
+/**
+ * Helper function to get Running Ft from item
+ * Formula: 
+ * 1. Group sides by polish type (P, H, B)
+ * 2. For each group, sum the side lengths, convert to feet, multiply by polish rate
+ * 3. Sum all groups
+ * 4. Multiply by quantity
+ */
+const getRunningFt = (item) => {
+  // First check if runningFt is directly on the item
+  if (item.runningFt !== undefined && item.runningFt !== null) {
+    return parseFloat(item.runningFt) || 0;
+  }
+  
+  // Otherwise, calculate from polish data
+  const polishData = parsePolishData(item.description);
+  if (polishData && polishData.runningFt !== undefined) {
+    return parseFloat(polishData.runningFt) || 0;
+  }
+  
+  // Calculate from polish selection if available - use table values instead of input height/width
+  if (polishData && polishData.polishSelection && polishData.selectedHeightTableValue && polishData.selectedWidthTableValue) {
+    // Get height and width units (default to FEET if not available)
+    const heightUnit = item.heightUnit || 'FEET';
+    const widthUnit = item.widthUnit || 'FEET';
+    
+    // Use table values instead of input height/width
+    const heightTableValue = parseFloat(polishData.selectedHeightTableValue) || 0;
+    const widthTableValue = parseFloat(polishData.selectedWidthTableValue) || 0;
+    
+    // Convert table values to feet
+    const heightInFeet = convertToFeet(heightTableValue, heightUnit);
+    const widthInFeet = convertToFeet(widthTableValue, widthUnit);
+    
+    // Group sides by polish type
+    const polishGroups = {
+      'P': { sides: [], rate: polishData.polishRates?.P || 15 },
+      'H': { sides: [], rate: polishData.polishRates?.H || 75 },
+      'B': { sides: [], rate: polishData.polishRates?.B || 75 }
+    };
+    
+    // Process each polish selection row and group by type
+    if (polishData.polishSelection && polishData.polishSelection.length >= 4) {
+      // Height 1 (index 0)
+      if (polishData.polishSelection[0].checked && polishData.polishSelection[0].type) {
+        const type = polishData.polishSelection[0].type;
+        if (polishGroups[type]) {
+          polishGroups[type].sides.push(heightInFeet);
+        }
+      }
+      
+      // Width 1 (index 1)
+      if (polishData.polishSelection[1].checked && polishData.polishSelection[1].type) {
+        const type = polishData.polishSelection[1].type;
+        if (polishGroups[type]) {
+          polishGroups[type].sides.push(widthInFeet);
+        }
+      }
+      
+      // Height 2 (index 2)
+      if (polishData.polishSelection[2].checked && polishData.polishSelection[2].type) {
+        const type = polishData.polishSelection[2].type;
+        if (polishGroups[type]) {
+          polishGroups[type].sides.push(heightInFeet);
+        }
+      }
+      
+      // Width 2 (index 3)
+      if (polishData.polishSelection[3].checked && polishData.polishSelection[3].type) {
+        const type = polishData.polishSelection[3].type;
+        if (polishGroups[type]) {
+          polishGroups[type].sides.push(widthInFeet);
+        }
+      }
+    }
+    
+    // Calculate for each polish type group
+    let totalRunningFt = 0;
+    Object.keys(polishGroups).forEach(type => {
+      const group = polishGroups[type];
+      if (group.sides.length > 0) {
+        // Sum all sides in this group
+        const totalLengthInFeet = group.sides.reduce((sum, side) => sum + side, 0);
+        // Multiply by polish rate for this type
+        totalRunningFt += totalLengthInFeet * group.rate;
+      }
+    });
+    
+    // Multiply by quantity (NO Rate per SqFt multiplication)
+    const quantity = parseInt(item.quantity) || 1;
+    return totalRunningFt * quantity;
+  }
+  
+  return 0;
+};
+
+/**
  * Generate PDF for Quotation/Cutting-Pad
  */
 const generateQuotationPdf = async (quotationId, userId) => {
@@ -127,7 +262,7 @@ const generateQuotationPdf = async (quotationId, userId) => {
 
       doc.fontSize(9).font('Helvetica');
       doc.text((index + 1).toString(), 50, currentY);
-      doc.text(item.glassType || '', 80, currentY);
+      doc.text(formatGlassType(item.glassType || ''), 80, currentY);
       doc.text(`${item.height} x ${item.width}`, 180, currentY);
       doc.text(item.quantity.toString(), 280, currentY);
       doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), 320, currentY);
@@ -292,7 +427,7 @@ const generateCuttingPadPrintPdf = async (quotationId, userId) => {
 
       doc.fontSize(9).font('Helvetica');
       doc.text((index + 1).toString(), 40, currentY);
-      doc.text(item.glassType || '', 70, currentY, { width: 140 });
+      doc.text(formatGlassType(item.glassType || ''), 70, currentY, { width: 140 });
       
       // Use original fraction string if available and not in MM mode
       const polishData = parsePolishData(item.description);
@@ -496,9 +631,10 @@ const generateInvoicePdf = async (invoiceId, userId) => {
   doc.text('Sr.', 50, tableTop + 6);
   doc.text('Item', 80, tableTop + 6);
   doc.text('Size', 200, tableTop + 6);
-  doc.text('Qty', 350, tableTop + 6);
-  doc.text('Rate', 400, tableTop + 6);
-  doc.text('Amount', 480, tableTop + 6);
+  doc.text('Qty', 320, tableTop + 6);
+  doc.text('Rate', 360, tableTop + 6);
+  doc.text('Running Ft', 420, tableTop + 6);
+  doc.text('Amount', 500, tableTop + 6);
   
   doc.fillColor('black');
   let currentY = tableTop + 25;
@@ -521,11 +657,12 @@ const generateInvoicePdf = async (invoiceId, userId) => {
 
       doc.fontSize(9).font('Helvetica');
       doc.text((index + 1).toString(), 50, currentY);
-      doc.text(item.glassType || '', 80, currentY, { width: 110 });
-      doc.text(`${item.height} x ${item.width} ft`, 200, currentY, { width: 140 });
-      doc.text(item.quantity.toString(), 350, currentY);
-      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), 400, currentY);
-      doc.text('₹' + parseFloat(item.subtotal || 0).toFixed(2), 480, currentY);
+      doc.text(formatGlassType(item.glassType || ''), 80, currentY, { width: 110 });
+      doc.text(`${item.height} x ${item.width} ft`, 200, currentY, { width: 110 });
+      doc.text(item.quantity.toString(), 320, currentY);
+      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), 360, currentY);
+      doc.text('₹' + getRunningFt(item).toFixed(2), 420, currentY);
+      doc.text('₹' + parseFloat(item.subtotal || 0).toFixed(2), 500, currentY);
       currentY += 20; // Increased spacing
     });
   }
@@ -686,9 +823,10 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
   doc.text('Sr.', 50, tableTop + 6);
   doc.text('Item', 80, tableTop + 6);
   doc.text('Size', 200, tableTop + 6);
-  doc.text('Qty', 350, tableTop + 6);
-  doc.text('Rate', 400, tableTop + 6);
-  doc.text('Amount', 480, tableTop + 6);
+  doc.text('Qty', 320, tableTop + 6);
+  doc.text('Rate', 360, tableTop + 6);
+  doc.text('Running Ft', 420, tableTop + 6);
+  doc.text('Amount', 500, tableTop + 6);
   
   doc.fillColor('black');
   let currentY = tableTop + 25;
@@ -711,11 +849,12 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
 
       doc.fontSize(9).font('Helvetica');
       doc.text((index + 1).toString(), 50, currentY);
-      doc.text(item.glassType || '', 80, currentY, { width: 110 });
-      doc.text(`${item.height} x ${item.width} ft`, 200, currentY, { width: 140 });
-      doc.text(item.quantity.toString(), 350, currentY);
-      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), 400, currentY);
-      doc.text('₹' + parseFloat(item.subtotal || 0).toFixed(2), 480, currentY);
+      doc.text(formatGlassType(item.glassType || ''), 80, currentY, { width: 110 });
+      doc.text(`${item.height} x ${item.width} ft`, 200, currentY, { width: 110 });
+      doc.text(item.quantity.toString(), 320, currentY);
+      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), 360, currentY);
+      doc.text('₹' + getRunningFt(item).toFixed(2), 420, currentY);
+      doc.text('₹' + parseFloat(item.subtotal || 0).toFixed(2), 500, currentY);
       currentY += 20; // Increased spacing to prevent overlap
     });
   }
@@ -891,7 +1030,8 @@ const generateChallanPdf = async (invoiceId, userId) => {
       doc.text((index + 1).toString(), 30, y);
       
       // Description (glass type and thickness)
-      const desc = item.thickness ? `${item.thickness} (${item.thickness}mm)` : (item.glassType || '');
+      const glassTypeFormatted = formatGlassType(item.glassType || '');
+      const desc = item.thickness ? `${item.thickness} (${item.thickness}mm)` : glassTypeFormatted;
       doc.text(desc, 60, y, { width: 130 });
       
       // Size - use original fraction if available
