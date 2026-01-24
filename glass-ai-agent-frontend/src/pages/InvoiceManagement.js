@@ -1256,7 +1256,7 @@ function InvoiceManagement() {
                       onMouseOver={(e) => (e.target.style.backgroundColor = "#7c3aed")}
                       onMouseOut={(e) => (e.target.style.backgroundColor = "#8b5cf6")}
                     >
-                      📋 Download Basic Bill
+                      📋 Download Estimate
                     </button>
                     <button
                       onClick={async () => {
@@ -1291,7 +1291,7 @@ function InvoiceManagement() {
                       onMouseOver={(e) => (e.target.style.backgroundColor = "#9333ea")}
                       onMouseOut={(e) => (e.target.style.backgroundColor = "#a855f7")}
                     >
-                      🖨️ Print Basic Bill
+                      🖨️ Print Estimate
                     </button>
                     <button
                       onClick={async () => {

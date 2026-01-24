@@ -56,13 +56,31 @@ function QuotationManagement() {
         thickness: "",
         height: "",
         width: "",
-        heightUnit: "FEET",
-        widthUnit: "FEET",
+        heightUnit: "INCH",
+        widthUnit: "INCH",
         quantity: 1,
         ratePerSqft: "",
         design: "",
         hsnCode: "",
         description: "",
+        // New fields for quotation features
+        sizeInMM: false, // Toggle for MM/INCH mode
+        heightUnit: "INCH", // Default to INCH
+        widthUnit: "INCH", // Default to INCH
+        heightTableNumber: 6, // Default table number for height
+        widthTableNumber: 6, // Default table number for width
+        selectedHeightTableValue: null, // Selected value from height table
+        selectedWidthTableValue: null, // Selected value from width table
+        polishSelection: [
+          { side: "Height 1", checked: false, type: null, rate: 0 },
+          { side: "Width 1", checked: false, type: null, rate: 0 },
+          { side: "Height 2", checked: false, type: null, rate: 0 },
+          { side: "Width 2", checked: false, type: null, rate: 0 },
+        ],
+        polishRates: { P: 15, H: 75, B: 75 }, // Default rates
+        polish: "", // Hash-Polish or CNC Polish (per item)
+        heightOriginal: "", // Store original fraction string
+        widthOriginal: "", // Store original fraction string
       },
     ],
   });
@@ -116,13 +134,29 @@ function QuotationManagement() {
           thickness: "",
           height: "",
           width: "",
-          heightUnit: "FEET",
-          widthUnit: "FEET",
+          heightUnit: "INCH",
+          widthUnit: "INCH",
           quantity: 1,
           ratePerSqft: "",
           design: "",
           hsnCode: "",
           description: "",
+          // New fields for quotation features
+          sizeInMM: false,
+          heightTableNumber: 6,
+          widthTableNumber: 6,
+          selectedHeightTableValue: null,
+          selectedWidthTableValue: null,
+          polishSelection: [
+            { side: "Height 1", checked: false, type: null, rate: 0 },
+            { side: "Width 1", checked: false, type: null, rate: 0 },
+            { side: "Height 2", checked: false, type: null, rate: 0 },
+            { side: "Width 2", checked: false, type: null, rate: 0 },
+          ],
+          polishRates: { P: 15, H: 75, B: 75 },
+          polish: "",
+          heightOriginal: "",
+          widthOriginal: "",
         },
       ],
     });
@@ -196,40 +230,289 @@ function QuotationManagement() {
     }
   };
 
+  // ==================== QUOTATION FEATURE HELPER FUNCTIONS ====================
+  
+  /**
+   * Parse fraction input to decimal
+   * Supports: "9 1/2", "9-1/2", "1/2", "9.5", "9"
+   */
+  const parseFraction = (input) => {
+    if (!input || input === "") return 0;
+    
+    // Remove whitespace
+    const cleaned = input.trim();
+    
+    // Handle decimal format
+    if (/^\d+\.?\d*$/.test(cleaned)) {
+      return parseFloat(cleaned) || 0;
+    }
+    
+    // Handle fraction formats: "9 1/2", "9-1/2", "1/2"
+    const fractionMatch = cleaned.match(/^(\d+)?[\s-]?(\d+)\/(\d+)$/);
+    if (fractionMatch) {
+      const whole = fractionMatch[1] ? parseFloat(fractionMatch[1]) : 0;
+      const numerator = parseFloat(fractionMatch[2]);
+      const denominator = parseFloat(fractionMatch[3]);
+      if (denominator === 0) return 0;
+      return whole + (numerator / denominator);
+    }
+    
+    // Try to parse as regular number
+    const num = parseFloat(cleaned);
+    return isNaN(num) ? 0 : num;
+  };
+
+  /**
+   * Generate table values based on table number
+   * Table 1: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+   * Table 2: [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
+   * Table 6: [6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72]
+   */
+  const generateTableValues = (tableNumber) => {
+    const num = parseInt(tableNumber) || 6;
+    const values = [];
+    for (let i = 1; i <= 12; i++) {
+      values.push(num * i);
+    }
+    return values;
+  };
+
+  /**
+   * Find exact match or next value greater than input
+   */
+  const findNextTableValue = (input, tableNumber) => {
+    if (!input || input === "") return null;
+    
+    const decimalValue = typeof input === 'string' ? parseFraction(input) : parseFloat(input);
+    if (isNaN(decimalValue)) return null;
+    
+    const tableValues = generateTableValues(tableNumber);
+    
+    // Find exact match
+    const exactMatch = tableValues.find(v => Math.abs(v - decimalValue) < 0.01);
+    if (exactMatch !== undefined) return exactMatch;
+    
+    // Find next value greater than input
+    const nextValue = tableValues.find(v => v > decimalValue);
+    return nextValue !== undefined ? nextValue : tableValues[tableValues.length - 1];
+  };
+
   const handleItemChange = (index, field, value) => {
     const newItems = [...formData.items];
-    newItems[index][field] = value;
+    const item = newItems[index];
+    
+    // Handle sizeInMM toggle - switch units
+    if (field === "sizeInMM") {
+      item.sizeInMM = value;
+      if (value) {
+        // Switch to MM mode
+        item.heightUnit = "MM";
+        item.widthUnit = "MM";
+      } else {
+        // Switch to INCH mode
+        item.heightUnit = "INCH";
+        item.widthUnit = "INCH";
+      }
+    } else {
+      item[field] = value;
+    }
+
+    // Handle height/width input - parse fraction and auto-select table value
+    if (field === "height" || field === "width") {
+      // Store original input string (for fraction display in PDFs)
+      if (field === "height") {
+        item.heightOriginal = value;
+      } else if (field === "width") {
+        item.widthOriginal = value;
+      }
+      
+      // Parse fraction input
+      const decimalValue = parseFraction(value);
+      
+      // Auto-select table value
+      if (field === "height" && decimalValue > 0) {
+        const tableValue = findNextTableValue(decimalValue, item.heightTableNumber || 6);
+        item.selectedHeightTableValue = tableValue;
+        // Update polish selection row labels
+        updatePolishSelectionNumbers(item);
+      } else if (field === "width" && decimalValue > 0) {
+        const tableValue = findNextTableValue(decimalValue, item.widthTableNumber || 6);
+        item.selectedWidthTableValue = tableValue;
+        // Update polish selection row labels
+        updatePolishSelectionNumbers(item);
+      }
+    }
+
+    // Handle table number change - recalculate selected values
+    if (field === "heightTableNumber") {
+      const tableValue = findNextTableValue(item.height || 0, value);
+      item.selectedHeightTableValue = tableValue;
+      updatePolishSelectionNumbers(item);
+    }
+    if (field === "widthTableNumber") {
+      const tableValue = findNextTableValue(item.width || 0, value);
+      item.selectedWidthTableValue = tableValue;
+      updatePolishSelectionNumbers(item);
+    }
 
     // Auto-calculate area and subtotal
-    if (field === "height" || field === "width" || field === "heightUnit" || field === "widthUnit") {
+    if (field === "height" || field === "width" || field === "heightUnit" || field === "widthUnit" || field === "sizeInMM" || field === "heightTableNumber" || field === "widthTableNumber") {
       // Calculate area in the input unit for display
+      const heightValue = parseFraction(item.height || 0);
+      const widthValue = parseFraction(item.width || 0);
       const areaInUnit = calculateAreaInUnit(
-        newItems[index].height,
-        newItems[index].width,
-        newItems[index].heightUnit || "FEET",
-        newItems[index].widthUnit || "FEET"
+        heightValue,
+        widthValue,
+        item.heightUnit || "FEET",
+        item.widthUnit || "FEET"
       );
-      newItems[index].area = areaInUnit;
+      item.area = areaInUnit;
       
       // For subtotal calculation, we need area in feet (since rate is per SqFt)
-      const heightInFeet = convertToFeet(newItems[index].height || 0, newItems[index].heightUnit || "FEET");
-      const widthInFeet = convertToFeet(newItems[index].width || 0, newItems[index].widthUnit || "FEET");
+      const heightInFeet = convertToFeet(heightValue, item.heightUnit || "FEET");
+      const widthInFeet = convertToFeet(widthValue, item.widthUnit || "FEET");
       const areaInFeet = heightInFeet * widthInFeet;
-      const rate = parseFloat(newItems[index].ratePerSqft) || 0;
-      const qty = parseInt(newItems[index].quantity) || 0;
-      newItems[index].subtotal = areaInFeet * rate * qty;
+      const rate = parseFloat(item.ratePerSqft) || 0;
+      const qty = parseInt(item.quantity) || 0;
+      item.subtotal = areaInFeet * rate * qty;
     }
 
     if (field === "ratePerSqft" || field === "quantity") {
       // Recalculate subtotal when rate or quantity changes
-      const heightInFeet = convertToFeet(newItems[index].height || 0, newItems[index].heightUnit || "FEET");
-      const widthInFeet = convertToFeet(newItems[index].width || 0, newItems[index].widthUnit || "FEET");
+      const heightValue = parseFraction(item.height || 0);
+      const widthValue = parseFraction(item.width || 0);
+      const heightInFeet = convertToFeet(heightValue, item.heightUnit || "FEET");
+      const widthInFeet = convertToFeet(widthValue, item.widthUnit || "FEET");
       const areaInFeet = heightInFeet * widthInFeet;
-      const rate = parseFloat(newItems[index].ratePerSqft) || 0;
-      const qty = parseInt(newItems[index].quantity) || 0;
-      newItems[index].subtotal = areaInFeet * rate * qty;
+      const rate = parseFloat(item.ratePerSqft) || 0;
+      const qty = parseInt(item.quantity) || 0;
+      item.subtotal = areaInFeet * rate * qty;
     }
 
+    setFormData({ ...formData, items: newItems });
+  };
+
+  /**
+   * Update polish selection row numbers based on table values
+   */
+  const updatePolishSelectionNumbers = (item) => {
+    const heightValue = item.selectedHeightTableValue || parseFraction(item.height || 0);
+    const widthValue = item.selectedWidthTableValue || parseFraction(item.width || 0);
+    
+    if (item.polishSelection && item.polishSelection.length >= 4) {
+      item.polishSelection[0].side = `Height 1 (${heightValue})`;
+      item.polishSelection[1].side = `Width 1 (${widthValue})`;
+      item.polishSelection[2].side = `Height 2 (${heightValue})`;
+      item.polishSelection[3].side = `Width 2 (${widthValue})`;
+    }
+  };
+
+  /**
+   * Handle polish selection checkbox change
+   */
+  const handlePolishCheckboxChange = (itemIndex, rowIndex, checked) => {
+    const newItems = [...formData.items];
+    const item = newItems[itemIndex];
+    
+    if (!item.polishSelection) {
+      item.polishSelection = [
+        { side: "Height 1", checked: false, type: null, rate: 0 },
+        { side: "Width 1", checked: false, type: null, rate: 0 },
+        { side: "Height 2", checked: false, type: null, rate: 0 },
+        { side: "Width 2", checked: false, type: null, rate: 0 },
+      ];
+    }
+    
+    item.polishSelection[rowIndex].checked = checked;
+    if (!checked) {
+      item.polishSelection[rowIndex].type = null;
+      item.polishSelection[rowIndex].rate = 0;
+    }
+    
+    setFormData({ ...formData, items: newItems });
+  };
+
+  /**
+   * Handle polish type radio button change
+   */
+  const handlePolishTypeChange = (itemIndex, rowIndex, type) => {
+    const newItems = [...formData.items];
+    const item = newItems[itemIndex];
+    
+    if (!item.polishSelection) return;
+    if (!item.polishRates) item.polishRates = { P: 15, H: 75, B: 75 };
+    
+    item.polishSelection[rowIndex].type = type;
+    item.polishSelection[rowIndex].rate = item.polishRates[type] || 0;
+    
+    setFormData({ ...formData, items: newItems });
+  };
+
+  /**
+   * Handle polish rate change
+   */
+  const handlePolishRateChange = (itemIndex, type, rate) => {
+    const newItems = [...formData.items];
+    const item = newItems[itemIndex];
+    
+    if (!item.polishRates) item.polishRates = { P: 15, H: 75, B: 75 };
+    
+    // Allow string values during typing, parse to number on blur
+    if (typeof rate === 'string' && rate !== '') {
+      item.polishRates[type] = rate; // Store as string during typing
+    } else {
+      item.polishRates[type] = parseFloat(rate) || 0;
+    }
+    
+    // Update rates for all selected rows with this type (only if it's a number)
+    if (item.polishSelection && typeof rate !== 'string') {
+      const numRate = parseFloat(rate) || 0;
+      item.polishSelection.forEach((row) => {
+        if (row.type === type && row.checked) {
+          row.rate = numRate;
+        }
+      });
+    }
+    
+    setFormData({ ...formData, items: newItems });
+  };
+
+  /**
+   * Handle "Select All" checkbox for polish type columns
+   */
+  const handlePolishSelectAll = (itemIndex, type, checked) => {
+    const newItems = [...formData.items];
+    const item = newItems[itemIndex];
+    
+    if (!item.polishSelection) {
+      item.polishSelection = [
+        { side: "Height 1", checked: false, type: null, rate: 0 },
+        { side: "Width 1", checked: false, type: null, rate: 0 },
+        { side: "Height 2", checked: false, type: null, rate: 0 },
+        { side: "Width 2", checked: false, type: null, rate: 0 },
+      ];
+    }
+    
+    if (!item.polishRates) item.polishRates = { P: 15, H: 75, B: 75 };
+    
+    // If checking "Select All", check all rows and set the type
+    if (checked) {
+      item.polishSelection.forEach((row) => {
+        row.checked = true;
+        row.type = type;
+        row.rate = item.polishRates[type] || 0;
+      });
+    } else {
+      // If unchecking "Select All", uncheck all rows with this type
+      item.polishSelection.forEach((row) => {
+        if (row.type === type) {
+          row.checked = false;
+          row.type = null;
+          row.rate = 0;
+        }
+      });
+    }
+    
     setFormData({ ...formData, items: newItems });
   };
 
@@ -282,30 +565,67 @@ function QuotationManagement() {
         customerId: finalCustomerId,
         transportationRequired: formData.transportationRequired || false,
         items: formData.items.map((item) => {
+          // Parse height/width (handle fractions)
+          const heightValue = parseFraction(item.height || 0);
+          const widthValue = parseFraction(item.width || 0);
+          
           // Calculate area in the input unit for storage
           const areaInUnit = calculateAreaInUnit(
-            item.height,
-            item.width,
+            heightValue,
+            widthValue,
             item.heightUnit || "FEET",
             item.widthUnit || "FEET"
           );
           
           // Convert to feet for rate calculation (rate is per SqFt)
-          const heightInFeet = convertToFeet(item.height, item.heightUnit || "FEET");
-          const widthInFeet = convertToFeet(item.width, item.widthUnit || "FEET");
+          const heightInFeet = convertToFeet(heightValue, item.heightUnit || "FEET");
+          const widthInFeet = convertToFeet(widthValue, item.widthUnit || "FEET");
           const areaInFeet = heightInFeet * widthInFeet;
           const subtotal = areaInFeet * parseFloat(item.ratePerSqft || 0) * parseInt(item.quantity || 1);
 
+          // Build polish selection JSON for description
+          const polishData = {
+            heightTableNumber: item.heightTableNumber || 6,
+            widthTableNumber: item.widthTableNumber || 6,
+            selectedHeightTableValue: item.selectedHeightTableValue,
+            selectedWidthTableValue: item.selectedWidthTableValue,
+            polishSelection: item.polishSelection || [],
+            polishRates: item.polishRates || { P: 15, H: 75, B: 75 },
+            itemPolish: item.polish || "", // Hash-Polish or CNC Polish
+            heightOriginal: item.heightOriginal || item.height || "",
+            widthOriginal: item.widthOriginal || item.width || "",
+            sizeInMM: item.sizeInMM || false,
+          };
+          
+          // Combine existing description with polish data JSON
+          const descriptionParts = [];
+          if (item.description) {
+            descriptionParts.push(item.description);
+          }
+          descriptionParts.push(`POLISH_DATA:${JSON.stringify(polishData)}`);
+
           return {
             ...item,
-            height: parseFloat(item.height),
-            width: parseFloat(item.width),
+            height: heightValue,
+            width: widthValue,
             quantity: parseInt(item.quantity),
             ratePerSqft: parseFloat(item.ratePerSqft),
             area: areaInFeet, // Store area in feet for backend (since rate is per SqFt)
             subtotal: subtotal,
             heightUnit: item.heightUnit || "FEET",
             widthUnit: item.widthUnit || "FEET",
+            description: descriptionParts.join('\n'),
+            // Remove temporary fields before sending
+            sizeInMM: undefined,
+            heightTableNumber: undefined,
+            widthTableNumber: undefined,
+            selectedHeightTableValue: undefined,
+            selectedWidthTableValue: undefined,
+            polishSelection: undefined,
+            polishRates: undefined,
+            polish: undefined,
+            heightOriginal: undefined,
+            widthOriginal: undefined,
           };
         }),
       };
@@ -395,13 +715,29 @@ function QuotationManagement() {
           thickness: "",
           height: "",
           width: "",
-          heightUnit: "FEET",
-          widthUnit: "FEET",
+          heightUnit: "INCH",
+          widthUnit: "INCH",
           quantity: 1,
           ratePerSqft: "",
           design: "",
           hsnCode: "",
           description: "",
+          // New fields for quotation features
+          sizeInMM: false,
+          heightTableNumber: 6,
+          widthTableNumber: 6,
+          selectedHeightTableValue: null,
+          selectedWidthTableValue: null,
+          polishSelection: [
+            { side: "Height 1", checked: false, type: null, rate: 0 },
+            { side: "Width 1", checked: false, type: null, rate: 0 },
+            { side: "Height 2", checked: false, type: null, rate: 0 },
+            { side: "Width 2", checked: false, type: null, rate: 0 },
+          ],
+          polishRates: { P: 15, H: 75, B: 75 },
+          polish: "",
+          heightOriginal: "",
+          widthOriginal: "",
         },
       ],
     });
@@ -1238,19 +1574,30 @@ function QuotationManagement() {
                           onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                         />
                       </div>
+                      {/* Size Input with MM/INCH Toggle */}
+                      <div style={{ gridColumn: isMobile ? "1" : "1 / -1", marginBottom: "10px" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={item.sizeInMM || false}
+                            onChange={(e) => handleItemChange(index, "sizeInMM", e.target.checked)}
+                            style={{ cursor: "pointer", width: "18px", height: "18px" }}
+                          />
+                          <span style={{ color: "#374151", fontWeight: "500", fontSize: "14px" }}>Size in mm</span>
+                        </label>
+                      </div>
+                      
                       <div>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                           Height * <span style={{ color: "#ef4444" }}>●</span>
                         </label>
                         <div style={{ display: "flex", gap: "10px" }}>
                           <input
-                            type="number"
+                            type="text"
                             required
-                            min="0"
-                            step="0.01"
-                            value={item.height}
+                            value={item.height || ""}
                             onChange={(e) => handleItemChange(index, "height", e.target.value)}
-                            placeholder="e.g., 6.5"
+                            placeholder={item.sizeInMM ? "e.g., 3000 (mm)" : "e.g., 9 or 9 1/2 (inch)"}
                             style={{
                               flex: 1,
                               padding: "12px",
@@ -1263,28 +1610,24 @@ function QuotationManagement() {
                             onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                             onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                           />
-                          <select
-                            value={item.heightUnit || "FEET"}
-                            onChange={(e) => handleItemChange(index, "heightUnit", e.target.value)}
-                            style={{
+                          <div style={{
                               padding: "12px",
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
                               fontSize: "14px",
-                              backgroundColor: "#fff",
-                              cursor: "pointer",
-                              transition: "all 0.2s",
+                              backgroundColor: "#f3f4f6",
+                              color: "#6b7280",
                               minWidth: "100px",
-                            }}
-                            onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                            onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                          >
-                            <option value="MM">MM</option>
-                            <option value="INCH">Inch</option>
-                            <option value="FEET">Feet</option>
-                          </select>
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}>
+                            {item.sizeInMM ? "MM" : "INCH"}
+                          </div>
                         </div>
-                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>📏 Height measurement</p>
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>
+                          {item.sizeInMM ? "📏 Height in millimeters" : "📏 Height in inches (supports fractions: 9 1/2, 9-1/2)"}
+                        </p>
                       </div>
                       <div>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
@@ -1292,13 +1635,11 @@ function QuotationManagement() {
                         </label>
                         <div style={{ display: "flex", gap: "10px" }}>
                           <input
-                            type="number"
+                            type="text"
                             required
-                            min="0"
-                            step="0.01"
-                            value={item.width}
+                            value={item.width || ""}
                             onChange={(e) => handleItemChange(index, "width", e.target.value)}
-                            placeholder="e.g., 4.0"
+                            placeholder={item.sizeInMM ? "e.g., 2000 (mm)" : "e.g., 6 or 6 1/2 (inch)"}
                             style={{
                               flex: 1,
                               padding: "12px",
@@ -1311,30 +1652,587 @@ function QuotationManagement() {
                             onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                             onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                           />
-                          <select
-                            value={item.widthUnit || "FEET"}
-                            onChange={(e) => handleItemChange(index, "widthUnit", e.target.value)}
-                            style={{
+                          <div style={{
                               padding: "12px",
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
                               fontSize: "14px",
-                              backgroundColor: "#fff",
-                              cursor: "pointer",
-                              transition: "all 0.2s",
+                              backgroundColor: "#f3f4f6",
+                              color: "#6b7280",
                               minWidth: "100px",
-                            }}
-                            onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                            onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                          >
-                            <option value="MM">MM</option>
-                            <option value="INCH">Inch</option>
-                            <option value="FEET">Feet</option>
-                          </select>
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}>
+                            {item.sizeInMM ? "MM" : "INCH"}
+                          </div>
                         </div>
-                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>📏 Width measurement</p>
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>
+                          {item.sizeInMM ? "📏 Width in millimeters" : "📏 Width in inches (supports fractions: 6 1/2, 6-1/2)"}
+                        </p>
                       </div>
-                      <div>
+                      {/* Table Selection Section */}
+                      <div style={{ gridColumn: isMobile ? "1" : "1 / -1", marginTop: "20px", marginBottom: "20px" }}>
+                        <h4 style={{ color: "#374151", fontSize: "16px", fontWeight: "600", marginBottom: "15px" }}>
+                          📊 Table Selection
+                        </h4>
+                        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "20px" }}>
+                          {/* Height Table */}
+                          <div style={{
+                            border: "2px solid #e5e7eb",
+                            borderRadius: "8px",
+                            padding: "15px",
+                            backgroundColor: "#fafafa",
+                          }}>
+                            <label style={{ display: "block", marginBottom: "10px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                              Height Table
+                            </label>
+                            <div style={{ display: "flex", gap: "10px", marginBottom: "15px", alignItems: "center" }}>
+                              <label style={{ fontSize: "13px", color: "#6b7280" }}>Table:</label>
+                              <input
+                                type="text"
+                                value={String(item.heightTableNumber || 6)}
+                                onChange={(e) => {
+                                  const inputVal = e.target.value;
+                                  // Allow empty string for deletion
+                                  if (inputVal === "") {
+                                    handleItemChange(index, "heightTableNumber", "");
+                                    return;
+                                  }
+                                  // Only allow digits, max 2 digits
+                                  const digitsOnly = inputVal.replace(/[^0-9]/g, '');
+                                  if (digitsOnly.length <= 2) {
+                                    handleItemChange(index, "heightTableNumber", digitsOnly);
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const inputVal = e.target.value;
+                                  if (!inputVal || inputVal === "") {
+                                    handleItemChange(index, "heightTableNumber", 6);
+                                    return;
+                                  }
+                                  const num = parseInt(inputVal);
+                                  if (isNaN(num) || num < 1) {
+                                    handleItemChange(index, "heightTableNumber", 1);
+                                  } else if (num > 12) {
+                                    handleItemChange(index, "heightTableNumber", 12);
+                                  } else {
+                                    handleItemChange(index, "heightTableNumber", num);
+                                  }
+                                }}
+                                style={{
+                                  width: "60px",
+                                  padding: "8px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #d1d5db",
+                                  fontSize: "14px",
+                                  textAlign: "center",
+                                }}
+                              />
+                            </div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                              {generateTableValues(item.heightTableNumber || 6).map((val) => (
+                                <button
+                                  key={val}
+                                  type="button"
+                                  onClick={() => {
+                                    const newItems = [...formData.items];
+                                    newItems[index].selectedHeightTableValue = val;
+                                    updatePolishSelectionNumbers(newItems[index]);
+                                    setFormData({ ...formData, items: newItems });
+                                  }}
+                                  style={{
+                                    padding: "8px 12px",
+                                    borderRadius: "6px",
+                                    border: "2px solid",
+                                    borderColor: item.selectedHeightTableValue === val ? "#6366f1" : "#d1d5db",
+                                    backgroundColor: item.selectedHeightTableValue === val ? "#eef2ff" : "white",
+                                    color: item.selectedHeightTableValue === val ? "#6366f1" : "#374151",
+                                    fontWeight: item.selectedHeightTableValue === val ? "600" : "400",
+                                    cursor: "pointer",
+                                    fontSize: "13px",
+                                    transition: "all 0.2s",
+                                  }}
+                                  onMouseOver={(e) => {
+                                    if (item.selectedHeightTableValue !== val) {
+                                      e.target.style.borderColor = "#6366f1";
+                                      e.target.style.backgroundColor = "#f3f4f6";
+                                    }
+                                  }}
+                                  onMouseOut={(e) => {
+                                    if (item.selectedHeightTableValue !== val) {
+                                      e.target.style.borderColor = "#d1d5db";
+                                      e.target.style.backgroundColor = "white";
+                                    }
+                                  }}
+                                >
+                                  {val}
+                                </button>
+                              ))}
+                            </div>
+                            {item.selectedHeightTableValue && (
+                              <p style={{ marginTop: "10px", fontSize: "12px", color: "#6366f1", fontWeight: "500" }}>
+                                Selected: {item.selectedHeightTableValue}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Width Table */}
+                          <div style={{
+                            border: "2px solid #e5e7eb",
+                            borderRadius: "8px",
+                            padding: "15px",
+                            backgroundColor: "#fafafa",
+                          }}>
+                            <label style={{ display: "block", marginBottom: "10px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                              Width Table
+                            </label>
+                            <div style={{ display: "flex", gap: "10px", marginBottom: "15px", alignItems: "center" }}>
+                              <label style={{ fontSize: "13px", color: "#6b7280" }}>Table:</label>
+                              <input
+                                type="text"
+                                value={String(item.widthTableNumber || 6)}
+                                onChange={(e) => {
+                                  const inputVal = e.target.value;
+                                  // Allow empty string for deletion
+                                  if (inputVal === "") {
+                                    handleItemChange(index, "widthTableNumber", "");
+                                    return;
+                                  }
+                                  // Only allow digits, max 2 digits
+                                  const digitsOnly = inputVal.replace(/[^0-9]/g, '');
+                                  if (digitsOnly.length <= 2) {
+                                    handleItemChange(index, "widthTableNumber", digitsOnly);
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const inputVal = e.target.value;
+                                  if (!inputVal || inputVal === "") {
+                                    handleItemChange(index, "widthTableNumber", 6);
+                                    return;
+                                  }
+                                  const num = parseInt(inputVal);
+                                  if (isNaN(num) || num < 1) {
+                                    handleItemChange(index, "widthTableNumber", 1);
+                                  } else if (num > 12) {
+                                    handleItemChange(index, "widthTableNumber", 12);
+                                  } else {
+                                    handleItemChange(index, "widthTableNumber", num);
+                                  }
+                                }}
+                                style={{
+                                  width: "60px",
+                                  padding: "8px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #d1d5db",
+                                  fontSize: "14px",
+                                  textAlign: "center",
+                                }}
+                              />
+                            </div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                              {generateTableValues(item.widthTableNumber || 6).map((val) => (
+                                <button
+                                  key={val}
+                                  type="button"
+                                  onClick={() => {
+                                    const newItems = [...formData.items];
+                                    newItems[index].selectedWidthTableValue = val;
+                                    updatePolishSelectionNumbers(newItems[index]);
+                                    setFormData({ ...formData, items: newItems });
+                                  }}
+                                  style={{
+                                    padding: "8px 12px",
+                                    borderRadius: "6px",
+                                    border: "2px solid",
+                                    borderColor: item.selectedWidthTableValue === val ? "#6366f1" : "#d1d5db",
+                                    backgroundColor: item.selectedWidthTableValue === val ? "#eef2ff" : "white",
+                                    color: item.selectedWidthTableValue === val ? "#6366f1" : "#374151",
+                                    fontWeight: item.selectedWidthTableValue === val ? "600" : "400",
+                                    cursor: "pointer",
+                                    fontSize: "13px",
+                                    transition: "all 0.2s",
+                                  }}
+                                  onMouseOver={(e) => {
+                                    if (item.selectedWidthTableValue !== val) {
+                                      e.target.style.borderColor = "#6366f1";
+                                      e.target.style.backgroundColor = "#f3f4f6";
+                                    }
+                                  }}
+                                  onMouseOut={(e) => {
+                                    if (item.selectedWidthTableValue !== val) {
+                                      e.target.style.borderColor = "#d1d5db";
+                                      e.target.style.backgroundColor = "white";
+                                    }
+                                  }}
+                                >
+                                  {val}
+                                </button>
+                              ))}
+                            </div>
+                            {item.selectedWidthTableValue && (
+                              <p style={{ marginTop: "10px", fontSize: "12px", color: "#6366f1", fontWeight: "500" }}>
+                                Selected: {item.selectedWidthTableValue}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+
+                      {/* Polish Type Section */}
+                      <div style={{ gridColumn: isMobile ? "1" : "1 / -1", marginTop: "20px", marginBottom: "15px" }}>
+                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                          Polish Type (Optional)
+                        </label>
+                        <div style={{
+                          display: "flex",
+                          gap: "20px",
+                          padding: "12px",
+                          borderRadius: "8px",
+                          border: "1px solid #d1d5db",
+                          backgroundColor: "#f9fafb",
+                        }}>
+                          <label style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            cursor: "pointer",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            backgroundColor: item.polish === "Hash-Polish" ? "#eef2ff" : "transparent",
+                            border: item.polish === "Hash-Polish" ? "2px solid #6366f1" : "2px solid transparent",
+                            transition: "all 0.2s",
+                            flex: 1,
+                          }}>
+                            <input
+                              type="radio"
+                              name={`polish-type-${index}`}
+                              value="Hash-Polish"
+                              checked={item.polish === "Hash-Polish"}
+                              onChange={(e) => handleItemChange(index, "polish", e.target.value)}
+                              style={{ cursor: "pointer" }}
+                            />
+                            <span style={{ fontWeight: item.polish === "Hash-Polish" ? "600" : "400", color: "#374151" }}>Hash-Polish</span>
+                          </label>
+                          <label style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            cursor: "pointer",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            backgroundColor: item.polish === "CNC Polish" ? "#eef2ff" : "transparent",
+                            border: item.polish === "CNC Polish" ? "2px solid #6366f1" : "2px solid transparent",
+                            transition: "all 0.2s",
+                            flex: 1,
+                          }}>
+                            <input
+                              type="radio"
+                              name={`polish-type-${index}`}
+                              value="CNC Polish"
+                              checked={item.polish === "CNC Polish"}
+                              onChange={(e) => handleItemChange(index, "polish", e.target.value)}
+                              style={{ cursor: "pointer" }}
+                            />
+                            <span style={{ fontWeight: item.polish === "CNC Polish" ? "600" : "400", color: "#374151" }}>CNC Polish</span>
+                          </label>
+                        </div>
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>✨ Select the type of polish for this item</p>
+                      </div>
+
+                      {/* Polish Selection Section */}
+                      <div style={{ gridColumn: isMobile ? "1" : "1 / -1", marginTop: "20px", marginBottom: "20px" }}>
+                        <h4 style={{ color: "#374151", fontSize: "16px", fontWeight: "600", marginBottom: "15px" }}>
+                          ✨ Polish Selection
+                        </h4>
+                        
+                        {/* Rate Configuration */}
+                        <div style={{
+                          border: "2px solid #e5e7eb",
+                          borderRadius: "8px",
+                          padding: "15px",
+                          marginBottom: "15px",
+                          backgroundColor: "#fafafa",
+                        }}>
+                          <label style={{ display: "block", marginBottom: "10px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                            Rate/Rft Configuration
+                          </label>
+                          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: "15px" }}>
+                            <div>
+                              <label style={{ display: "block", marginBottom: "5px", fontSize: "13px", color: "#6b7280" }}>P (Polish)</label>
+                              <input
+                                type="text"
+                                value={item.polishRates?.P || 15}
+                                onChange={(e) => {
+                                  const inputVal = e.target.value;
+                                  // Allow empty string for deletion
+                                  if (inputVal === "") {
+                                    handlePolishRateChange(index, "P", "");
+                                    return;
+                                  }
+                                  // Allow digits and decimal point
+                                  const validInput = inputVal.replace(/[^0-9.]/g, '');
+                                  // Ensure only one decimal point
+                                  const parts = validInput.split('.');
+                                  if (parts.length > 2) {
+                                    handlePolishRateChange(index, "P", parts[0] + '.' + parts.slice(1).join(''));
+                                  } else {
+                                    handlePolishRateChange(index, "P", validInput);
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const inputVal = e.target.value;
+                                  if (!inputVal || inputVal === "") {
+                                    handlePolishRateChange(index, "P", 15);
+                                  } else {
+                                    const num = parseFloat(inputVal);
+                                    if (isNaN(num) || num < 0) {
+                                      handlePolishRateChange(index, "P", 0);
+                                    } else {
+                                      handlePolishRateChange(index, "P", num);
+                                    }
+                                  }
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: "8px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #d1d5db",
+                                  fontSize: "14px",
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: "block", marginBottom: "5px", fontSize: "13px", color: "#6b7280" }}>H (Half-round)</label>
+                              <input
+                                type="text"
+                                value={item.polishRates?.H || 75}
+                                onChange={(e) => {
+                                  const inputVal = e.target.value;
+                                  // Allow empty string for deletion
+                                  if (inputVal === "") {
+                                    handlePolishRateChange(index, "H", "");
+                                    return;
+                                  }
+                                  // Allow digits and decimal point
+                                  const validInput = inputVal.replace(/[^0-9.]/g, '');
+                                  // Ensure only one decimal point
+                                  const parts = validInput.split('.');
+                                  if (parts.length > 2) {
+                                    handlePolishRateChange(index, "H", parts[0] + '.' + parts.slice(1).join(''));
+                                  } else {
+                                    handlePolishRateChange(index, "H", validInput);
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const inputVal = e.target.value;
+                                  if (!inputVal || inputVal === "") {
+                                    handlePolishRateChange(index, "H", 75);
+                                  } else {
+                                    const num = parseFloat(inputVal);
+                                    if (isNaN(num) || num < 0) {
+                                      handlePolishRateChange(index, "H", 0);
+                                    } else {
+                                      handlePolishRateChange(index, "H", num);
+                                    }
+                                  }
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: "8px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #d1d5db",
+                                  fontSize: "14px",
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: "block", marginBottom: "5px", fontSize: "13px", color: "#6b7280" }}>B (Beveling)</label>
+                              <input
+                                type="text"
+                                value={item.polishRates?.B || 75}
+                                onChange={(e) => {
+                                  const inputVal = e.target.value;
+                                  // Allow empty string for deletion
+                                  if (inputVal === "") {
+                                    handlePolishRateChange(index, "B", "");
+                                    return;
+                                  }
+                                  // Allow digits and decimal point
+                                  const validInput = inputVal.replace(/[^0-9.]/g, '');
+                                  // Ensure only one decimal point
+                                  const parts = validInput.split('.');
+                                  if (parts.length > 2) {
+                                    handlePolishRateChange(index, "B", parts[0] + '.' + parts.slice(1).join(''));
+                                  } else {
+                                    handlePolishRateChange(index, "B", validInput);
+                                  }
+                                }}
+                                onBlur={(e) => {
+                                  const inputVal = e.target.value;
+                                  if (!inputVal || inputVal === "") {
+                                    handlePolishRateChange(index, "B", 75);
+                                  } else {
+                                    const num = parseFloat(inputVal);
+                                    if (isNaN(num) || num < 0) {
+                                      handlePolishRateChange(index, "B", 0);
+                                    } else {
+                                      handlePolishRateChange(index, "B", num);
+                                    }
+                                  }
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: "8px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #d1d5db",
+                                  fontSize: "14px",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Polish Selection Table */}
+                        <div style={{
+                          border: "2px solid #e5e7eb",
+                          borderRadius: "8px",
+                          padding: "15px",
+                          backgroundColor: "#fafafa",
+                        }}>
+                          <div style={{ overflowX: "auto" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                              <thead>
+                                <tr style={{ borderBottom: "2px solid #e5e7eb" }}>
+                                  <th style={{ padding: "10px", textAlign: "left", fontSize: "13px", fontWeight: "600", color: "#374151" }}>
+                                    <label style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px", cursor: "pointer" }}>
+                                      <span>Side</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={item.polishSelection?.every(row => row.checked) || false}
+                                        onChange={(e) => {
+                                          const newItems = [...formData.items];
+                                          const item = newItems[index];
+                                          if (!item.polishSelection) {
+                                            item.polishSelection = [
+                                              { side: "Height 1", checked: false, type: null, rate: 0 },
+                                              { side: "Width 1", checked: false, type: null, rate: 0 },
+                                              { side: "Height 2", checked: false, type: null, rate: 0 },
+                                              { side: "Width 2", checked: false, type: null, rate: 0 },
+                                            ];
+                                          }
+                                          item.polishSelection.forEach((row) => {
+                                            row.checked = e.target.checked;
+                                            if (!e.target.checked) {
+                                              row.type = null;
+                                              row.rate = 0;
+                                            }
+                                          });
+                                          setFormData({ ...formData, items: newItems });
+                                        }}
+                                        style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                                      />
+                                    </label>
+                                  </th>
+                                  <th style={{ padding: "10px", textAlign: "center", fontSize: "13px", fontWeight: "600", color: "#374151" }}>
+                                    <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", cursor: "pointer" }}>
+                                      <span>P</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={item.polishSelection?.every(row => row.checked && row.type === "P") || false}
+                                        onChange={(e) => handlePolishSelectAll(index, "P", e.target.checked)}
+                                        style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                                      />
+                                    </label>
+                                  </th>
+                                  <th style={{ padding: "10px", textAlign: "center", fontSize: "13px", fontWeight: "600", color: "#374151" }}>
+                                    <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", cursor: "pointer" }}>
+                                      <span>H</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={item.polishSelection?.every(row => row.checked && row.type === "H") || false}
+                                        onChange={(e) => handlePolishSelectAll(index, "H", e.target.checked)}
+                                        style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                                      />
+                                    </label>
+                                  </th>
+                                  <th style={{ padding: "10px", textAlign: "center", fontSize: "13px", fontWeight: "600", color: "#374151" }}>
+                                    <label style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px", cursor: "pointer" }}>
+                                      <span>B</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={item.polishSelection?.every(row => row.checked && row.type === "B") || false}
+                                        onChange={(e) => handlePolishSelectAll(index, "B", e.target.checked)}
+                                        style={{ cursor: "pointer", width: "16px", height: "16px" }}
+                                      />
+                                    </label>
+                                  </th>
+                                  <th style={{ padding: "10px", textAlign: "right", fontSize: "13px", fontWeight: "600", color: "#374151" }}>Rate</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(item.polishSelection || [
+                                  { side: "Height 1", checked: false, type: null, rate: 0 },
+                                  { side: "Width 1", checked: false, type: null, rate: 0 },
+                                  { side: "Height 2", checked: false, type: null, rate: 0 },
+                                  { side: "Width 2", checked: false, type: null, rate: 0 },
+                                ]).map((row, rowIndex) => (
+                                  <tr key={rowIndex} style={{ borderBottom: "1px solid #e5e7eb" }}>
+                                    <td style={{ padding: "10px" }}>
+                                      <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                                        <input
+                                          type="checkbox"
+                                          checked={row.checked || false}
+                                          onChange={(e) => handlePolishCheckboxChange(index, rowIndex, e.target.checked)}
+                                          style={{ cursor: "pointer", width: "18px", height: "18px" }}
+                                        />
+                                        <span style={{ fontSize: "13px", color: "#374151" }}>{row.side}</span>
+                                      </label>
+                                    </td>
+                                    <td style={{ padding: "10px", textAlign: "center" }}>
+                                      <input
+                                        type="radio"
+                                        name={`polish-${index}-${rowIndex}`}
+                                        checked={row.type === "P"}
+                                        onChange={() => handlePolishTypeChange(index, rowIndex, "P")}
+                                        disabled={!row.checked}
+                                        style={{ cursor: row.checked ? "pointer" : "not-allowed", width: "18px", height: "18px" }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: "10px", textAlign: "center" }}>
+                                      <input
+                                        type="radio"
+                                        name={`polish-${index}-${rowIndex}`}
+                                        checked={row.type === "H"}
+                                        onChange={() => handlePolishTypeChange(index, rowIndex, "H")}
+                                        disabled={!row.checked}
+                                        style={{ cursor: row.checked ? "pointer" : "not-allowed", width: "18px", height: "18px" }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: "10px", textAlign: "center" }}>
+                                      <input
+                                        type="radio"
+                                        name={`polish-${index}-${rowIndex}`}
+                                        checked={row.type === "B"}
+                                        onChange={() => handlePolishTypeChange(index, rowIndex, "B")}
+                                        disabled={!row.checked}
+                                        style={{ cursor: row.checked ? "pointer" : "not-allowed", width: "18px", height: "18px" }}
+                                      />
+                                    </td>
+                                    <td style={{ padding: "10px", textAlign: "right", fontSize: "13px", color: "#6b7280" }}>
+                                      {row.checked && row.type ? `₹${row.rate || 0}` : "-"}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Quantity and Rate per SqFt - Below Polish Section */}
+                      <div style={{ gridColumn: isMobile ? "1" : "1 / 2", marginTop: "20px" }}>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                           Quantity * <span style={{ color: "#ef4444" }}>●</span>
                         </label>
@@ -1358,7 +2256,7 @@ function QuotationManagement() {
                         />
                         <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>🔢 Number of pieces</p>
                       </div>
-                      <div>
+                      <div style={{ gridColumn: isMobile ? "1" : "2 / 3", marginTop: "20px" }}>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                           Rate per SqFt (₹) * <span style={{ color: "#ef4444" }}>●</span>
                         </label>
@@ -1384,34 +2282,7 @@ function QuotationManagement() {
                         />
                         <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>💰 Price per square foot</p>
                       </div>
-                      <div>
-                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
-                          Design (Optional)
-                        </label>
-                        <select
-                          value={item.design || ""}
-                          onChange={(e) => handleItemChange(index, "design", e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "12px",
-                            borderRadius: "8px",
-                            border: "1px solid #d1d5db",
-                            fontSize: "14px",
-                            backgroundColor: "#fff",
-                            cursor: "pointer",
-                            transition: "all 0.2s",
-                            boxSizing: "border-box",
-                          }}
-                          onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                          onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                        >
-                          <option value="">Select Design</option>
-                          <option value="POLISH">1. Polish</option>
-                          <option value="BEVELING">2. Beveling</option>
-                          <option value="HALF_ROUND">3. Half Round</option>
-                        </select>
-                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>✨ Select glass edge design type</p>
-                      </div>
+
                       <div>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                           Area ({getAreaUnitLabel(item.heightUnit, item.widthUnit)}) 🔒
