@@ -110,6 +110,59 @@ function AuditLogs() {
   const [error, setError] = useState("");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
+  // Helper function to format timestamp in IST (Indian Standard Time)
+  const formatIST = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    try {
+      // Ensure timestamp is a valid date
+      const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid Date';
+      }
+      
+      // Use Intl.DateTimeFormat to format in IST timezone
+      const formatter = new Intl.DateTimeFormat('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      
+      const parts = formatter.formatToParts(date);
+      const day = parts.find(p => p.type === 'day').value;
+      const month = parts.find(p => p.type === 'month').value;
+      const year = parts.find(p => p.type === 'year').value;
+      const hour = parts.find(p => p.type === 'hour').value;
+      const minute = parts.find(p => p.type === 'minute').value;
+      const second = parts.find(p => p.type === 'second').value;
+      
+      return `${day}/${month}/${year}, ${hour}:${minute}:${second} IST`;
+    } catch (error) {
+      console.error('Error formatting timestamp:', error, timestamp);
+      // Fallback to simple format if Intl API fails
+      try {
+        return new Date(timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
+      } catch (e) {
+        return 'Invalid Date';
+      }
+    }
+  };
+
+  // Helper function to format size with dimensions and unit
+  const formatSize = (log) => {
+    if (!log.height || !log.width) {
+      return 'N/A';
+    }
+    const unit = log.unit || 'MM';
+    return `${log.height} × ${log.width} ${unit}`;
+  };
+
   useEffect(() => {
     api.get("/audit/recent")
       .then(res => setLogs(res.data))
@@ -179,14 +232,14 @@ function AuditLogs() {
                       </span>
                     </td>
                     <td>{log.glassType}</td>
-                    <td>{log.height} × {log.width} {log.unit}</td>
+                    <td>{formatSize(log)}</td>
                     <td>{log.quantity}</td>
                     <td>
                       {log.action === "TRANSFER"
                         ? `${log.fromStand} → ${log.toStand}`
                         : log.standNo}
                     </td>
-                    <td>{new Date(log.timestamp).toLocaleString()}</td>
+                    <td>{formatIST(log.timestamp)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -213,7 +266,7 @@ function AuditLogs() {
                 </div>
 
                 <div style={row}><span>Glass</span><span>{log.glassType}</span></div>
-                <div style={row}><span>Size</span><span>{log.height} × {log.width} {log.unit}</span></div>
+                <div style={row}><span>Size</span><span>{formatSize(log)}</span></div>
                 <div style={row}><span>Qty</span><span>{log.quantity}</span></div>
                 <div style={row}><span>Stand</span>
                   <span>
@@ -224,7 +277,7 @@ function AuditLogs() {
                 </div>
 
                 <div style={time}>
-                  🕒 {new Date(log.timestamp).toLocaleString()}
+                  🕒 {formatIST(log.timestamp)}
                 </div>
               </div>
             ))}

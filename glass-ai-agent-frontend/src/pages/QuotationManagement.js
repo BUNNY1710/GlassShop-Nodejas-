@@ -50,6 +50,8 @@ function QuotationManagement() {
     transportCharge: 0,
     transportationRequired: false,
     discount: 0,
+    discountType: "AMOUNT", // "AMOUNT" or "PERCENTAGE"
+    discountValue: 0,
     items: [
       {
         glassType: "",
@@ -78,7 +80,7 @@ function QuotationManagement() {
           { side: "Width 2", checked: false, type: null, rate: 0 },
         ],
         polishRates: { P: 15, H: 75, B: 75 }, // Default rates
-        polish: "", // Hash-Polish or CNC Polish (per item)
+        polish: "", // Hand-Polish or CNC Polish (per item)
         heightOriginal: "", // Store original fraction string
         widthOriginal: "", // Store original fraction string
       },
@@ -366,8 +368,8 @@ function QuotationManagement() {
     }
 
     // Auto-calculate area and subtotal
-    if (field === "height" || field === "width" || field === "heightUnit" || field === "widthUnit" || field === "sizeInMM" || field === "heightTableNumber" || field === "widthTableNumber") {
-      // Calculate area in the input unit for display
+    if (field === "height" || field === "width" || field === "heightUnit" || field === "widthUnit" || field === "sizeInMM" || field === "heightTableNumber" || field === "widthTableNumber" || field === "selectedHeightTableValue" || field === "selectedWidthTableValue") {
+      // Calculate area in the input unit for display (use input values for display)
       const heightValue = parseFraction(item.height || 0);
       const widthValue = parseFraction(item.width || 0);
       const areaInUnit = calculateAreaInUnit(
@@ -378,25 +380,47 @@ function QuotationManagement() {
       );
       item.area = areaInUnit;
       
-      // For subtotal calculation, we need area in feet (since rate is per SqFt)
-      const heightInFeet = convertToFeet(heightValue, item.heightUnit || "FEET");
-      const widthInFeet = convertToFeet(widthValue, item.widthUnit || "FEET");
+      // For subtotal calculation, use table values (same as Running Ft)
+      // Use table values if available, otherwise fallback to input values
+      const heightTableValue = item.selectedHeightTableValue ? parseFloat(item.selectedHeightTableValue) : heightValue;
+      const widthTableValue = item.selectedWidthTableValue ? parseFloat(item.selectedWidthTableValue) : widthValue;
+      
+      // Convert table values to feet
+      const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
+      const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
       const areaInFeet = heightInFeet * widthInFeet;
       const rate = parseFloat(item.ratePerSqft) || 0;
       const qty = parseInt(item.quantity) || 0;
       item.subtotal = areaInFeet * rate * qty;
+      
+      // Recalculate Running Ft (depends on height/width in feet)
+      calculateRunningFt(item);
     }
 
     if (field === "ratePerSqft" || field === "quantity") {
-      // Recalculate subtotal when rate or quantity changes
+      // Recalculate subtotal when rate or quantity changes - use table values
       const heightValue = parseFraction(item.height || 0);
       const widthValue = parseFraction(item.width || 0);
-      const heightInFeet = convertToFeet(heightValue, item.heightUnit || "FEET");
-      const widthInFeet = convertToFeet(widthValue, item.widthUnit || "FEET");
+      
+      // Use table values if available, otherwise fallback to input values
+      const heightTableValue = item.selectedHeightTableValue ? parseFloat(item.selectedHeightTableValue) : heightValue;
+      const widthTableValue = item.selectedWidthTableValue ? parseFloat(item.selectedWidthTableValue) : widthValue;
+      
+      // Convert table values to feet
+      const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
+      const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
       const areaInFeet = heightInFeet * widthInFeet;
       const rate = parseFloat(item.ratePerSqft) || 0;
       const qty = parseInt(item.quantity) || 0;
       item.subtotal = areaInFeet * rate * qty;
+      
+      // Recalculate Running Ft (quantity affects the result)
+      calculateRunningFt(item);
+    }
+    
+    // Recalculate Running Ft when polish selection changes
+    if (field === "polishSelection" || field === "polishRates" || field === "polish") {
+      calculateRunningFt(item);
     }
 
     setFormData({ ...formData, items: newItems });
@@ -439,6 +463,9 @@ function QuotationManagement() {
       item.polishSelection[rowIndex].rate = 0;
     }
     
+    // Recalculate Running Ft
+    calculateRunningFt(item);
+    
     setFormData({ ...formData, items: newItems });
   };
 
@@ -455,7 +482,93 @@ function QuotationManagement() {
     item.polishSelection[rowIndex].type = type;
     item.polishSelection[rowIndex].rate = item.polishRates[type] || 0;
     
+    // Recalculate Running Ft
+    calculateRunningFt(item);
+    
     setFormData({ ...formData, items: newItems });
+  };
+
+  /**
+   * Calculate Running Ft based on polish selection rates
+   * Formula: 
+   * 1. Use table values (selectedHeightTableValue and selectedWidthTableValue) instead of input height/width
+   * 2. Group sides by polish type (P, H, B)
+   * 3. For each group, sum the side lengths (already in correct unit from table), multiply by polish rate
+   * 4. Sum all groups
+   * 5. Multiply by quantity
+   */
+  const calculateRunningFt = (item) => {
+    if (!item.polishSelection || !item.selectedHeightTableValue || !item.selectedWidthTableValue) {
+      item.runningFt = 0;
+      return;
+    }
+    
+    // Use table values instead of input height/width
+    // Table values are already in the correct unit (they match the input unit)
+    const heightTableValue = parseFloat(item.selectedHeightTableValue) || 0;
+    const widthTableValue = parseFloat(item.selectedWidthTableValue) || 0;
+    
+    // Convert table values to feet (table values are in the same unit as input)
+    const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
+    const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
+    
+    // Group sides by polish type and calculate
+    const polishGroups = {
+      'P': { sides: [], rate: item.polishRates?.P || 15 },
+      'H': { sides: [], rate: item.polishRates?.H || 75 },
+      'B': { sides: [], rate: item.polishRates?.B || 75 }
+    };
+    
+    // Process each polish selection row and group by type
+    if (item.polishSelection && item.polishSelection.length >= 4) {
+      // Height 1 (index 0)
+      if (item.polishSelection[0].checked && item.polishSelection[0].type) {
+        const type = item.polishSelection[0].type;
+        if (polishGroups[type]) {
+          polishGroups[type].sides.push(heightInFeet);
+        }
+      }
+      
+      // Width 1 (index 1)
+      if (item.polishSelection[1].checked && item.polishSelection[1].type) {
+        const type = item.polishSelection[1].type;
+        if (polishGroups[type]) {
+          polishGroups[type].sides.push(widthInFeet);
+        }
+      }
+      
+      // Height 2 (index 2)
+      if (item.polishSelection[2].checked && item.polishSelection[2].type) {
+        const type = item.polishSelection[2].type;
+        if (polishGroups[type]) {
+          polishGroups[type].sides.push(heightInFeet);
+        }
+      }
+      
+      // Width 2 (index 3)
+      if (item.polishSelection[3].checked && item.polishSelection[3].type) {
+        const type = item.polishSelection[3].type;
+        if (polishGroups[type]) {
+          polishGroups[type].sides.push(widthInFeet);
+        }
+      }
+    }
+    
+    // Calculate for each polish type group
+    let totalRunningFt = 0;
+    Object.keys(polishGroups).forEach(type => {
+      const group = polishGroups[type];
+      if (group.sides.length > 0) {
+        // Sum all sides in this group
+        const totalLengthInFeet = group.sides.reduce((sum, side) => sum + side, 0);
+        // Multiply by polish rate for this type
+        totalRunningFt += totalLengthInFeet * group.rate;
+      }
+    });
+    
+    // Multiply by quantity (NO Rate per SqFt multiplication)
+    const quantity = parseInt(item.quantity) || 1;
+    item.runningFt = totalRunningFt * quantity;
   };
 
   /**
@@ -483,6 +596,9 @@ function QuotationManagement() {
         }
       });
     }
+    
+    // Recalculate Running Ft
+    calculateRunningFt(item);
     
     setFormData({ ...formData, items: newItems });
   };
@@ -522,6 +638,9 @@ function QuotationManagement() {
         }
       });
     }
+    
+    // Recalculate Running Ft
+    calculateRunningFt(item);
     
     setFormData({ ...formData, items: newItems });
   };
@@ -570,10 +689,40 @@ function QuotationManagement() {
     }
 
     try {
+      // Calculate subtotal from items first
+      let totalSubtotal = 0;
+      formData.items.forEach((item) => {
+        const heightValue = parseFraction(item.height || 0);
+        const widthValue = parseFraction(item.width || 0);
+        const heightTableValue = item.selectedHeightTableValue ? parseFloat(item.selectedHeightTableValue) : heightValue;
+        const widthTableValue = item.selectedWidthTableValue ? parseFloat(item.selectedWidthTableValue) : widthValue;
+        const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
+        const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
+        const areaInFeet = heightInFeet * widthInFeet;
+        const itemSubtotal = areaInFeet * parseFloat(item.ratePerSqft || 0) * parseInt(item.quantity || 1);
+        totalSubtotal += itemSubtotal;
+      });
+
+      // Calculate discount amount based on type
+      let calculatedDiscount = 0;
+      if (formData.discountValue > 0) {
+        if (formData.discountType === "PERCENTAGE") {
+          // Calculate percentage discount on subtotal + installation + transport
+          const baseAmount = totalSubtotal + (formData.installationCharge || 0) + (formData.transportCharge || 0);
+          calculatedDiscount = (baseAmount * formData.discountValue) / 100;
+        } else {
+          // Absolute amount
+          calculatedDiscount = formData.discountValue;
+        }
+      }
+
       const payload = {
         ...formData,
         customerId: finalCustomerId,
         transportationRequired: formData.transportationRequired || false,
+        discount: calculatedDiscount, // Send calculated discount amount
+        discountType: formData.discountType, // Send discount type
+        discountValue: formData.discountValue, // Send discount value
         items: formData.items.map((item) => {
           // Parse height/width (handle fractions)
           const heightValue = parseFraction(item.height || 0);
@@ -587,11 +736,84 @@ function QuotationManagement() {
             item.widthUnit || "FEET"
           );
           
-          // Convert to feet for rate calculation (rate is per SqFt)
-          const heightInFeet = convertToFeet(heightValue, item.heightUnit || "FEET");
-          const widthInFeet = convertToFeet(widthValue, item.widthUnit || "FEET");
+          // For subtotal calculation, use table values (same as Running Ft)
+          // Use table values if available, otherwise fallback to input values
+          const heightTableValue = item.selectedHeightTableValue ? parseFloat(item.selectedHeightTableValue) : heightValue;
+          const widthTableValue = item.selectedWidthTableValue ? parseFloat(item.selectedWidthTableValue) : widthValue;
+          
+          // Convert table values to feet
+          const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
+          const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
           const areaInFeet = heightInFeet * widthInFeet;
           const subtotal = areaInFeet * parseFloat(item.ratePerSqft || 0) * parseInt(item.quantity || 1);
+
+          // Calculate Running Ft: Use table values, group by polish type, sum sides, convert to ft, multiply by polish rate, sum all, then multiply by quantity
+          let runningFt = 0;
+          if (item.polishSelection && item.polishSelection.length >= 4 && item.selectedHeightTableValue && item.selectedWidthTableValue) {
+            // Use table values instead of input height/width
+            const heightTableValue = parseFloat(item.selectedHeightTableValue) || 0;
+            const widthTableValue = parseFloat(item.selectedWidthTableValue) || 0;
+            
+            // Convert table values to feet
+            const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
+            const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
+            
+            // Group sides by polish type
+            const polishGroups = {
+              'P': { sides: [], rate: item.polishRates?.P || 15 },
+              'H': { sides: [], rate: item.polishRates?.H || 75 },
+              'B': { sides: [], rate: item.polishRates?.B || 75 }
+            };
+            
+            // Process each polish selection row and group by type
+            // Height 1 (index 0)
+            if (item.polishSelection[0].checked && item.polishSelection[0].type) {
+              const type = item.polishSelection[0].type;
+              if (polishGroups[type]) {
+                polishGroups[type].sides.push(heightInFeet);
+              }
+            }
+            
+            // Width 1 (index 1)
+            if (item.polishSelection[1].checked && item.polishSelection[1].type) {
+              const type = item.polishSelection[1].type;
+              if (polishGroups[type]) {
+                polishGroups[type].sides.push(widthInFeet);
+              }
+            }
+            
+            // Height 2 (index 2)
+            if (item.polishSelection[2].checked && item.polishSelection[2].type) {
+              const type = item.polishSelection[2].type;
+              if (polishGroups[type]) {
+                polishGroups[type].sides.push(heightInFeet);
+              }
+            }
+            
+            // Width 2 (index 3)
+            if (item.polishSelection[3].checked && item.polishSelection[3].type) {
+              const type = item.polishSelection[3].type;
+              if (polishGroups[type]) {
+                polishGroups[type].sides.push(widthInFeet);
+              }
+            }
+            
+            // Calculate for each polish type group
+            let totalRunningFt = 0;
+            Object.keys(polishGroups).forEach(type => {
+              const group = polishGroups[type];
+              if (group.sides.length > 0) {
+                // Sum all sides in this group
+                const totalLengthInFeet = group.sides.reduce((sum, side) => sum + side, 0);
+                // Multiply by polish rate for this type
+                totalRunningFt += totalLengthInFeet * group.rate;
+              }
+            });
+            
+            // Multiply by quantity (NO Rate per SqFt multiplication)
+            const quantity = parseInt(item.quantity) || 1;
+            runningFt = totalRunningFt * quantity;
+          }
 
           // Build polish selection JSON for description
           const polishData = {
@@ -601,10 +823,11 @@ function QuotationManagement() {
             selectedWidthTableValue: item.selectedWidthTableValue,
             polishSelection: item.polishSelection || [],
             polishRates: item.polishRates || { P: 15, H: 75, B: 75 },
-            itemPolish: item.polish || "", // Hash-Polish or CNC Polish
+            itemPolish: item.polish || "", // Hand-Polish or CNC Polish
             heightOriginal: item.heightOriginal || item.height || "",
             widthOriginal: item.widthOriginal || item.width || "",
             sizeInMM: item.sizeInMM || false,
+            runningFt: runningFt, // Store Running Ft in polish data
           };
           
           // Combine existing description with polish data JSON
@@ -622,6 +845,7 @@ function QuotationManagement() {
             ratePerSqft: parseFloat(item.ratePerSqft),
             area: areaInFeet, // Store area in feet for backend (since rate is per SqFt)
             subtotal: subtotal,
+            runningFt: runningFt, // Store Running Ft
             heightUnit: item.heightUnit || "FEET",
             widthUnit: item.widthUnit || "FEET",
             description: descriptionParts.join('\n'),
@@ -719,6 +943,8 @@ function QuotationManagement() {
       transportCharge: 0,
       transportationRequired: false,
       discount: 0,
+      discountType: "AMOUNT",
+      discountValue: 0,
       items: [
         {
           glassType: "",
@@ -1079,7 +1305,11 @@ function QuotationManagement() {
                           onChange={(e) => setFormData({ ...formData, billingType: e.target.value })}
                           style={{ cursor: "pointer" }}
                         />
-                        <span style={{ fontWeight: formData.billingType === "GST" ? "600" : "400" }}>💰 GST</span>
+                        <span style={{ 
+                          fontWeight: formData.billingType === "GST" ? "600" : "400",
+                          color: "#1f2937",
+                          fontSize: "14px"
+                        }}>💰 GST</span>
                       </label>
                       <label
                         style={{
@@ -1102,7 +1332,11 @@ function QuotationManagement() {
                           onChange={(e) => setFormData({ ...formData, billingType: e.target.value })}
                           style={{ cursor: "pointer" }}
                         />
-                        <span style={{ fontWeight: formData.billingType === "NON_GST" ? "600" : "400" }}>💵 Non-GST</span>
+                        <span style={{ 
+                          fontWeight: formData.billingType === "NON_GST" ? "600" : "400",
+                          color: "#1f2937",
+                          fontSize: "14px"
+                        }}>💵 Non-GST</span>
                       </label>
                     </div>
                     <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>
@@ -1325,14 +1559,80 @@ function QuotationManagement() {
                   </div>
                   <div>
                     <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
-                      Discount (₹)
+                      Discount
                     </label>
+                    <div style={{ display: "flex", gap: "10px", marginBottom: "8px" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, discountType: "AMOUNT", discountValue: 0, discount: 0 });
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: "10px",
+                          backgroundColor: formData.discountType === "AMOUNT" ? "#6366f1" : "#e5e7eb",
+                          color: formData.discountType === "AMOUNT" ? "white" : "#374151",
+                          border: "none",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          fontSize: "13px",
+                          fontWeight: "500",
+                          transition: "all 0.2s",
+                        }}
+                        onMouseOver={(e) => {
+                          if (formData.discountType !== "AMOUNT") {
+                            e.target.style.backgroundColor = "#d1d5db";
+                          }
+                        }}
+                        onMouseOut={(e) => {
+                          if (formData.discountType !== "AMOUNT") {
+                            e.target.style.backgroundColor = "#e5e7eb";
+                          }
+                        }}
+                      >
+                        Amount (₹)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, discountType: "PERCENTAGE", discountValue: 0, discount: 0 });
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: "10px",
+                          backgroundColor: formData.discountType === "PERCENTAGE" ? "#6366f1" : "#e5e7eb",
+                          color: formData.discountType === "PERCENTAGE" ? "white" : "#374151",
+                          border: "none",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          fontSize: "13px",
+                          fontWeight: "500",
+                          transition: "all 0.2s",
+                        }}
+                        onMouseOver={(e) => {
+                          if (formData.discountType !== "PERCENTAGE") {
+                            e.target.style.backgroundColor = "#d1d5db";
+                          }
+                        }}
+                        onMouseOut={(e) => {
+                          if (formData.discountType !== "PERCENTAGE") {
+                            e.target.style.backgroundColor = "#e5e7eb";
+                          }
+                        }}
+                      >
+                        Percentage (%)
+                      </button>
+                    </div>
                     <input
                       type="number"
                       min="0"
-                      step="0.01"
-                      value={formData.discount === 0 ? "" : formData.discount}
-                      onChange={(e) => setFormData({ ...formData, discount: parseFloat(e.target.value) || 0 })}
+                      step={formData.discountType === "PERCENTAGE" ? "0.01" : "0.01"}
+                      max={formData.discountType === "PERCENTAGE" ? "100" : undefined}
+                      value={formData.discountValue === 0 ? "" : formData.discountValue}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        setFormData({ ...formData, discountValue: value });
+                      }}
                       onFocus={(e) => {
                         e.target.style.borderColor = "#6366f1";
                         if (e.target.value === "0" || e.target.value === "") {
@@ -1342,10 +1642,10 @@ function QuotationManagement() {
                       onBlur={(e) => {
                         e.target.style.borderColor = "#d1d5db";
                         if (e.target.value === "" || e.target.value === "0") {
-                          setFormData({ ...formData, discount: 0 });
+                          setFormData({ ...formData, discountValue: 0, discount: 0 });
                         }
                       }}
-                      placeholder="0.00"
+                      placeholder={formData.discountType === "PERCENTAGE" ? "0.00" : "0.00"}
                       style={{
                         width: "100%",
                         padding: "12px",
@@ -1356,7 +1656,11 @@ function QuotationManagement() {
                         boxSizing: "border-box",
                       }}
                     />
-                    <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>🎁 Discount amount (if any)</p>
+                    <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>
+                      🎁 {formData.discountType === "PERCENTAGE" 
+                        ? "Discount percentage (0-100%)" 
+                        : "Discount amount in ₹"}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -1467,9 +1771,35 @@ function QuotationManagement() {
                             type="text"
                             required
                             value={item.glassType}
-                            onChange={(e) => handleItemChange(index, "glassType", e.target.value)}
+                            onChange={(e) => {
+                              let inputVal = e.target.value;
+                              // If user types just a number, automatically append "MM"
+                              const numberMatch = inputVal.match(/^(\d+)$/);
+                              if (numberMatch) {
+                                inputVal = numberMatch[1] + "MM";
+                              }
+                              // If user types number followed by "mm" (lowercase), convert to "MM"
+                              const numberMmMatch = inputVal.match(/^(\d+)\s*mm$/i);
+                              if (numberMmMatch) {
+                                inputVal = numberMmMatch[1] + "MM";
+                              }
+                              handleItemChange(index, "glassType", inputVal);
+                            }}
+                            onBlur={(e) => {
+                              let inputVal = e.target.value.trim();
+                              // On blur, ensure "MM" suffix if it's just a number
+                              if (inputVal && /^\d+$/.test(inputVal)) {
+                                inputVal = inputVal + "MM";
+                                handleItemChange(index, "glassType", inputVal);
+                              }
+                              // Convert lowercase "mm" to "MM"
+                              if (inputVal && /^\d+\s*mm$/i.test(inputVal)) {
+                                const number = inputVal.match(/^(\d+)/i)[1];
+                                handleItemChange(index, "glassType", number + "MM");
+                              }
+                            }}
                             onFocus={() => setShowStockDropdown({ ...showStockDropdown, [index]: true })}
-                            placeholder="Click to select from available stock..."
+                            placeholder="e.g., 5MM or 5 (auto-converts to 5MM)"
                             style={{
                               width: "100%",
                               padding: "12px",
@@ -1517,47 +1847,65 @@ function QuotationManagement() {
                               border: "2px solid #6366f1",
                               borderRadius: "8px",
                               marginTop: "4px",
-                              maxHeight: "300px",
+                              maxHeight: "400px",
                               overflowY: "auto",
                               boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
                             }}
                           >
                             <div style={{ padding: "8px 12px", backgroundColor: "#f3f4f6", borderBottom: "1px solid #e5e7eb", fontWeight: "600", fontSize: "12px", color: "#6b7280" }}>
-                              Available Stock ({getAvailableGlassTypes().length} types)
+                              Available Stock ({allStock.filter(s => s.quantity > 0).length} items)
                             </div>
-                            {getAvailableGlassTypes().length === 0 ? (
+                            {allStock.filter(s => s.quantity > 0).length === 0 ? (
                               <div style={{ padding: "16px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>
                                 No stock available
                               </div>
                             ) : (
-                              getAvailableGlassTypes().map((glassType) => {
-                                const stockItems = getStockForGlassType(glassType);
-                                const totalQty = stockItems.reduce((sum, s) => sum + (s.quantity || 0), 0);
-                                return (
-                                  <div
-                                    key={glassType}
-                                    style={{
-                                      padding: "12px",
-                                      borderBottom: "1px solid #e5e7eb",
-                                      cursor: "pointer",
-                                      transition: "background-color 0.2s",
-                                    }}
-                                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
-                                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
-                                    onClick={() => handleGlassTypeSelect(index, glassType, stockItems[0])}
-                                  >
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                      <div>
-                                        <div style={{ fontWeight: "600", color: "#1f2937", fontSize: "14px" }}>{glassType}</div>
-                                        <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>
-                                          {stockItems.length} {stockItems.length === 1 ? "entry" : "entries"} • Total Qty: {totalQty}
+                              allStock
+                                .filter(s => s.quantity > 0)
+                                .map((stockItem, stockIndex) => {
+                                  const glassType = stockItem.glass?.type || "Unknown";
+                                  const thickness = stockItem.glass?.thickness || "";
+                                  const unit = stockItem.glass?.unit || "MM";
+                                  const size = stockItem.height && stockItem.width 
+                                    ? `${stockItem.height} × ${stockItem.width}` 
+                                    : "N/A";
+                                  return (
+                                    <div
+                                      key={`${stockItem.id}-${stockIndex}`}
+                                      style={{
+                                        padding: "12px",
+                                        borderBottom: "1px solid #e5e7eb",
+                                        cursor: "pointer",
+                                        transition: "background-color 0.2s",
+                                      }}
+                                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
+                                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
+                                      onClick={() => handleGlassTypeSelect(index, glassType, stockItem)}
+                                    >
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                                        <div style={{ flex: 1 }}>
+                                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                                            <div style={{ fontWeight: "600", color: "#1f2937", fontSize: "14px" }}>
+                                              {glassType}
+                                            </div>
+                                            {thickness && (
+                                              <span style={{ fontSize: "12px", color: "#6b7280", backgroundColor: "#e5e7eb", padding: "2px 6px", borderRadius: "4px" }}>
+                                                {thickness}{unit}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div style={{ fontSize: "12px", color: "#6b7280", display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "4px" }}>
+                                            <span>📏 Size: {size}</span>
+                                            <span>📍 Stand: {stockItem.standNo}</span>
+                                            <span>📦 Qty: {stockItem.quantity}</span>
+                                            {stockItem.hsnNo && <span>🏷️ HSN: {stockItem.hsnNo}</span>}
+                                          </div>
                                         </div>
+                                        <span style={{ fontSize: "20px", color: "#22c55e", marginLeft: "8px" }}>✓</span>
                                       </div>
-                                      <span style={{ fontSize: "20px" }}>✓</span>
                                     </div>
-                                  </div>
-                                );
-                              })
+                                  );
+                                })
                             )}
                           </div>
                         )}
@@ -1936,20 +2284,20 @@ function QuotationManagement() {
                             cursor: "pointer",
                             padding: "8px 12px",
                             borderRadius: "6px",
-                            backgroundColor: item.polish === "Hash-Polish" ? "#eef2ff" : "transparent",
-                            border: item.polish === "Hash-Polish" ? "2px solid #6366f1" : "2px solid transparent",
+                            backgroundColor: item.polish === "Hand-Polish" ? "#eef2ff" : "transparent",
+                            border: item.polish === "Hand-Polish" ? "2px solid #6366f1" : "2px solid transparent",
                             transition: "all 0.2s",
                             flex: 1,
                           }}>
                             <input
                               type="radio"
                               name={`polish-type-${index}`}
-                              value="Hash-Polish"
-                              checked={item.polish === "Hash-Polish"}
+                              value="Hand-Polish"
+                              checked={item.polish === "Hand-Polish"}
                               onChange={(e) => handleItemChange(index, "polish", e.target.value)}
                               style={{ cursor: "pointer" }}
                             />
-                            <span style={{ fontWeight: item.polish === "Hash-Polish" ? "600" : "400", color: "#374151" }}>Hash-Polish</span>
+                            <span style={{ fontWeight: item.polish === "Hand-Polish" ? "600" : "400", color: "#374151" }}>Hand-Polish</span>
                           </label>
                           <label style={{
                             display: "flex",
@@ -2373,12 +2721,21 @@ function QuotationManagement() {
                           type="number"
                           readOnly
                           value={
-                            (
-                              convertToFeet(item.height || 0, item.heightUnit || "FEET") *
-                              convertToFeet(item.width || 0, item.widthUnit || "FEET") *
-                              (parseFloat(item.ratePerSqft) || 0) *
-                              (parseInt(item.quantity) || 0)
-                            ).toFixed(2)
+                            (() => {
+                              // Use table values if available, otherwise fallback to input values
+                              const heightTableValue = item.selectedHeightTableValue ? parseFloat(item.selectedHeightTableValue) : parseFraction(item.height || 0);
+                              const widthTableValue = item.selectedWidthTableValue ? parseFloat(item.selectedWidthTableValue) : parseFraction(item.width || 0);
+                              
+                              // Convert table values to feet
+                              const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
+                              const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
+                              
+                              // Calculate subtotal: area × rate × quantity
+                              const areaInFeet = heightInFeet * widthInFeet;
+                              const rate = parseFloat(item.ratePerSqft) || 0;
+                              const qty = parseInt(item.quantity) || 0;
+                              return (areaInFeet * rate * qty).toFixed(2);
+                            })()
                           }
                           style={{
                             width: "100%",
@@ -2393,7 +2750,100 @@ function QuotationManagement() {
                             boxSizing: "border-box",
                           }}
                         />
-                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>✨ Auto-calculated</p>
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>✨ Auto-calculated: (Table height × Table width in ft) × Rate per SqFt × Quantity</p>
+                      </div>
+                      <div>
+                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                          Running Ft (₹) 🔒
+                        </label>
+                        <input
+                          type="number"
+                          readOnly
+                          value={
+                            (() => {
+                              if (!item.polishSelection || !item.selectedHeightTableValue || !item.selectedWidthTableValue) return "0.00";
+                              
+                              // Use table values instead of input height/width
+                              const heightTableValue = parseFloat(item.selectedHeightTableValue) || 0;
+                              const widthTableValue = parseFloat(item.selectedWidthTableValue) || 0;
+                              
+                              // Convert table values to feet
+                              const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
+                              const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
+                              
+                              // Group sides by polish type
+                              const polishGroups = {
+                                'P': { sides: [], rate: item.polishRates?.P || 15 },
+                                'H': { sides: [], rate: item.polishRates?.H || 75 },
+                                'B': { sides: [], rate: item.polishRates?.B || 75 }
+                              };
+                              
+                              // Process each polish selection row and group by type
+                              if (item.polishSelection && item.polishSelection.length >= 4) {
+                                // Height 1 (index 0)
+                                if (item.polishSelection[0].checked && item.polishSelection[0].type) {
+                                  const type = item.polishSelection[0].type;
+                                  if (polishGroups[type]) {
+                                    polishGroups[type].sides.push(heightInFeet);
+                                  }
+                                }
+                                
+                                // Width 1 (index 1)
+                                if (item.polishSelection[1].checked && item.polishSelection[1].type) {
+                                  const type = item.polishSelection[1].type;
+                                  if (polishGroups[type]) {
+                                    polishGroups[type].sides.push(widthInFeet);
+                                  }
+                                }
+                                
+                                // Height 2 (index 2)
+                                if (item.polishSelection[2].checked && item.polishSelection[2].type) {
+                                  const type = item.polishSelection[2].type;
+                                  if (polishGroups[type]) {
+                                    polishGroups[type].sides.push(heightInFeet);
+                                  }
+                                }
+                                
+                                // Width 2 (index 3)
+                                if (item.polishSelection[3].checked && item.polishSelection[3].type) {
+                                  const type = item.polishSelection[3].type;
+                                  if (polishGroups[type]) {
+                                    polishGroups[type].sides.push(widthInFeet);
+                                  }
+                                }
+                              }
+                              
+                              // Calculate for each polish type group
+                              let totalRunningFt = 0;
+                              Object.keys(polishGroups).forEach(type => {
+                                const group = polishGroups[type];
+                                if (group.sides.length > 0) {
+                                  // Sum all sides in this group
+                                  const totalLengthInFeet = group.sides.reduce((sum, side) => sum + side, 0);
+                                  // Multiply by polish rate for this type
+                                  totalRunningFt += totalLengthInFeet * group.rate;
+                                }
+                              });
+                              
+                              // Multiply by quantity (NO Rate per SqFt multiplication)
+                              const quantity = parseInt(item.quantity) || 1;
+                              return (totalRunningFt * quantity).toFixed(2);
+                            })()
+                          }
+                          style={{
+                            width: "100%",
+                            padding: "12px",
+                            borderRadius: "8px",
+                            border: "1px solid #d1d5db",
+                            fontSize: "14px",
+                            backgroundColor: "#e0f2fe",
+                            color: "#0c4a6e",
+                            fontWeight: "600",
+                            cursor: "not-allowed",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>✨ Auto-calculated: Group by polish type, sum sides, convert to ft, × polish rate, sum all, × Quantity</p>
                       </div>
                     </div>
 
@@ -2833,7 +3283,11 @@ function QuotationManagement() {
                   )}
                   {selectedQuotation.discount > 0 && (
                     <div>
-                      <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px" }}>Discount</div>
+                      <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px" }}>
+                        Discount {selectedQuotation.discountType === "PERCENTAGE" && selectedQuotation.discountValue 
+                          ? `(${selectedQuotation.discountValue}%)` 
+                          : ""}
+                      </div>
                       <div style={{ fontSize: "16px", color: "#78350f", fontWeight: "600" }}>₹{selectedQuotation.discount?.toFixed(2)}</div>
                     </div>
                   )}

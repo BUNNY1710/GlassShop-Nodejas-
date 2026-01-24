@@ -289,7 +289,10 @@ const generateQuotationPdf = async (quotationId, userId) => {
   }
   
   if (quotation.discount && quotation.discount > 0) {
-    doc.text('Discount: ₹' + parseFloat(quotation.discount).toFixed(2), { align: 'right' });
+    const discountLabel = quotation.discountType === 'PERCENTAGE' && quotation.discountValue
+      ? `Discount (${quotation.discountValue}%): ₹${parseFloat(quotation.discount).toFixed(2)}`
+      : `Discount: ₹${parseFloat(quotation.discount).toFixed(2)}`;
+    doc.text(discountLabel, { align: 'right' });
   }
 
   if (quotation.billingType === 'GST' && quotation.gstAmount && quotation.gstAmount > 0) {
@@ -675,9 +678,26 @@ const generateInvoicePdf = async (invoiceId, userId) => {
   
   const totalsStartY = doc.y;
   doc.fontSize(9).font('Helvetica');
-  doc.text('Subtotal:', 400, totalsStartY, { width: 100, align: 'right' });
-  doc.text('₹' + parseFloat(invoice.subtotal || 0).toFixed(2), 510, totalsStartY);
-  let totalsY = totalsStartY + 15;
+  
+  // Calculate total Running Ft from all items
+  let totalRunningFt = 0;
+  if (invoice.items && invoice.items.length > 0) {
+    totalRunningFt = invoice.items.reduce((sum, item) => {
+      return sum + getRunningFt(item);
+    }, 0);
+  }
+  
+  if (totalRunningFt > 0) {
+    doc.text('Total Running Ft:', 400, totalsStartY, { width: 100, align: 'right' });
+    doc.text('₹' + totalRunningFt.toFixed(2), 510, totalsStartY);
+    totalsY = totalsStartY + 15;
+  } else {
+    totalsY = totalsStartY;
+  }
+  
+  doc.text('Subtotal:', 400, totalsY, { width: 100, align: 'right' });
+  doc.text('₹' + parseFloat(invoice.subtotal || 0).toFixed(2), 510, totalsY);
+  totalsY += 15;
   
   if (invoice.installationCharge && invoice.installationCharge > 0) {
     doc.text('Installation:', 400, totalsY, { width: 100, align: 'right' });
@@ -867,9 +887,26 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
   
   const totalsStartY = doc.y;
   doc.fontSize(9).font('Helvetica');
-  doc.text('Subtotal:', 400, totalsStartY, { width: 100, align: 'right' });
-  doc.text('₹' + parseFloat(invoice.subtotal || 0).toFixed(2), 510, totalsStartY);
-  let totalsY = totalsStartY + 15;
+  
+  // Calculate total Running Ft from all items
+  let totalRunningFt = 0;
+  if (invoice.items && invoice.items.length > 0) {
+    totalRunningFt = invoice.items.reduce((sum, item) => {
+      return sum + getRunningFt(item);
+    }, 0);
+  }
+  
+  if (totalRunningFt > 0) {
+    doc.text('Total Running Ft:', 400, totalsStartY, { width: 100, align: 'right' });
+    doc.text('₹' + totalRunningFt.toFixed(2), 510, totalsStartY);
+    totalsY = totalsStartY + 15;
+  } else {
+    totalsY = totalsStartY;
+  }
+  
+  doc.text('Subtotal:', 400, totalsY, { width: 100, align: 'right' });
+  doc.text('₹' + parseFloat(invoice.subtotal || 0).toFixed(2), 510, totalsY);
+  totalsY += 15;
   
   if (invoice.installationCharge && invoice.installationCharge > 0) {
     doc.text('Installation:', 400, totalsY, { width: 100, align: 'right' });

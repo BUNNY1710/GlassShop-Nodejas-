@@ -150,6 +150,7 @@ router.post('/update', async (req, res) => {
       standNo: standNo,
       height: height,
       width: width,
+      unit: unit || 'MM',
       shopId: user.shopId,
       timestamp: new Date()
     });
@@ -248,6 +249,7 @@ router.post('/transfer', async (req, res) => {
       toStand: toStand,
       height: height,
       width: width,
+      unit: unit || 'MM',
       shopId: user.shopId,
       timestamp: new Date()
     });

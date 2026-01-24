@@ -139,10 +139,23 @@ The backend includes full PDF generation support:
 
 All PDF endpoints support both download and print modes.
 
+## Database Migrations
+
+If you encounter errors about missing columns (e.g., `discount_type`, `discount_value`), run the migration script:
+
+```bash
+# Option 1: Run the Node.js migration script
+node scripts/add-discount-columns.js
+
+# Option 2: Run the SQL migration directly
+psql -U postgres -d shop_class -f migrations/add_discount_fields.sql
+```
+
 ## Notes
 
 - Some AI features are simplified and may need full implementation
 - Database migrations should be set up for production deployments
+- If you add new fields to models, create corresponding migration scripts
 
 ## Converting from Spring Boot
 

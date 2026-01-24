@@ -247,16 +247,37 @@ function StockTransfer() {
         {message && (
           <div
             style={{
-              padding: "12px 16px",
-              marginBottom: "20px",
-              backgroundColor: message.includes("✅") ? "#22c55e" : message.includes("⚠️") ? "#f59e0b" : "#ef4444",
-              color: "white",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "500",
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 10000,
+              padding: isMobile ? "15px" : "20px",
             }}
+            onClick={() => setMessage("")}
           >
-            {message}
+            <div
+              style={{
+                backgroundColor: message.includes("✅") ? "#22c55e" : message.includes("⚠️") ? "#f59e0b" : "#ef4444",
+                color: "white",
+                padding: "20px 30px",
+                borderRadius: "12px",
+                fontSize: "16px",
+                fontWeight: "600",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                maxWidth: "400px",
+                width: "100%",
+                textAlign: "center",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {message}
+            </div>
           </div>
         )}
 

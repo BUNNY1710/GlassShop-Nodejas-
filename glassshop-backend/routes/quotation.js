@@ -46,6 +46,8 @@ router.post('/', async (req, res) => {
     const installationCharge = parseFloat(quotationData.installationCharge || 0);
     const transportCharge = parseFloat(quotationData.transportCharge || 0);
     const discount = parseFloat(quotationData.discount || 0);
+    const discountType = quotationData.discountType || 'AMOUNT';
+    const discountValue = parseFloat(quotationData.discountValue || 0);
     
     // Base amount after charges and discount
     const baseAmount = subtotal + installationCharge + transportCharge - discount;
@@ -88,6 +90,8 @@ router.post('/', async (req, res) => {
       installationCharge: installationCharge,
       transportCharge: transportCharge,
       discount: discount,
+      discountType: discountType,
+      discountValue: discountValue,
       gstPercentage: gstPercentage,
       gstAmount: gstAmount,
       cgst: cgst,
@@ -137,27 +141,54 @@ router.get('/', async (req, res) => {
       return res.status(404).json({ error: 'User not found or not linked to a shop' });
     }
 
-    const quotations = await Quotation.findAll({
-      where: { shopId: user.shopId },
-      include: [{ 
-        model: QuotationItem, 
-        as: 'items',
-        separate: true,
-        order: [['itemOrder', 'ASC']]
-      }],
-      order: [['createdAt', 'DESC']]
-    });
+    try {
+      const quotations = await Quotation.findAll({
+        where: { shopId: user.shopId },
+        include: [{ 
+          model: QuotationItem, 
+          as: 'items',
+          separate: true,
+          order: [['itemOrder', 'ASC']]
+        }],
+        order: [['createdAt', 'DESC']]
+      });
 
-    // Debug: Log statuses being returned
-    console.log('Quotations returned:', quotations.map(q => ({ 
-      id: q.id, 
-      number: q.quotationNumber, 
-      status: q.status 
-    })));
+      // Map quotations to ensure discountType and discountValue have defaults if missing
+      const mappedQuotations = quotations.map(q => {
+        const quotation = q.toJSON();
+        // Set defaults if columns don't exist in database
+        if (quotation.discountType === undefined || quotation.discountType === null) {
+          quotation.discountType = 'AMOUNT';
+        }
+        if (quotation.discountValue === undefined || quotation.discountValue === null) {
+          quotation.discountValue = quotation.discount || 0;
+        }
+        return quotation;
+      });
 
-    res.json(quotations);
+      // Debug: Log statuses being returned
+      console.log('Quotations returned:', mappedQuotations.map(q => ({ 
+        id: q.id, 
+        number: q.quotationNumber, 
+        status: q.status 
+      })));
+
+      res.json(mappedQuotations);
+    } catch (dbError) {
+      // Check if error is about missing columns
+      if (dbError.message && dbError.message.includes('discount_type') || dbError.message.includes('discount_value')) {
+        console.error('Database columns missing. Please run the migration script: migrations/add_discount_fields.sql');
+        console.error('Error:', dbError.message);
+        return res.status(500).json({ 
+          error: 'Database schema needs to be updated. Please run the migration script: migrations/add_discount_fields.sql',
+          details: dbError.message
+        });
+      }
+      throw dbError; // Re-throw if it's a different error
+    }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching quotations:', error);
+    res.status(500).json({ error: error.message, details: error.stack });
   }
 });
 

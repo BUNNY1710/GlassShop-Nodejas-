@@ -27,6 +27,7 @@ function CustomerManagement() {
     city: "",
     pincode: "",
   });
+  const [mobileError, setMobileError] = useState("");
 
   useEffect(() => {
     loadCustomers();
@@ -63,9 +64,57 @@ function CustomerManagement() {
     }
   };
 
+  // Validate mobile number
+  const validateMobile = (mobile) => {
+    if (!mobile || mobile.trim() === "") {
+      return ""; // Mobile is optional, so empty is valid
+    }
+    
+    // Remove spaces, dashes, and parentheses
+    const cleaned = mobile.replace(/[\s\-\(\)]/g, "");
+    
+    // Check if it starts with +91 (India country code)
+    if (cleaned.startsWith("+91")) {
+      const digits = cleaned.substring(3);
+      if (digits.length === 10 && /^\d+$/.test(digits)) {
+        return "";
+      }
+      return "Mobile number with +91 must have 10 digits after country code";
+    }
+    
+    // Check if it's just digits (10 digits for Indian numbers)
+    if (/^\d+$/.test(cleaned)) {
+      if (cleaned.length === 10) {
+        return "";
+      }
+      return "Mobile number must be exactly 10 digits";
+    }
+    
+    return "Mobile number must contain only digits (or +91 followed by 10 digits)";
+  };
+
+  // Handle mobile number input change
+  const handleMobileChange = (e) => {
+    const value = e.target.value;
+    setFormData({ ...formData, mobile: value });
+    
+    // Validate on change
+    const error = validateMobile(value);
+    setMobileError(error);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
+    setMobileError("");
+
+    // Validate mobile number before submission
+    const mobileValidationError = validateMobile(formData.mobile);
+    if (mobileValidationError) {
+      setMobileError(mobileValidationError);
+      setMessage(`❌ ${mobileValidationError}`);
+      return;
+    }
 
     try {
       if (editingCustomer) {
@@ -78,9 +127,11 @@ function CustomerManagement() {
       setShowForm(false);
       setEditingCustomer(null);
       resetForm();
+      setMobileError("");
       loadCustomers();
     } catch (error) {
-      setMessage("❌ Failed to save customer");
+      const errorMessage = error.response?.data?.error || error.message || "Failed to save customer";
+      setMessage(`❌ ${errorMessage}`);
     }
   };
 
@@ -96,6 +147,7 @@ function CustomerManagement() {
       city: customer.city || "",
       pincode: customer.pincode || "",
     });
+    setMobileError(""); // Reset error when editing
     setShowForm(true);
   };
 
@@ -110,6 +162,7 @@ function CustomerManagement() {
       city: "",
       pincode: "",
     });
+    setMobileError("");
   };
 
   const handleDelete = async (customerId) => {
@@ -324,26 +377,44 @@ function CustomerManagement() {
                   </div>
                   <div>
                     <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
-                      Mobile Number
+                      Mobile Number {formData.mobile && <span style={{ color: "#ef4444" }}>*</span>}
                     </label>
                     <input
                       type="text"
                       value={formData.mobile}
-                      onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                      placeholder="e.g., 9876543210, +91 9876543210"
+                      onChange={handleMobileChange}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = mobileError ? "#ef4444" : "#d1d5db";
+                        // Validate on blur as well
+                        const error = validateMobile(formData.mobile);
+                        setMobileError(error);
+                      }}
+                      placeholder="e.g., 9876543210 or +91 9876543210"
+                      maxLength={15}
                       style={{
                         width: "100%",
                         padding: "12px",
                         borderRadius: "8px",
-                        border: "1px solid #d1d5db",
+                        border: mobileError ? "2px solid #ef4444" : "1px solid #d1d5db",
                         fontSize: "14px",
                         transition: "all 0.2s",
                         boxSizing: "border-box",
+                        backgroundColor: mobileError ? "#fef2f2" : "white",
                       }}
-                      onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                      onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = mobileError ? "#ef4444" : "#6366f1";
+                        e.target.style.backgroundColor = mobileError ? "#fef2f2" : "white";
+                      }}
                     />
-                    <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>📱 Contact mobile number</p>
+                    {mobileError ? (
+                      <p style={{ marginTop: "5px", color: "#ef4444", fontSize: "12px", fontWeight: "500" }}>
+                        ⚠️ {mobileError}
+                      </p>
+                    ) : (
+                      <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>
+                        📱 10 digits (e.g., 9876543210) or with country code (e.g., +91 9876543210)
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>

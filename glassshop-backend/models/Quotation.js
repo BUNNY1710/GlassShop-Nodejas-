@@ -110,6 +110,18 @@ module.exports = (sequelize) => {
       allowNull: true,
       defaultValue: 0.0
     },
+    discountType: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+      defaultValue: 'AMOUNT',
+      field: 'discount_type'
+    },
+    discountValue: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      defaultValue: 0.0,
+      field: 'discount_value'
+    },
     gstPercentage: {
       type: DataTypes.DECIMAL(5, 2),
       allowNull: true,
