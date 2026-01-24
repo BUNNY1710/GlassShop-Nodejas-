@@ -345,14 +345,24 @@ function QuotationManagement() {
 
     // Handle table number change - recalculate selected values
     if (field === "heightTableNumber") {
-      const tableValue = findNextTableValue(item.height || 0, value);
-      item.selectedHeightTableValue = tableValue;
-      updatePolishSelectionNumbers(item);
+      // Store the value as-is (string during typing, number on blur)
+      // Only recalculate table value if we have a valid number
+      const numValue = typeof value === 'string' ? parseInt(value) : value;
+      if (!isNaN(numValue) && numValue > 0) {
+        const tableValue = findNextTableValue(item.height || 0, numValue);
+        item.selectedHeightTableValue = tableValue;
+        updatePolishSelectionNumbers(item);
+      }
     }
     if (field === "widthTableNumber") {
-      const tableValue = findNextTableValue(item.width || 0, value);
-      item.selectedWidthTableValue = tableValue;
-      updatePolishSelectionNumbers(item);
+      // Store the value as-is (string during typing, number on blur)
+      // Only recalculate table value if we have a valid number
+      const numValue = typeof value === 'string' ? parseInt(value) : value;
+      if (!isNaN(numValue) && numValue > 0) {
+        const tableValue = findNextTableValue(item.width || 0, numValue);
+        item.selectedWidthTableValue = tableValue;
+        updatePolishSelectionNumbers(item);
+      }
     }
 
     // Auto-calculate area and subtotal
@@ -1691,18 +1701,31 @@ function QuotationManagement() {
                               <label style={{ fontSize: "13px", color: "#6b7280" }}>Table:</label>
                               <input
                                 type="text"
-                                value={String(item.heightTableNumber || 6)}
+                                value={item.heightTableNumber !== undefined && item.heightTableNumber !== null ? String(item.heightTableNumber) : "6"}
                                 onChange={(e) => {
                                   const inputVal = e.target.value;
                                   // Allow empty string for deletion
                                   if (inputVal === "") {
-                                    handleItemChange(index, "heightTableNumber", "");
+                                    const newItems = [...formData.items];
+                                    newItems[index].heightTableNumber = "";
+                                    setFormData({ ...formData, items: newItems });
                                     return;
                                   }
                                   // Only allow digits, max 2 digits
                                   const digitsOnly = inputVal.replace(/[^0-9]/g, '');
-                                  if (digitsOnly.length <= 2) {
-                                    handleItemChange(index, "heightTableNumber", digitsOnly);
+                                  if (digitsOnly.length <= 2 && digitsOnly !== "") {
+                                    const newItems = [...formData.items];
+                                    newItems[index].heightTableNumber = digitsOnly;
+                                    // Recalculate table value if we have height
+                                    if (newItems[index].height) {
+                                      const numValue = parseInt(digitsOnly);
+                                      if (!isNaN(numValue) && numValue > 0) {
+                                        const tableValue = findNextTableValue(parseFraction(newItems[index].height || 0), numValue);
+                                        newItems[index].selectedHeightTableValue = tableValue;
+                                        updatePolishSelectionNumbers(newItems[index]);
+                                      }
+                                    }
+                                    setFormData({ ...formData, items: newItems });
                                   }
                                 }}
                                 onBlur={(e) => {
@@ -1791,18 +1814,31 @@ function QuotationManagement() {
                               <label style={{ fontSize: "13px", color: "#6b7280" }}>Table:</label>
                               <input
                                 type="text"
-                                value={String(item.widthTableNumber || 6)}
+                                value={item.widthTableNumber !== undefined && item.widthTableNumber !== null ? String(item.widthTableNumber) : "6"}
                                 onChange={(e) => {
                                   const inputVal = e.target.value;
                                   // Allow empty string for deletion
                                   if (inputVal === "") {
-                                    handleItemChange(index, "widthTableNumber", "");
+                                    const newItems = [...formData.items];
+                                    newItems[index].widthTableNumber = "";
+                                    setFormData({ ...formData, items: newItems });
                                     return;
                                   }
                                   // Only allow digits, max 2 digits
                                   const digitsOnly = inputVal.replace(/[^0-9]/g, '');
-                                  if (digitsOnly.length <= 2) {
-                                    handleItemChange(index, "widthTableNumber", digitsOnly);
+                                  if (digitsOnly.length <= 2 && digitsOnly !== "") {
+                                    const newItems = [...formData.items];
+                                    newItems[index].widthTableNumber = digitsOnly;
+                                    // Recalculate table value if we have width
+                                    if (newItems[index].width) {
+                                      const numValue = parseInt(digitsOnly);
+                                      if (!isNaN(numValue) && numValue > 0) {
+                                        const tableValue = findNextTableValue(parseFraction(newItems[index].width || 0), numValue);
+                                        newItems[index].selectedWidthTableValue = tableValue;
+                                        updatePolishSelectionNumbers(newItems[index]);
+                                      }
+                                    }
+                                    setFormData({ ...formData, items: newItems });
                                   }
                                 }}
                                 onBlur={(e) => {
@@ -1963,22 +1999,27 @@ function QuotationManagement() {
                               <label style={{ display: "block", marginBottom: "5px", fontSize: "13px", color: "#6b7280" }}>P (Polish)</label>
                               <input
                                 type="text"
-                                value={item.polishRates?.P || 15}
+                                value={item.polishRates?.P !== undefined && item.polishRates?.P !== null ? String(item.polishRates.P) : "15"}
                                 onChange={(e) => {
                                   const inputVal = e.target.value;
                                   // Allow empty string for deletion
                                   if (inputVal === "") {
-                                    handlePolishRateChange(index, "P", "");
+                                    const newItems = [...formData.items];
+                                    if (!newItems[index].polishRates) newItems[index].polishRates = { P: 15, H: 75, B: 75 };
+                                    newItems[index].polishRates.P = "";
+                                    setFormData({ ...formData, items: newItems });
                                     return;
                                   }
                                   // Allow digits and decimal point
                                   const validInput = inputVal.replace(/[^0-9.]/g, '');
                                   // Ensure only one decimal point
                                   const parts = validInput.split('.');
-                                  if (parts.length > 2) {
-                                    handlePolishRateChange(index, "P", parts[0] + '.' + parts.slice(1).join(''));
-                                  } else {
-                                    handlePolishRateChange(index, "P", validInput);
+                                  const finalInput = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : validInput;
+                                  if (finalInput !== "") {
+                                    const newItems = [...formData.items];
+                                    if (!newItems[index].polishRates) newItems[index].polishRates = { P: 15, H: 75, B: 75 };
+                                    newItems[index].polishRates.P = finalInput;
+                                    setFormData({ ...formData, items: newItems });
                                   }
                                 }}
                                 onBlur={(e) => {
@@ -2007,22 +2048,27 @@ function QuotationManagement() {
                               <label style={{ display: "block", marginBottom: "5px", fontSize: "13px", color: "#6b7280" }}>H (Half-round)</label>
                               <input
                                 type="text"
-                                value={item.polishRates?.H || 75}
+                                value={item.polishRates?.H !== undefined && item.polishRates?.H !== null ? String(item.polishRates.H) : "75"}
                                 onChange={(e) => {
                                   const inputVal = e.target.value;
                                   // Allow empty string for deletion
                                   if (inputVal === "") {
-                                    handlePolishRateChange(index, "H", "");
+                                    const newItems = [...formData.items];
+                                    if (!newItems[index].polishRates) newItems[index].polishRates = { P: 15, H: 75, B: 75 };
+                                    newItems[index].polishRates.H = "";
+                                    setFormData({ ...formData, items: newItems });
                                     return;
                                   }
                                   // Allow digits and decimal point
                                   const validInput = inputVal.replace(/[^0-9.]/g, '');
                                   // Ensure only one decimal point
                                   const parts = validInput.split('.');
-                                  if (parts.length > 2) {
-                                    handlePolishRateChange(index, "H", parts[0] + '.' + parts.slice(1).join(''));
-                                  } else {
-                                    handlePolishRateChange(index, "H", validInput);
+                                  const finalInput = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : validInput;
+                                  if (finalInput !== "") {
+                                    const newItems = [...formData.items];
+                                    if (!newItems[index].polishRates) newItems[index].polishRates = { P: 15, H: 75, B: 75 };
+                                    newItems[index].polishRates.H = finalInput;
+                                    setFormData({ ...formData, items: newItems });
                                   }
                                 }}
                                 onBlur={(e) => {
@@ -2051,22 +2097,27 @@ function QuotationManagement() {
                               <label style={{ display: "block", marginBottom: "5px", fontSize: "13px", color: "#6b7280" }}>B (Beveling)</label>
                               <input
                                 type="text"
-                                value={item.polishRates?.B || 75}
+                                value={item.polishRates?.B !== undefined && item.polishRates?.B !== null ? String(item.polishRates.B) : "75"}
                                 onChange={(e) => {
                                   const inputVal = e.target.value;
                                   // Allow empty string for deletion
                                   if (inputVal === "") {
-                                    handlePolishRateChange(index, "B", "");
+                                    const newItems = [...formData.items];
+                                    if (!newItems[index].polishRates) newItems[index].polishRates = { P: 15, H: 75, B: 75 };
+                                    newItems[index].polishRates.B = "";
+                                    setFormData({ ...formData, items: newItems });
                                     return;
                                   }
                                   // Allow digits and decimal point
                                   const validInput = inputVal.replace(/[^0-9.]/g, '');
                                   // Ensure only one decimal point
                                   const parts = validInput.split('.');
-                                  if (parts.length > 2) {
-                                    handlePolishRateChange(index, "B", parts[0] + '.' + parts.slice(1).join(''));
-                                  } else {
-                                    handlePolishRateChange(index, "B", validInput);
+                                  const finalInput = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : validInput;
+                                  if (finalInput !== "") {
+                                    const newItems = [...formData.items];
+                                    if (!newItems[index].polishRates) newItems[index].polishRates = { P: 15, H: 75, B: 75 };
+                                    newItems[index].polishRates.B = finalInput;
+                                    setFormData({ ...formData, items: newItems });
                                   }
                                 }}
                                 onBlur={(e) => {
