@@ -1,14 +1,20 @@
 const PDFDocument = require('pdfkit');
 const { Quotation, QuotationItem, Invoice, InvoiceItem, Shop, User } = require('../models');
 
-// Helper function to parse JSON from description field
+/**
+ * Helper function to parse polish data from description
+ */
 const parsePolishData = (description) => {
   if (!description) return null;
-  try {
-    return JSON.parse(description);
-  } catch (e) {
-    return null;
+  const match = description.match(/POLISH_DATA:(.+)/);
+  if (match) {
+    try {
+      return JSON.parse(match[1]);
+    } catch (e) {
+      return null;
+    }
   }
+  return null;
 };
 
 /**
@@ -203,118 +209,173 @@ const generateCuttingPadPrintPdf = async (quotationId, userId) => {
     throw new Error('Unauthorized access to quotation');
   }
 
-  // Scale to half A4 page
+  // Single copy, half A4 page - Professional format
   const doc = new PDFDocument({ 
     margin: 30,
-    size: [595.28, 842], // A4 size
+    size: [595, 842], // A4 size
   });
   const chunks = [];
 
   doc.on('data', chunk => chunks.push(chunk));
   doc.on('end', () => {});
 
-  // Scale factor for half page
-  doc.scale(0.5, 0.5);
-  doc.translate(0, 0);
-
-  // Shop Details Header
+  // Top border line
+  doc.moveTo(30, 30).lineTo(565, 30).stroke();
+  
+  // Header with shop details - more prominent
   if (quotation.shop && quotation.shop.shopName) {
-    doc.fontSize(10).font('Helvetica-Bold').text(quotation.shop.shopName, { align: 'center' });
+    doc.fontSize(14).font('Helvetica-Bold').text(quotation.shop.shopName, 30, 40);
   }
   if (quotation.shop && quotation.shop.email) {
-    doc.fontSize(8).font('Helvetica').text(quotation.shop.email, { align: 'center' });
+    doc.fontSize(10).font('Helvetica').text(`Email: ${quotation.shop.email}`, 30, 58);
   }
-  if (quotation.shop && quotation.shop.whatsappNumber) {
-    doc.fontSize(8).font('Helvetica').text('Mobile: ' + quotation.shop.whatsappNumber, { align: 'center' });
-  }
-  doc.moveDown(1);
+  doc.y = 75;
 
-  // Title Box with gray background
-  doc.rect(50, doc.y, 495, 30).fillAndStroke('#e5e7eb', '#000000');
-  doc.fontSize(16).font('Helvetica-Bold').fillColor('#000000').text('CUTTING-PAD', { align: 'center', y: doc.y - 20 });
-  doc.y += 30;
-  doc.moveDown(1);
+  // Title box with gray background - more prominent
+  const titleY = doc.y;
+  doc.rect(30, titleY, 535, 30)
+     .fillColor('#e5e7eb')
+     .fill()
+     .fillColor('black');
+  doc.fontSize(18).font('Helvetica-Bold').fillColor('black')
+     .text('CUTTING-PAD', 30, titleY + 8, { align: 'center', width: 535 });
+  doc.y = titleY + 35;
 
-  // Quotation Details on one line
-  doc.fontSize(9).font('Helvetica');
-  doc.text(`Quotation Number: ${quotation.quotationNumber} | Date: ${formatDate(quotation.quotationDate)}`, { align: 'left' });
-  doc.moveDown(0.5);
+  // Quotation Details in bordered box
+  const detailsY = doc.y;
+  doc.rect(30, detailsY, 535, 50)
+     .fillColor('#f9fafb')
+     .fill()
+     .fillColor('black')
+     .stroke();
+  
+  doc.fontSize(10).font('Helvetica');
+  doc.text(`Quotation Number: ${quotation.quotationNumber}`, 40, detailsY + 10);
+  doc.text(`Date: ${formatDate(quotation.quotationDate)}`, 300, detailsY + 10);
+  doc.text(`Customer: ${quotation.customerName || ''}`, 40, detailsY + 28);
+  
+  doc.y = detailsY + 60;
 
-  // Items Table Header
-  doc.fontSize(8).font('Helvetica-Bold');
+  // Items Table Header with dark background
+  doc.fontSize(10).font('Helvetica-Bold');
   const tableTop = doc.y;
-  doc.text('Sr.', 50, tableTop);
-  doc.text('Glass Type', 80, tableTop);
-  doc.text('Thickness', 180, tableTop);
-  doc.text('Height', 250, tableTop);
-  doc.text('Width', 320, tableTop);
-  doc.text('Quantity', 390, tableTop);
+  doc.rect(30, tableTop, 535, 20)
+     .fillColor('#374151')
+     .fill()
+     .fillColor('white');
+  
+  doc.fontSize(9).font('Helvetica-Bold').fillColor('white');
+  doc.text('Sr.', 40, tableTop + 6);
+  doc.text('Glass Type', 70, tableTop + 6);
+  doc.text('Height', 220, tableTop + 6);
+  doc.text('Width', 320, tableTop + 6);
+  doc.text('Qty', 470, tableTop + 6);
+  
+  doc.fillColor('black');
+  let currentY = tableTop + 25;
 
-  let currentY = tableTop + 15;
-
-  // Items (dimensions only, no Design column)
+  // Items (dimensions only) with alternating row colors
   if (quotation.items && quotation.items.length > 0) {
     quotation.items.forEach((item, index) => {
-      if (currentY > 1400) {
+      if (currentY > 380) { // Half page limit
         doc.addPage();
         currentY = 50;
       }
 
-      const polishData = parsePolishData(item.description);
-      
-      // Get original fraction strings or use decimal
-      let heightDisplay = item.height?.toString() || '';
-      let widthDisplay = item.width?.toString() || '';
-      const unit = polishData?.sizeInMM ? 'MM' : (item.heightUnit || 'INCH');
-      
-      if (polishData && !polishData.sizeInMM) {
-        if (polishData.heightOriginal) {
-          heightDisplay = polishData.heightOriginal;
-        }
-        if (polishData.widthOriginal) {
-          widthDisplay = polishData.widthOriginal;
-        }
+      // Alternating row background
+      if (index % 2 === 0) {
+        doc.rect(30, currentY - 3, 535, 20)
+           .fillColor('#f9fafb')
+           .fill()
+           .fillColor('black');
       }
 
-      doc.fontSize(8).font('Helvetica');
-      doc.text((index + 1).toString(), 50, currentY);
-      doc.text(item.glassType || '', 80, currentY);
-      doc.text(item.thickness || '', 180, currentY);
-      doc.text(heightDisplay + ' ' + unit, 250, currentY);
+      doc.fontSize(9).font('Helvetica');
+      doc.text((index + 1).toString(), 40, currentY);
+      doc.text(item.glassType || '', 70, currentY, { width: 140 });
+      
+      // Use original fraction string if available and not in MM mode
+      const polishData = parsePolishData(item.description);
+      let heightDisplay = item.height.toString();
+      let widthDisplay = item.width.toString();
+      const unit = item.heightUnit || 'FEET';
+      
+      if (polishData && !polishData.sizeInMM && polishData.heightOriginal) {
+        heightDisplay = polishData.heightOriginal;
+      }
+      if (polishData && !polishData.sizeInMM && polishData.widthOriginal) {
+        widthDisplay = polishData.widthOriginal;
+      }
+      
+      doc.text(heightDisplay + ' ' + unit, 220, currentY);
       doc.text(widthDisplay + ' ' + unit, 320, currentY);
-      doc.text(item.quantity.toString(), 390, currentY);
-      
-      currentY += 15;
-      
-      // Polish Details Box below item row
-      if (polishData && (polishData.itemPolish || (polishData.polishSelection && polishData.polishSelection.length > 0))) {
-        const boxY = currentY;
-        const boxHeight = 25;
+      doc.text(item.quantity.toString(), 470, currentY);
+      currentY += 22;
+
+      // Add polish details below item in a subtle box
+      if (polishData) {
+        const polishY = currentY;
+        doc.rect(70, polishY, 465, 30)
+           .fillColor('#f3f4f6')
+           .fill()
+           .fillColor('black')
+           .strokeColor('#e5e7eb')
+           .lineWidth(0.5)
+           .stroke();
         
-        // Draw bordered box
-        doc.rect(50, boxY, 495, boxHeight).stroke();
-        
-        let polishText = '';
+        doc.fontSize(8).font('Helvetica');
         if (polishData.itemPolish) {
-          polishText += `Polish Type: ${polishData.itemPolish}`;
+          doc.font('Helvetica-Bold').text(`Polish Type: ${polishData.itemPolish}`, 75, polishY + 5);
         }
         
-        if (polishData.polishSelection && polishData.polishSelection.length > 0) {
+        // Polish Selection details - format like "Sides: Height 1=B Width 1=H Height 2=H Width 2=P"
+        if (polishData.polishSelection) {
           const selectedPolishes = polishData.polishSelection.filter(p => p.checked && p.type);
           if (selectedPolishes.length > 0) {
-            if (polishText) polishText += ' | ';
-            polishText += 'Polish: ';
-            polishText += selectedPolishes.map(p => `${p.side}${p.sideNumber}(${p.type})`).join(', ');
+            doc.font('Helvetica');
+            const polishDetails = selectedPolishes.map(p => {
+              const typeLabel = p.type === 'P' ? 'P' : p.type === 'H' ? 'H' : 'B';
+              // Extract side name without number (e.g., "Height 1 (12)" -> "Height 1")
+              const sideName = p.side.split('(')[0].trim();
+              return `${sideName}=${typeLabel}`;
+            });
+            doc.text('Sides: ' + polishDetails.join(' '), 75, polishY + 18);
           }
         }
         
-        doc.fontSize(8).font('Helvetica-Bold').text(polishText || 'No polish selected', 55, boxY + 5, { width: 485 });
-        currentY += boxHeight + 5;
+        currentY += 35;
       } else {
-        currentY += 5;
+        currentY += 5; // Add spacing even if no polish data
       }
     });
   }
+
+  // Footer with border line
+  doc.moveTo(30, 375).lineTo(565, 375).stroke();
+  doc.fontSize(9).font('Helvetica');
+  doc.text(`Generated on: ${formatDate(new Date())}`, 30, 385);
+  
+  // Signature boxes - more professional
+  doc.rect(30, 400, 250, 45)
+     .fillColor('#f9fafb')
+     .fill()
+     .fillColor('black')
+     .stroke();
+  doc.fontSize(9).font('Helvetica-Bold').text('Prepared By:', 35, 405);
+  doc.fontSize(8).font('Helvetica').text('_________________', 35, 422);
+  doc.text('(Signature)', 35, 432);
+  
+  doc.rect(300, 400, 250, 45)
+     .fillColor('#f9fafb')
+     .fill()
+     .fillColor('black')
+     .stroke();
+  doc.fontSize(9).font('Helvetica-Bold').text('Authorized By:', 305, 405);
+  doc.fontSize(8).font('Helvetica').text('_________________', 305, 422);
+  doc.text('(Signature)', 305, 432);
+  
+  // Bottom border line
+  doc.moveTo(30, 450).lineTo(565, 450).stroke();
 
   doc.end();
 
@@ -373,132 +434,156 @@ const generateInvoicePdf = async (invoiceId, userId) => {
     throw new Error('Unauthorized access to invoice');
   }
 
-  const doc = new PDFDocument({ margin: 50 });
+  const doc = new PDFDocument({ margin: 40, size: [595, 842] });
   const chunks = [];
 
   doc.on('data', chunk => chunks.push(chunk));
   doc.on('end', () => {});
 
-  // Title
-  const title = invoice.billingType === 'GST' ? 'TAX INVOICE' : 'BILL / CASH MEMO';
-  doc.fontSize(20).font('Helvetica-Bold').text(title, { align: 'center' });
-  doc.moveDown(2);
-
-  // Shop Details (From)
-  doc.fontSize(12).font('Helvetica-Bold').text('From:');
-  doc.fontSize(10).font('Helvetica');
+  // Header with shop name and email
   if (invoice.shop && invoice.shop.shopName) {
-    doc.text(invoice.shop.shopName);
-  }
-  if (invoice.shop && invoice.shop.ownerName) {
-    doc.text(invoice.shop.ownerName);
+    doc.fontSize(14).font('Helvetica-Bold').text(invoice.shop.shopName, { align: 'center' });
   }
   if (invoice.shop && invoice.shop.email) {
-    doc.text(invoice.shop.email);
+    doc.fontSize(10).font('Helvetica').text(`Email: ${invoice.shop.email}`, { align: 'center' });
   }
-  if (invoice.shop && invoice.shop.whatsappNumber) {
-    doc.text('WhatsApp: ' + invoice.shop.whatsappNumber);
-  }
-  doc.moveDown();
+  doc.moveDown(1);
 
-  // Invoice Details
-  doc.fontSize(12).font('Helvetica-Bold').text('Invoice Number: ' + invoice.invoiceNumber);
-  doc.fontSize(10).font('Helvetica');
-  doc.text('Date: ' + formatDate(invoice.invoiceDate));
-  if (invoice.invoiceType) {
-    doc.text('Invoice Type: ' + invoice.invoiceType);
-  }
-  doc.moveDown();
+  // Title box with gray background
+  const titleY = doc.y;
+  const title = invoice.billingType === 'GST' ? 'TAX INVOICE' : 'BILL / CASH MEMO';
+  doc.rect(40, titleY, 515, 30)
+     .fillColor('#e5e7eb')
+     .fill()
+     .fillColor('black');
+  doc.fontSize(18).font('Helvetica-Bold').fillColor('black')
+     .text(title, 40, titleY + 8, { align: 'center', width: 515 });
+  doc.y = titleY + 35;
 
-  // Customer Details (To)
-  doc.fontSize(12).font('Helvetica-Bold').text('To:');
-  doc.fontSize(10).font('Helvetica');
-  doc.text(invoice.customerName || '');
+  // Details section with bordered box
+  const detailsY = doc.y;
+  doc.rect(40, detailsY, 515, 80)
+     .stroke();
+  
+  // Left column - Invoice Details
+  doc.fontSize(10).font('Helvetica-Bold').text('Invoice Details', 50, detailsY + 10);
+  doc.fontSize(9).font('Helvetica');
+  doc.text(`Invoice No: ${invoice.invoiceNumber}`, 50, detailsY + 25);
+  doc.text(`Date: ${formatDate(invoice.invoiceDate)}`, 50, detailsY + 38);
+  doc.text(`Type: ${invoice.invoiceType || 'FINAL'}`, 50, detailsY + 51);
+  
+  // Right column - Customer Details
+  doc.fontSize(10).font('Helvetica-Bold').text('Customer Details', 300, detailsY + 10);
+  doc.fontSize(9).font('Helvetica');
+  doc.text(`Customer: ${invoice.customerName || ''}`, 300, detailsY + 25);
   if (invoice.customerMobile) {
-    doc.text('Mobile: ' + invoice.customerMobile);
+    doc.text(`Mobile: ${invoice.customerMobile}`, 300, detailsY + 38);
   }
   if (invoice.customerAddress) {
-    doc.text(invoice.customerAddress);
+    doc.text(invoice.customerAddress, 300, detailsY + 51, { width: 240 });
   }
-  if (invoice.customerGstin) {
-    doc.text('GSTIN: ' + invoice.customerGstin);
-  }
-  if (invoice.customerState) {
-    doc.text('State: ' + invoice.customerState);
-  }
-  doc.moveDown();
 
-  // Items Table Header
-  doc.fontSize(10).font('Helvetica-Bold');
-  doc.text('Items:', { underline: true });
-  doc.moveDown(0.5);
+  doc.y = detailsY + 90;
 
-  // Table Headers
+  // Items Table Header with dark background
   const tableTop = doc.y;
-  doc.fontSize(9);
-  doc.text('Sr.', 50, tableTop);
-  doc.text('Glass Type', 80, tableTop);
-  doc.text('Dimensions', 180, tableTop);
-  doc.text('Qty', 280, tableTop);
-  doc.text('Rate/Sqft', 320, tableTop);
-  doc.text('Area', 400, tableTop);
-  doc.text('Amount', 460, tableTop);
+  doc.rect(40, tableTop, 515, 20)
+     .fillColor('#374151')
+     .fill()
+     .fillColor('white');
+  
+  doc.fontSize(9).font('Helvetica-Bold').fillColor('white');
+  doc.text('Sr.', 50, tableTop + 6);
+  doc.text('Item', 80, tableTop + 6);
+  doc.text('Size', 200, tableTop + 6);
+  doc.text('Qty', 350, tableTop + 6);
+  doc.text('Rate', 400, tableTop + 6);
+  doc.text('Amount', 480, tableTop + 6);
+  
+  doc.fillColor('black');
+  let currentY = tableTop + 25;
 
-  let currentY = tableTop + 20;
-
-  // Items
+  // Items with alternating row colors
   if (invoice.items && invoice.items.length > 0) {
     invoice.items.forEach((item, index) => {
-      if (currentY > 700) {
+      if (currentY > 750) {
         doc.addPage();
         currentY = 50;
       }
 
+      // Alternating row background
+      if (index % 2 === 0) {
+        doc.rect(40, currentY - 3, 515, 18)
+           .fillColor('#f9fafb')
+           .fill()
+           .fillColor('black');
+      }
+
       doc.fontSize(9).font('Helvetica');
       doc.text((index + 1).toString(), 50, currentY);
-      doc.text(item.glassType || '', 80, currentY);
-      doc.text(`${item.height} x ${item.width}`, 180, currentY);
-      doc.text(item.quantity.toString(), 280, currentY);
-      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), 320, currentY);
-      doc.text(parseFloat(item.area || 0).toFixed(2) + ' sqft', 400, currentY);
-      doc.text('₹' + parseFloat(item.subtotal || 0).toFixed(2), 460, currentY);
-      currentY += 15;
+      doc.text(item.glassType || '', 80, currentY, { width: 110 });
+      doc.text(`${item.height} x ${item.width} ft`, 200, currentY, { width: 140 });
+      doc.text(item.quantity.toString(), 350, currentY);
+      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), 400, currentY);
+      doc.text('₹' + parseFloat(item.subtotal || 0).toFixed(2), 480, currentY);
+      currentY += 20; // Increased spacing
     });
   }
 
-  doc.moveDown(2);
+  doc.y = currentY + 10;
 
-  // Summary
-  doc.fontSize(10).font('Helvetica-Bold').text('Summary:', { underline: true });
-  doc.fontSize(10).font('Helvetica');
-  doc.moveDown(0.5);
-  doc.text('Subtotal: ₹' + parseFloat(invoice.subtotal || 0).toFixed(2), { align: 'right' });
+  // Totals section
+  doc.fontSize(10).font('Helvetica-Bold').text('Summary:', 40, doc.y);
+  doc.y += 15;
+  
+  const totalsStartY = doc.y;
+  doc.fontSize(9).font('Helvetica');
+  doc.text('Subtotal:', 400, totalsStartY, { width: 100, align: 'right' });
+  doc.text('₹' + parseFloat(invoice.subtotal || 0).toFixed(2), 510, totalsStartY);
+  let totalsY = totalsStartY + 15;
   
   if (invoice.installationCharge && invoice.installationCharge > 0) {
-    doc.text('Installation Charge: ₹' + parseFloat(invoice.installationCharge).toFixed(2), { align: 'right' });
+    doc.text('Installation:', 400, totalsY, { width: 100, align: 'right' });
+    doc.text('₹' + parseFloat(invoice.installationCharge).toFixed(2), 510, totalsY);
+    totalsY += 15;
   }
   
   if (invoice.transportCharge && invoice.transportCharge > 0) {
-    doc.text('Transport Charge: ₹' + parseFloat(invoice.transportCharge).toFixed(2), { align: 'right' });
+    doc.text('Transport:', 400, totalsY, { width: 100, align: 'right' });
+    doc.text('₹' + parseFloat(invoice.transportCharge).toFixed(2), 510, totalsY);
+    totalsY += 15;
   }
   
   if (invoice.discount && invoice.discount > 0) {
-    doc.text('Discount: ₹' + parseFloat(invoice.discount).toFixed(2), { align: 'right' });
+    doc.text('Discount:', 400, totalsY, { width: 100, align: 'right' });
+    doc.text('₹' + parseFloat(invoice.discount).toFixed(2), 510, totalsY);
+    totalsY += 15;
   }
 
   if (invoice.billingType === 'GST' && invoice.gstAmount && invoice.gstAmount > 0) {
-    doc.text('GST (' + (invoice.gstPercentage || 0) + '%): ₹' + parseFloat(invoice.gstAmount).toFixed(2), { align: 'right' });
+    doc.text(`GST (${invoice.gstPercentage || 0}%):`, 400, totalsY, { width: 100, align: 'right' });
+    doc.text('₹' + parseFloat(invoice.gstAmount).toFixed(2), 510, totalsY);
+    totalsY += 15;
   }
 
-  doc.fontSize(12).font('Helvetica-Bold');
-  doc.text('Grand Total: ₹' + parseFloat(invoice.grandTotal || 0).toFixed(2), { align: 'right' });
-  doc.moveDown();
+  totalsY += 5;
+  doc.fontSize(11).font('Helvetica-Bold');
+  doc.text('Grand Total:', 400, totalsY, { width: 100, align: 'right' });
+  doc.text('Rs. ' + parseFloat(invoice.grandTotal || 0).toFixed(2), 510, totalsY);
+  doc.y = totalsY + 25;
 
-  // Payment Status
-  doc.fontSize(10).font('Helvetica');
-  doc.text('Payment Status: ' + (invoice.paymentStatus || 'DUE'));
-  doc.text('Paid: ₹' + parseFloat(invoice.paidAmount || 0).toFixed(2));
-  doc.text('Due: ₹' + parseFloat(invoice.dueAmount || 0).toFixed(2));
+  // Payment Status box
+  const statusY = doc.y;
+  doc.rect(40, statusY, 515, 50)
+     .fillColor('#f3f4f6')
+     .fill()
+     .fillColor('black')
+     .stroke();
+  
+  doc.fontSize(9).font('Helvetica');
+  doc.text(`Payment Status: ${invoice.paymentStatus || 'DUE'}`, 50, statusY + 10);
+  doc.text(`Paid: Rs. ${parseFloat(invoice.paidAmount || 0).toFixed(2)}`, 50, statusY + 25);
+  doc.text(`Due: Rs. ${parseFloat(invoice.dueAmount || 0).toFixed(2)}`, 50, statusY + 40);
 
   doc.end();
 
@@ -545,120 +630,148 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
     throw new Error('Unauthorized access to invoice');
   }
 
-  const doc = new PDFDocument({ margin: 50 });
+  const doc = new PDFDocument({ margin: 40, size: [595, 842] });
   const chunks = [];
 
   doc.on('data', chunk => chunks.push(chunk));
   doc.on('end', () => {});
 
   // Top border line
-  doc.moveTo(50, 50).lineTo(545, 50).stroke();
+  doc.moveTo(40, 40).lineTo(555, 40).stroke();
   doc.moveDown(1);
 
-  // Title Box with gray background - ESTIMATE BILL
-  doc.rect(50, doc.y, 495, 35).fillAndStroke('#e5e7eb', '#000000');
-  doc.fontSize(20).font('Helvetica-Bold').fillColor('#000000').text('ESTIMATE BILL', { align: 'center', y: doc.y + 8 });
-  doc.y += 35;
-  doc.moveDown(1.5);
+  // Title box with gray background - ESTIMATE BILL
+  const titleY = doc.y;
+  doc.rect(40, titleY, 515, 30)
+     .fillColor('#e5e7eb')
+     .fill()
+     .fillColor('black');
+  doc.fontSize(18).font('Helvetica-Bold').fillColor('black')
+     .text('ESTIMATE BILL', 40, titleY + 8, { align: 'center', width: 515 });
+  doc.y = titleY + 35;
 
   // Details section with bordered box
-  const detailsBoxY = doc.y;
-  doc.rect(50, detailsBoxY, 495, 80).stroke();
+  const detailsY = doc.y;
+  doc.rect(40, detailsY, 515, 80)
+     .stroke();
   
-  // Invoice Details (left)
-  doc.fontSize(10).font('Helvetica-Bold').text('Invoice Details', 55, detailsBoxY + 10);
+  // Left column - Invoice Details
+  doc.fontSize(10).font('Helvetica-Bold').text('Invoice Details', 50, detailsY + 10);
   doc.fontSize(9).font('Helvetica');
-  doc.text('Invoice Number: ' + invoice.invoiceNumber, 55, detailsBoxY + 25);
-  doc.text('Date: ' + formatDate(invoice.invoiceDate), 55, detailsBoxY + 40);
-  if (invoice.invoiceType) {
-    doc.text('Invoice Type: ' + invoice.invoiceType, 55, detailsBoxY + 55);
-  }
-
-  // Customer Details (right)
-  doc.fontSize(10).font('Helvetica-Bold').text('Customer Details', 300, detailsBoxY + 10);
+  doc.text(`Invoice No: ${invoice.invoiceNumber}`, 50, detailsY + 25);
+  doc.text(`Date: ${formatDate(invoice.invoiceDate)}`, 50, detailsY + 38);
+  doc.text(`Type: ${invoice.invoiceType || 'FINAL'}`, 50, detailsY + 51);
+  
+  // Right column - Customer Details
+  doc.fontSize(10).font('Helvetica-Bold').text('Customer Details', 300, detailsY + 10);
   doc.fontSize(9).font('Helvetica');
-  doc.text(invoice.customerName || '', 300, detailsBoxY + 25);
+  doc.text(`Customer: ${invoice.customerName || ''}`, 300, detailsY + 25);
   if (invoice.customerMobile) {
-    doc.text('Mobile: ' + invoice.customerMobile, 300, detailsBoxY + 40);
+    doc.text(`Mobile: ${invoice.customerMobile}`, 300, detailsY + 38);
   }
   if (invoice.customerAddress) {
-    doc.text(invoice.customerAddress, 300, detailsBoxY + 55, { width: 240 });
-  }
-  if (invoice.customerGstin) {
-    doc.text('GSTIN: ' + invoice.customerGstin, 300, detailsBoxY + 70);
+    doc.text(invoice.customerAddress, 300, detailsY + 51, { width: 240 });
   }
 
-  doc.y = detailsBoxY + 90;
-  doc.moveDown(1);
+  doc.y = detailsY + 90;
 
   // Items Table Header with dark background
   const tableTop = doc.y;
-  doc.rect(50, tableTop, 495, 20).fill('#374151');
-  doc.fontSize(9).font('Helvetica-Bold').fillColor('#ffffff');
-  doc.text('Sr.', 55, tableTop + 6);
-  doc.text('Glass Type', 80, tableTop + 6);
-  doc.text('Dimensions', 180, tableTop + 6);
-  doc.text('Qty', 280, tableTop + 6);
-  doc.text('Rate/Sqft', 320, tableTop + 6);
-  doc.text('Area', 400, tableTop + 6);
-  doc.text('Amount', 460, tableTop + 6);
-  doc.fillColor('#000000');
-
+  doc.rect(40, tableTop, 515, 20)
+     .fillColor('#374151')
+     .fill()
+     .fillColor('white');
+  
+  doc.fontSize(9).font('Helvetica-Bold').fillColor('white');
+  doc.text('Sr.', 50, tableTop + 6);
+  doc.text('Item', 80, tableTop + 6);
+  doc.text('Size', 200, tableTop + 6);
+  doc.text('Qty', 350, tableTop + 6);
+  doc.text('Rate', 400, tableTop + 6);
+  doc.text('Amount', 480, tableTop + 6);
+  
+  doc.fillColor('black');
   let currentY = tableTop + 25;
 
-  // Items
+  // Items with alternating row colors
   if (invoice.items && invoice.items.length > 0) {
     invoice.items.forEach((item, index) => {
-      if (currentY > 700) {
+      if (currentY > 750) {
         doc.addPage();
         currentY = 50;
       }
 
+      // Alternating row background
+      if (index % 2 === 0) {
+        doc.rect(40, currentY - 3, 515, 18)
+           .fillColor('#f9fafb')
+           .fill()
+           .fillColor('black');
+      }
+
       doc.fontSize(9).font('Helvetica');
       doc.text((index + 1).toString(), 50, currentY);
-      doc.text(item.glassType || '', 80, currentY);
-      doc.text(`${item.height} x ${item.width}`, 180, currentY);
-      doc.text(item.quantity.toString(), 280, currentY);
-      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), 320, currentY);
-      doc.text(parseFloat(item.area || 0).toFixed(2) + ' sqft', 400, currentY);
-      doc.text('₹' + parseFloat(item.subtotal || 0).toFixed(2), 460, currentY);
-      currentY += 15;
+      doc.text(item.glassType || '', 80, currentY, { width: 110 });
+      doc.text(`${item.height} x ${item.width} ft`, 200, currentY, { width: 140 });
+      doc.text(item.quantity.toString(), 350, currentY);
+      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), 400, currentY);
+      doc.text('₹' + parseFloat(item.subtotal || 0).toFixed(2), 480, currentY);
+      currentY += 20; // Increased spacing to prevent overlap
     });
   }
 
-  doc.moveDown(2);
+  doc.y = currentY + 10;
 
-  // Summary
-  doc.fontSize(10).font('Helvetica-Bold').text('Summary:', { underline: true });
-  doc.fontSize(10).font('Helvetica');
-  doc.moveDown(0.5);
-  doc.text('Subtotal: ₹' + parseFloat(invoice.subtotal || 0).toFixed(2), { align: 'right' });
+  // Totals section
+  doc.fontSize(10).font('Helvetica-Bold').text('Summary:', 40, doc.y);
+  doc.y += 15;
+  
+  const totalsStartY = doc.y;
+  doc.fontSize(9).font('Helvetica');
+  doc.text('Subtotal:', 400, totalsStartY, { width: 100, align: 'right' });
+  doc.text('₹' + parseFloat(invoice.subtotal || 0).toFixed(2), 510, totalsStartY);
+  let totalsY = totalsStartY + 15;
   
   if (invoice.installationCharge && invoice.installationCharge > 0) {
-    doc.text('Installation Charge: ₹' + parseFloat(invoice.installationCharge).toFixed(2), { align: 'right' });
+    doc.text('Installation:', 400, totalsY, { width: 100, align: 'right' });
+    doc.text('₹' + parseFloat(invoice.installationCharge).toFixed(2), 510, totalsY);
+    totalsY += 15;
   }
   
   if (invoice.transportCharge && invoice.transportCharge > 0) {
-    doc.text('Transport Charge: ₹' + parseFloat(invoice.transportCharge).toFixed(2), { align: 'right' });
+    doc.text('Transport:', 400, totalsY, { width: 100, align: 'right' });
+    doc.text('₹' + parseFloat(invoice.transportCharge).toFixed(2), 510, totalsY);
+    totalsY += 15;
   }
   
   if (invoice.discount && invoice.discount > 0) {
-    doc.text('Discount: ₹' + parseFloat(invoice.discount).toFixed(2), { align: 'right' });
+    doc.text('Discount:', 400, totalsY, { width: 100, align: 'right' });
+    doc.text('₹' + parseFloat(invoice.discount).toFixed(2), 510, totalsY);
+    totalsY += 15;
   }
 
-  if (invoice.billingType === 'GST' && invoice.gstAmount && invoice.gstAmount > 0) {
-    doc.text('GST (' + (invoice.gstPercentage || 0) + '%): ₹' + parseFloat(invoice.gstAmount).toFixed(2), { align: 'right' });
-  }
+  // NO GST for Estimate Bill
+  totalsY += 5;
+  doc.fontSize(11).font('Helvetica-Bold');
+  doc.text('Grand Total:', 400, totalsY, { width: 100, align: 'right' });
+  doc.text('Rs. ' + parseFloat(invoice.grandTotal || 0).toFixed(2), 510, totalsY);
+  doc.y = totalsY + 25;
 
-  doc.fontSize(12).font('Helvetica-Bold');
-  doc.text('Grand Total: ₹' + parseFloat(invoice.grandTotal || 0).toFixed(2), { align: 'right' });
-  doc.moveDown();
+  // Payment Status box
+  const statusY = doc.y;
+  doc.rect(40, statusY, 515, 50)
+     .fillColor('#f3f4f6')
+     .fill()
+     .fillColor('black')
+     .stroke();
+  
+  doc.fontSize(9).font('Helvetica');
+  doc.text(`Payment Status: ${invoice.paymentStatus || 'DUE'}`, 50, statusY + 10);
+  doc.text(`Paid: Rs. ${parseFloat(invoice.paidAmount || 0).toFixed(2)}`, 50, statusY + 25);
+  doc.text(`Due: Rs. ${parseFloat(invoice.dueAmount || 0).toFixed(2)}`, 50, statusY + 40);
 
-  // Payment Status
-  doc.fontSize(10).font('Helvetica');
-  doc.text('Payment Status: ' + (invoice.paymentStatus || 'DUE'));
-  doc.text('Paid: ₹' + parseFloat(invoice.paidAmount || 0).toFixed(2));
-  doc.text('Due: ₹' + parseFloat(invoice.dueAmount || 0).toFixed(2));
+  // Bottom border line
+  doc.moveTo(40, doc.y + 60).lineTo(555, doc.y + 60).stroke();
 
   doc.end();
 
@@ -672,132 +785,7 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
 };
 
 /**
- * Helper function to generate one copy of delivery challan
- */
-const generateChallanCopy = (doc, invoice, copyNumber) => {
-  const startY = copyNumber === 0 ? 0 : 560;
-  doc.y = startY;
-
-  // Shop Details Header
-  if (invoice.shop && invoice.shop.shopName) {
-    doc.fontSize(10).font('Helvetica-Bold').text(invoice.shop.shopName, { align: 'center' });
-  }
-  if (invoice.shop && invoice.shop.email) {
-    doc.fontSize(8).font('Helvetica').text(invoice.shop.email, { align: 'center' });
-  }
-  if (invoice.shop && invoice.shop.whatsappNumber) {
-    doc.fontSize(8).font('Helvetica').text('Mobile: ' + invoice.shop.whatsappNumber, { align: 'center' });
-  }
-  doc.moveDown(1);
-
-  // Title Box with gray background
-  doc.rect(50, doc.y, 695, 30).fillAndStroke('#e5e7eb', '#000000');
-  doc.fontSize(16).font('Helvetica-Bold').fillColor('#000000').text('DELIVERY CHALLAN', { align: 'center', y: doc.y - 20 });
-  doc.y += 30;
-  doc.moveDown(1);
-
-  // Invoice Details
-  doc.fontSize(9).font('Helvetica');
-  doc.text('Invoice Number: ' + invoice.invoiceNumber);
-  doc.text('Date: ' + formatDate(invoice.invoiceDate));
-  doc.moveDown(0.5);
-
-  // Customer
-  doc.fontSize(9).font('Helvetica-Bold').text('Customer: ' + (invoice.customerName || ''));
-  if (invoice.customerMobile) {
-    doc.fontSize(8).font('Helvetica').text('Mobile: ' + invoice.customerMobile);
-  }
-  if (invoice.customerAddress) {
-    doc.fontSize(8).font('Helvetica').text(invoice.customerAddress);
-  }
-  doc.moveDown(0.5);
-
-  // Items Table Header
-  doc.fontSize(8).font('Helvetica-Bold');
-  const tableTop = doc.y;
-  doc.text('Sr.', 50, tableTop);
-  doc.text('Description', 80, tableTop);
-  doc.text('Size', 250, tableTop);
-  doc.text('Qty', 400, tableTop);
-  doc.text('Remarks', 450, tableTop);
-
-  let currentY = tableTop + 15;
-
-  // Items
-  if (invoice.items && invoice.items.length > 0) {
-    invoice.items.forEach((item, index) => {
-      if (currentY > (startY + 500)) {
-        return; // Don't overflow the half page
-      }
-
-      const polishData = parsePolishData(item.description);
-      
-      // Get original fraction strings or use decimal
-      let heightDisplay = item.height?.toString() || '';
-      let widthDisplay = item.width?.toString() || '';
-      const unit = polishData?.sizeInMM ? 'MM' : (item.heightUnit || 'INCH');
-      
-      if (polishData && !polishData.sizeInMM) {
-        if (polishData.heightOriginal) {
-          heightDisplay = polishData.heightOriginal;
-        }
-        if (polishData.widthOriginal) {
-          widthDisplay = polishData.widthOriginal;
-        }
-      }
-
-      doc.fontSize(7).font('Helvetica');
-      doc.text((index + 1).toString(), 50, currentY);
-      doc.text(item.glassType || '', 80, currentY, { width: 160 });
-      doc.text(`${heightDisplay} × ${widthDisplay} ${unit}`, 250, currentY, { width: 140 });
-      doc.text(item.quantity.toString(), 400, currentY);
-      
-      // Remarks with full polish details
-      let remarksText = '';
-      if (polishData) {
-        if (polishData.itemPolish) {
-          remarksText += `Polish Type: ${polishData.itemPolish}`;
-        }
-        if (polishData.selectedHeightTableValue && polishData.selectedWidthTableValue) {
-          if (remarksText) remarksText += ' | ';
-          remarksText += `Table: H=${polishData.heightTableNumber || 6}(${polishData.selectedHeightTableValue}), W=${polishData.widthTableNumber || 6}(${polishData.selectedWidthTableValue})`;
-        }
-        if (polishData.polishSelection && polishData.polishSelection.length > 0) {
-          const selectedPolishes = polishData.polishSelection.filter(p => p.checked && p.type);
-          if (selectedPolishes.length > 0) {
-            if (remarksText) remarksText += ' | ';
-            remarksText += 'Polish: ' + selectedPolishes.map(p => `${p.side}${p.sideNumber}(${p.type})`).join(', ');
-          }
-        }
-      }
-      
-      // Wrap text in remarks column
-      doc.text(remarksText || '-', 450, currentY, { width: 245, align: 'left' });
-      currentY += Math.max(15, Math.ceil(remarksText.length / 35) * 8); // Adjust height based on text length
-    });
-  }
-
-  // Footer
-  const footerY = startY + 480;
-  doc.fontSize(7).font('Helvetica');
-  
-  // Received By box
-  doc.rect(50, footerY, 320, 60).stroke();
-  doc.fontSize(8).font('Helvetica-Bold').text('Received By', 55, footerY + 5);
-  doc.fontSize(7).font('Helvetica').text('Name: _________________', 55, footerY + 20);
-  doc.text('Contact: _________________', 55, footerY + 35);
-  doc.text('Date: _________________', 55, footerY + 50);
-  
-  // Delivered By box
-  doc.rect(380, footerY, 320, 60).stroke();
-  doc.fontSize(8).font('Helvetica-Bold').text('Delivered By', 385, footerY + 5);
-  doc.fontSize(7).font('Helvetica').text('Name: _________________', 385, footerY + 20);
-  doc.text('Contact: _________________', 385, footerY + 35);
-  doc.text('Date: _________________', 385, footerY + 50);
-};
-
-/**
- * Generate PDF for Delivery Challan (no prices)
+ * Generate PDF for Delivery Challan (single copy, half A4 page, no prices)
  */
 const generateChallanPdf = async (invoiceId, userId) => {
   const invoice = await Invoice.findByPk(invoiceId, {
@@ -830,26 +818,162 @@ const generateChallanPdf = async (invoiceId, userId) => {
     throw new Error('Unauthorized access to invoice');
   }
 
-  // Scale for 2 copies per A4 page (half page each)
-  const doc = new PDFDocument({ 
-    margin: 30,
-    size: [595.28, 842], // A4 size
-  });
+  const doc = new PDFDocument({ margin: 30, size: [595, 842] }); // A4
   const chunks = [];
 
   doc.on('data', chunk => chunks.push(chunk));
   doc.on('end', () => {});
 
-  // Scale factor 0.75 for readability
-  doc.scale(0.75, 0.75);
-  doc.translate(0, 0);
+  let y = 30;
 
-  // First Copy
-  generateChallanCopy(doc, invoice, 0);
+  // Header with shop details
+  if (invoice.shop && invoice.shop.shopName) {
+    doc.fontSize(12).font('Helvetica-Bold').text(invoice.shop.shopName, 30, y);
+    y += 15;
+  }
+  if (invoice.shop && invoice.shop.email) {
+    doc.fontSize(10).font('Helvetica').text(invoice.shop.email, 30, y);
+    y += 18; // Increased spacing
+  }
+
+  // Title box with gray background - increased spacing from email
+  const titleY = y + 5; // Add extra space
+  doc.rect(30, titleY, 535, 25)
+     .fillColor('#e5e7eb')
+     .fill()
+     .fillColor('black');
+  doc.fontSize(16).font('Helvetica-Bold').fillColor('black')
+     .text('DELIVERY CHALLAN', 30, titleY + 6, { align: 'center', width: 535 });
+  y = titleY + 35; // Increased spacing after title
+
+  // Challan and Date
+  doc.fontSize(10).font('Helvetica');
+  doc.text(`Challan No: ${invoice.invoiceNumber}`, 30, y);
+  doc.text(`Date: ${formatDate(invoice.invoiceDate)}`, 300, y);
+  y += 20; // Increased spacing
+
+  // From/To section
+  doc.fontSize(10).font('Helvetica-Bold').text('From:', 30, y);
+  doc.fontSize(9).font('Helvetica').text(invoice.shop?.shopName || 'mayurShop', 30, y + 12);
+  y += 28; // Increased spacing
+
+  doc.fontSize(10).font('Helvetica-Bold').text('To:', 30, y);
+  doc.fontSize(9).font('Helvetica');
+  doc.text(invoice.customerName || '', 30, y + 12);
+  if (invoice.customerMobile) {
+    doc.text(`Mobile: ${invoice.customerMobile}`, 30, y + 24);
+  }
+  if (invoice.customerAddress) {
+    doc.text(invoice.customerAddress, 30, y + 36, { width: 250 });
+    y += 15; // Extra space for address
+  }
+  y += 55; // Increased spacing before table
+
+  // Items Table Header
+  doc.fontSize(9).font('Helvetica-Bold');
+  const tableTop = y;
+  doc.text('Sr.', 30, tableTop);
+  doc.text('Description', 60, tableTop);
+  doc.text('Size', 200, tableTop);
+  doc.text('Qty', 350, tableTop);
+  doc.text('Remarks', 400, tableTop);
+
+  y = tableTop + 15;
+  doc.moveTo(30, y).lineTo(565, y).stroke();
+  y += 8;
+
+  // Items
+  if (invoice.items && invoice.items.length > 0) {
+    invoice.items.forEach((item, index) => {
+      if (y > 380) return; // Half page limit
+
+      doc.fontSize(8).font('Helvetica');
+      doc.text((index + 1).toString(), 30, y);
+      
+      // Description (glass type and thickness)
+      const desc = item.thickness ? `${item.thickness} (${item.thickness}mm)` : (item.glassType || '');
+      doc.text(desc, 60, y, { width: 130 });
+      
+      // Size - use original fraction if available
+      const polishData = parsePolishData(item.description);
+      let sizeDisplay = '';
+      if (polishData && !polishData.sizeInMM && polishData.heightOriginal && polishData.widthOriginal) {
+        sizeDisplay = `${polishData.heightOriginal} × ${polishData.widthOriginal}`;
+      } else {
+        sizeDisplay = `${item.height} × ${item.width}`;
+      }
+      doc.text(sizeDisplay, 200, y, { width: 140 });
+      
+      doc.text(item.quantity.toString(), 350, y);
+      
+      // Remarks with full polish details
+      let remarksText = '';
+      if (polishData) {
+        if (polishData.itemPolish) {
+          remarksText += `Polish Type: ${polishData.itemPolish}`;
+        }
+        if (polishData.selectedHeightTableValue && polishData.selectedWidthTableValue) {
+          if (remarksText) remarksText += ' | ';
+          remarksText += `Table: H=${polishData.heightTableNumber || 6}(${polishData.selectedHeightTableValue}), W=${polishData.widthTableNumber || 6}(${polishData.selectedWidthTableValue})`;
+        }
+        if (polishData.polishSelection) {
+          const selectedPolishes = polishData.polishSelection.filter(p => p.checked && p.type);
+          if (selectedPolishes.length > 0) {
+            if (remarksText) remarksText += ' | ';
+            const polishDetails = selectedPolishes.map(p => {
+              const typeLabel = p.type === 'P' ? 'P' : p.type === 'H' ? 'H' : 'B';
+              // Extract side name without number
+              const sideName = p.side.split('(')[0].trim();
+              return `${sideName}=${typeLabel}`;
+            });
+            remarksText += 'Polish: ' + polishDetails.join(' ');
+          }
+        }
+      }
+      
+      // Calculate height needed for wrapped remarks text
+      const remarksWidth = 150;
+      const remarksHeight = doc.heightOfString(remarksText || '-', { 
+        width: remarksWidth, 
+        fontSize: 8 
+      });
+      
+      // Draw remarks text with proper wrapping
+      doc.fontSize(8).font('Helvetica');
+      doc.text(remarksText || '-', 400, y, { 
+        width: remarksWidth, 
+        align: 'left',
+        lineGap: 2
+      });
+      
+      // Move to next row based on the tallest element (remarks or default row height)
+      // Add extra spacing between items
+      y += Math.max(25, remarksHeight + 10);
+      
+      // Add a small separator line between items (except for the last item)
+      if (index < invoice.items.length - 1) {
+        doc.moveTo(30, y - 5).lineTo(565, y - 5).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+        y += 5; // Extra space after separator
+      }
+    });
+  }
+
+  // Footer
+  doc.fontSize(9).font('Helvetica');
+  doc.text(`Generated on: ${formatDate(new Date())}`, 30, 380);
   
-  // Second Copy (below first)
-  doc.y = 560; // Position for second copy
-  generateChallanCopy(doc, invoice, 1);
+  // Received By and Delivered By boxes - increased height for more fields
+  doc.rect(30, 400, 250, 60).stroke();
+  doc.fontSize(9).font('Helvetica-Bold').text('Received By:', 35, 405);
+  doc.fontSize(8).font('Helvetica');
+  doc.text('Name: _________________', 35, 420);
+  doc.text('Contact: _______________', 35, 432);
+  doc.text('Date: _______', 35, 444);
+  doc.text('(Signature & Stamp)', 35, 456);
+  
+  doc.rect(300, 400, 250, 60).stroke();
+  doc.fontSize(9).font('Helvetica-Bold').text('Delivered By:', 305, 405);
+  doc.fontSize(8).font('Helvetica').text('(Signature & Stamp)', 305, 420);
 
   doc.end();
 
