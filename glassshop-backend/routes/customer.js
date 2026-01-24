@@ -7,14 +7,19 @@ const { requireAdmin } = require('../middleware/auth');
 // Apply admin-only middleware
 router.use(requireAdmin);
 
-// Validate mobile number
+// Validate and normalize mobile number
 const validateMobileNumber = (mobile) => {
   if (!mobile || mobile.trim() === "") {
     return null; // Mobile is optional, so empty is valid
   }
   
   // Remove spaces, dashes, and parentheses
-  const cleaned = mobile.replace(/[\s\-\(\)]/g, "");
+  let cleaned = mobile.replace(/[\s\-\(\)]/g, "");
+  
+  // Remove leading zero if present (Indian mobile numbers sometimes have leading 0)
+  if (cleaned.length === 11 && cleaned.startsWith("0")) {
+    cleaned = cleaned.substring(1);
+  }
   
   // Check if it starts with +91 (India country code)
   if (cleaned.startsWith("+91")) {
@@ -30,7 +35,7 @@ const validateMobileNumber = (mobile) => {
     if (cleaned.length === 10) {
       return null; // Valid
     }
-    return "Mobile number must be exactly 10 digits";
+    return `Mobile number must be exactly 10 digits (you entered ${cleaned.length} digits)`;
   }
   
   return "Mobile number must contain only digits (or +91 followed by 10 digits)";
@@ -48,14 +53,29 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'User not found or not linked to a shop' });
     }
 
-    // Validate mobile number
+    // Validate and normalize mobile number
     const mobileError = validateMobileNumber(req.body.mobile);
     if (mobileError) {
       return res.status(400).json({ error: mobileError });
     }
 
+    // Normalize mobile number (remove leading zero if present)
+    let normalizedMobile = req.body.mobile?.trim();
+    if (normalizedMobile) {
+      let cleaned = normalizedMobile.replace(/[\s\-\(\)]/g, "");
+      if (cleaned.length === 11 && cleaned.startsWith("0")) {
+        cleaned = cleaned.substring(1);
+      }
+      if (cleaned.startsWith("+91")) {
+        normalizedMobile = cleaned;
+      } else {
+        normalizedMobile = cleaned;
+      }
+    }
+
     const customer = await Customer.create({
       ...req.body,
+      mobile: normalizedMobile || req.body.mobile,
       shopId: user.shopId
     });
 

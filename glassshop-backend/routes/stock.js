@@ -10,13 +10,24 @@ router.use(requireStaff);
 // Get all stock
 router.get('/all', async (req, res) => {
   try {
+    const username = req.user?.username;
+    if (!username) {
+      return res.status(401).json({ error: 'Username not found in token' });
+    }
+
     const user = await User.findOne({
-      where: { userName: req.user.username },
+      where: { userName: username },
       include: [{ model: Shop, as: 'shop' }]
     });
 
-    if (!user || !user.shopId) {
-      return res.status(404).json({ error: 'User not found or not linked to a shop' });
+    if (!user) {
+      console.error(`User not found in database: ${username}`);
+      return res.status(404).json({ error: `User not found: ${username}. Please register or log in again.` });
+    }
+
+    if (!user.shopId) {
+      console.error(`User ${username} is not linked to a shop`);
+      return res.status(404).json({ error: 'User not linked to a shop. Please contact administrator.' });
     }
 
     const stocks = await Stock.findAll({

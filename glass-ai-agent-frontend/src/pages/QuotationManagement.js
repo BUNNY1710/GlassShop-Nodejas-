@@ -26,6 +26,9 @@ function QuotationManagement() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showStockDropdown, setShowStockDropdown] = useState({});
   const [confirmAction, setConfirmAction] = useState(null); // { type: 'CONFIRM'|'REJECT'|'DELETE', quotationId: number, quotationNumber: string }
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [pendingRejection, setPendingRejection] = useState(null); // { quotationId, action }
 
   const getDefaultValidUntil = (quotationDate) => {
     if (!quotationDate) return "";
@@ -658,17 +661,49 @@ function QuotationManagement() {
         return;
       }
       try {
+        // Validate and clean mobile number before sending
+        let mobile = formData.manualCustomerMobile?.trim();
+        if (mobile) {
+          // Remove spaces, dashes, and parentheses
+          let cleaned = mobile.replace(/[\s\-\(\)]/g, "");
+          
+          // Remove leading zero if present (Indian mobile numbers sometimes have leading 0)
+          if (cleaned.length === 11 && cleaned.startsWith("0")) {
+            cleaned = cleaned.substring(1);
+          }
+          
+          // Check if it starts with +91
+          if (cleaned.startsWith("+91")) {
+            const digits = cleaned.substring(3);
+            if (digits.length !== 10 || !/^\d+$/.test(digits)) {
+              setMessage("❌ Mobile number with +91 must have 10 digits after country code");
+              return;
+            }
+            mobile = cleaned; // Use cleaned version with +91
+          } else if (!/^\d+$/.test(cleaned)) {
+            setMessage("❌ Mobile number must contain only digits (or +91 followed by 10 digits)");
+            return;
+          } else if (cleaned.length !== 10) {
+            setMessage(`❌ Mobile number must be exactly 10 digits (you entered ${cleaned.length} digits)`);
+            return;
+          } else {
+            mobile = cleaned; // Use cleaned version without leading zero
+          }
+        }
+
         const customerResponse = await createCustomer({
-          name: formData.manualCustomerName,
-          mobile: formData.manualCustomerMobile,
-          email: formData.manualCustomerEmail || null,
-          address: formData.manualCustomerAddress || null,
+          name: formData.manualCustomerName.trim(),
+          mobile: mobile,
+          email: formData.manualCustomerEmail?.trim() || null,
+          address: formData.manualCustomerAddress?.trim() || null,
         });
         finalCustomerId = customerResponse.data.id;
         // Reload customers list
         await loadCustomers();
       } catch (error) {
-        setMessage("❌ Failed to create customer. Please try again.");
+        const errorMessage = error.response?.data?.error || error.message || "Failed to create customer. Please try again.";
+        setMessage(`❌ ${errorMessage}`);
+        console.error("Customer creation error:", error.response?.data || error);
         return;
       }
     } else {
@@ -876,22 +911,50 @@ function QuotationManagement() {
 
   const handleConfirm = async (quotationId, action) => {
     try {
-      let rejectionReason = null;
+      // If rejecting, show rejection reason modal first
       if (action === "REJECTED") {
-        const reason = prompt("Enter rejection reason:");
-        if (reason === null) return; // User cancelled
-        rejectionReason = reason;
+        setConfirmAction(null); // Close confirmation modal
+        setPendingRejection({ quotationId, action });
+        setShowRejectionModal(true);
+        setRejectionReason("");
+        return;
       }
+      
+      // For confirm action, proceed directly
       await confirmQuotation(quotationId, {
         action: action,
-        rejectionReason: rejectionReason,
+        rejectionReason: null,
       });
-      setMessage("✅ Quotation " + (action === "CONFIRMED" ? "confirmed" : "rejected"));
+      setMessage("✅ Quotation confirmed");
       setConfirmAction(null);
       loadQuotations();
     } catch (error) {
       setMessage("❌ Failed to update quotation");
       setConfirmAction(null);
+    }
+  };
+
+  const handleRejectionSubmit = async () => {
+    if (!rejectionReason.trim()) {
+      setMessage("❌ Please enter a rejection reason");
+      return;
+    }
+
+    try {
+      await confirmQuotation(pendingRejection.quotationId, {
+        action: "REJECTED",
+        rejectionReason: rejectionReason.trim(),
+      });
+      setMessage("✅ Quotation rejected");
+      setConfirmAction(null);
+      setShowRejectionModal(false);
+      setRejectionReason("");
+      setPendingRejection(null);
+      loadQuotations();
+    } catch (error) {
+      setMessage("❌ Failed to reject quotation");
+      setShowRejectionModal(false);
+      setPendingRejection(null);
     }
   };
 
@@ -3010,7 +3073,7 @@ function QuotationManagement() {
                       <>
                         <td style={{ padding: "12px" }}>{quotation.billingType}</td>
                         <td style={{ padding: "12px" }}>{getStatusBadge(quotation.status)}</td>
-                        <td style={{ padding: "12px", fontWeight: "600" }}>₹{quotation.grandTotal?.toFixed(2)}</td>
+                        <td style={{ padding: "12px", fontWeight: "600" }}>₹{(parseFloat(quotation.grandTotal) || 0).toFixed(2)}</td>
                         <td style={{ padding: "12px" }}>{quotation.quotationDate}</td>
                       </>
                     )}
@@ -3265,12 +3328,12 @@ function QuotationManagement() {
                 <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "15px" }}>
                   <div>
                     <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px" }}>Subtotal</div>
-                    <div style={{ fontSize: "20px", color: "#78350f", fontWeight: "700" }}>₹{selectedQuotation.subtotal?.toFixed(2)}</div>
+                    <div style={{ fontSize: "20px", color: "#78350f", fontWeight: "700" }}>₹{(parseFloat(selectedQuotation.subtotal) || 0).toFixed(2)}</div>
                   </div>
                   {selectedQuotation.installationCharge > 0 && (
                     <div>
                       <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px" }}>Installation Charge</div>
-                      <div style={{ fontSize: "16px", color: "#78350f", fontWeight: "600" }}>₹{selectedQuotation.installationCharge?.toFixed(2)}</div>
+                      <div style={{ fontSize: "16px", color: "#78350f", fontWeight: "600" }}>₹{(parseFloat(selectedQuotation.installationCharge) || 0).toFixed(2)}</div>
                     </div>
                   )}
                   {selectedQuotation.transportCharge > 0 && (
@@ -3278,7 +3341,7 @@ function QuotationManagement() {
                       <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px" }}>
                         Transport Charge {selectedQuotation.transportationRequired && "🚚"}
                       </div>
-                      <div style={{ fontSize: "16px", color: "#78350f", fontWeight: "600" }}>₹{selectedQuotation.transportCharge?.toFixed(2)}</div>
+                      <div style={{ fontSize: "16px", color: "#78350f", fontWeight: "600" }}>₹{(parseFloat(selectedQuotation.transportCharge) || 0).toFixed(2)}</div>
                     </div>
                   )}
                   {selectedQuotation.discount > 0 && (
@@ -3288,34 +3351,34 @@ function QuotationManagement() {
                           ? `(${selectedQuotation.discountValue}%)` 
                           : ""}
                       </div>
-                      <div style={{ fontSize: "16px", color: "#78350f", fontWeight: "600" }}>₹{selectedQuotation.discount?.toFixed(2)}</div>
+                      <div style={{ fontSize: "16px", color: "#78350f", fontWeight: "600" }}>₹{(parseFloat(selectedQuotation.discount) || 0).toFixed(2)}</div>
                     </div>
                   )}
                   {selectedQuotation.billingType === "GST" && selectedQuotation.gstAmount > 0 && (
                     <>
                       <div>
                         <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px" }}>GST ({selectedQuotation.gstPercentage}%)</div>
-                        <div style={{ fontSize: "16px", color: "#78350f", fontWeight: "600" }}>₹{selectedQuotation.gstAmount?.toFixed(2)}</div>
+                        <div style={{ fontSize: "16px", color: "#78350f", fontWeight: "600" }}>₹{(parseFloat(selectedQuotation.gstAmount) || 0).toFixed(2)}</div>
                       </div>
                       {selectedQuotation.cgst > 0 && (
                         <div>
                           <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px" }}>CGST / SGST</div>
                           <div style={{ fontSize: "14px", color: "#78350f" }}>
-                            ₹{selectedQuotation.cgst?.toFixed(2)} / ₹{selectedQuotation.sgst?.toFixed(2)}
+                            ₹{(parseFloat(selectedQuotation.cgst) || 0).toFixed(2)} / ₹{(parseFloat(selectedQuotation.sgst) || 0).toFixed(2)}
                           </div>
                         </div>
                       )}
                       {selectedQuotation.igst > 0 && (
                         <div>
                           <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px" }}>IGST</div>
-                          <div style={{ fontSize: "16px", color: "#78350f", fontWeight: "600" }}>₹{selectedQuotation.igst?.toFixed(2)}</div>
+                          <div style={{ fontSize: "16px", color: "#78350f", fontWeight: "600" }}>₹{(parseFloat(selectedQuotation.igst) || 0).toFixed(2)}</div>
                         </div>
                       )}
                     </>
                   )}
                   <div style={{ gridColumn: isMobile ? "1" : "1 / -1", paddingTop: "15px", borderTop: "2px solid #fbbf24" }}>
                     <div style={{ fontSize: "14px", color: "#92400e", marginBottom: "8px", fontWeight: "500" }}>Grand Total</div>
-                    <div style={{ fontSize: "28px", color: "#78350f", fontWeight: "800" }}>₹{selectedQuotation.grandTotal?.toFixed(2)}</div>
+                    <div style={{ fontSize: "28px", color: "#78350f", fontWeight: "800" }}>₹{(parseFloat(selectedQuotation.grandTotal) || 0).toFixed(2)}</div>
                   </div>
                 </div>
               </div>
@@ -3365,8 +3428,8 @@ function QuotationManagement() {
                               : "-"}
                           </td>
                           <td style={{ padding: "12px" }}>{item.quantity}</td>
-                          <td style={{ padding: "12px" }}>₹{item.ratePerSqft?.toFixed(2)}</td>
-                          <td style={{ padding: "12px", fontWeight: "600", color: "#1f2937" }}>₹{item.subtotal?.toFixed(2)}</td>
+                          <td style={{ padding: "12px" }}>₹{(parseFloat(item.ratePerSqft) || 0).toFixed(2)}</td>
+                          <td style={{ padding: "12px", fontWeight: "600", color: "#1f2937" }}>₹{(parseFloat(item.subtotal) || 0).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -3539,6 +3602,178 @@ function QuotationManagement() {
                   onMouseOut={(e) => (e.target.style.backgroundColor = "#6b7280")}
                 >
                   ❌ Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* REJECTION REASON MODAL */}
+        {showRejectionModal && (
+          <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              background: "rgba(0, 0, 0, 0.5)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 100000,
+              animation: "fadeIn 0.2s ease-in-out",
+            }}
+            onClick={() => {
+              setShowRejectionModal(false);
+              setRejectionReason("");
+              setPendingRejection(null);
+            }}
+          >
+            <div
+              style={{
+                background: "white",
+                borderRadius: "16px",
+                padding: "32px",
+                maxWidth: "500px",
+                width: "90%",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+                border: "1px solid rgba(226, 232, 240, 0.8)",
+                animation: "slideUp 0.3s ease-out",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
+                <div
+                  style={{
+                    width: "48px",
+                    height: "48px",
+                    borderRadius: "50%",
+                    background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "24px",
+                    fontWeight: "bold",
+                    marginRight: "16px",
+                    boxShadow: "0 4px 12px rgba(245, 158, 11, 0.3)",
+                  }}
+                >
+                  ⚠️
+                </div>
+                <div>
+                  <h3
+                    style={{
+                      fontSize: "20px",
+                      fontWeight: "700",
+                      color: "#0f172a",
+                      margin: 0,
+                      marginBottom: "4px",
+                    }}
+                  >
+                    Enter Rejection Reason
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
+                    Please provide a reason for rejecting this quotation
+                  </p>
+                </div>
+              </div>
+
+              <textarea
+                placeholder="Enter the reason for rejection..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                style={{
+                  width: "100%",
+                  minHeight: "120px",
+                  padding: "12px 16px",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(226, 232, 240, 0.8)",
+                  background: "#ffffff",
+                  color: "#0f172a",
+                  outline: "none",
+                  fontSize: "14px",
+                  fontFamily: "inherit",
+                  resize: "vertical",
+                  transition: "all 0.2s ease",
+                  marginBottom: "24px",
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#6366f1";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.1)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "rgba(226, 232, 240, 0.8)";
+                  e.target.style.boxShadow = "none";
+                }}
+                autoFocus
+              />
+
+              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => {
+                    setShowRejectionModal(false);
+                    setRejectionReason("");
+                    setPendingRejection(null);
+                  }}
+                  style={{
+                    padding: "12px 24px",
+                    background: "#ef4444",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    color: "white",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    transition: "all 0.2s ease",
+                    boxShadow: "0 2px 4px rgba(239, 68, 68, 0.2)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = "scale(1.02)";
+                    e.target.style.boxShadow = "0 4px 8px rgba(239, 68, 68, 0.3)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = "scale(1)";
+                    e.target.style.boxShadow = "0 2px 4px rgba(239, 68, 68, 0.2)";
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRejectionSubmit}
+                  disabled={!rejectionReason.trim()}
+                  style={{
+                    padding: "12px 24px",
+                    background: rejectionReason.trim()
+                      ? "linear-gradient(135deg, #f59e0b, #d97706)"
+                      : "#d1d5db",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: rejectionReason.trim() ? "pointer" : "not-allowed",
+                    color: "white",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    transition: "all 0.2s ease",
+                    boxShadow: rejectionReason.trim()
+                      ? "0 2px 4px rgba(245, 158, 11, 0.2)"
+                      : "none",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (rejectionReason.trim()) {
+                      e.target.style.transform = "scale(1.02)";
+                      e.target.style.boxShadow = "0 4px 8px rgba(245, 158, 11, 0.3)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (rejectionReason.trim()) {
+                      e.target.style.transform = "scale(1)";
+                      e.target.style.boxShadow = "0 2px 4px rgba(245, 158, 11, 0.2)";
+                    }
+                  }}
+                >
+                  Submit Rejection
                 </button>
               </div>
             </div>

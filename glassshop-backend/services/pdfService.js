@@ -1137,20 +1137,22 @@ const generateChallanPdf = async (invoiceId, userId) => {
 
   // Footer
   doc.fontSize(9).font('Helvetica');
-  doc.text(`Generated on: ${formatDate(new Date())}`, 30, 380);
+  doc.text(`Generated on: ${formatDate(new Date())}`, 30, 375);
   
-  // Received By and Delivered By boxes - increased height for more fields
-  doc.rect(30, 400, 250, 60).stroke();
-  doc.fontSize(9).font('Helvetica-Bold').text('Received By:', 35, 405);
+  // Received By and Delivered By boxes - increased height and spacing to prevent overlap
+  const footerY = 395; // Moved up slightly to ensure proper spacing
+  const boxHeight = 75; // Increased height
+  doc.rect(30, footerY, 250, boxHeight).stroke();
+  doc.fontSize(9).font('Helvetica-Bold').text('Received By:', 35, footerY + 5);
   doc.fontSize(8).font('Helvetica');
-  doc.text('Name: _________________', 35, 420);
-  doc.text('Contact: _______________', 35, 432);
-  doc.text('Date: _______', 35, 444);
-  doc.text('(Signature & Stamp)', 35, 456);
+  doc.text('Name: _________________', 35, footerY + 18);
+  doc.text('Contact: _______________', 35, footerY + 32);
+  doc.text('Date: _______', 35, footerY + 46);
+  doc.fontSize(7).font('Helvetica').text('(Signature & Stamp)', 35, footerY + 62);
   
-  doc.rect(300, 400, 250, 60).stroke();
-  doc.fontSize(9).font('Helvetica-Bold').text('Delivered By:', 305, 405);
-  doc.fontSize(8).font('Helvetica').text('(Signature & Stamp)', 305, 420);
+  doc.rect(300, footerY, 250, boxHeight).stroke();
+  doc.fontSize(9).font('Helvetica-Bold').text('Delivered By:', 305, footerY + 5);
+  doc.fontSize(8).font('Helvetica').text('(Signature & Stamp)', 305, footerY + 32);
 
   doc.end();
 

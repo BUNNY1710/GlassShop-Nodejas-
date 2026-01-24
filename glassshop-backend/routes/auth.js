@@ -145,13 +145,19 @@ router.post('/login', async (req, res) => {
 // Get profile
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
+    const username = req.user?.username;
+    if (!username) {
+      return res.status(401).json({ error: 'Username not found in token' });
+    }
+
     const user = await User.findOne({
-      where: { userName: req.user.username },
+      where: { userName: username },
       include: [{ model: Shop, as: 'shop' }]
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found: ' + req.user.username });
+      console.error(`User not found in database: ${username}`);
+      return res.status(404).json({ error: `User not found: ${username}. Please register or log in again.` });
     }
 
     res.json({
@@ -192,13 +198,19 @@ router.post('/change-password', authMiddleware, async (req, res) => {
 // Get staff list (Admin only)
 router.get('/staff', authMiddleware, requireAdmin, async (req, res) => {
   try {
+    const username = req.user?.username;
+    if (!username) {
+      return res.status(401).json({ error: 'Username not found in token' });
+    }
+
     const admin = await User.findOne({
-      where: { userName: req.user.username },
+      where: { userName: username },
       include: [{ model: Shop, as: 'shop' }]
     });
 
     if (!admin) {
-      return res.status(404).json({ error: 'Admin not found' });
+      console.error(`Admin not found in database: ${username}`);
+      return res.status(404).json({ error: `Admin not found: ${username}. Please register or log in again.` });
     }
 
     const staff = await User.findAll({

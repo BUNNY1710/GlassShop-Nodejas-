@@ -351,10 +351,10 @@ function InvoiceManagement() {
                           <td style={{ padding: "12px" }}>{invoice.invoiceType}</td>
                           <td style={{ padding: "12px" }}>{invoice.billingType}</td>
                           <td style={{ padding: "12px" }}>{getPaymentStatusBadge(invoice.paymentStatus)}</td>
-                          <td style={{ padding: "12px", fontWeight: "600" }}>₹{invoice.grandTotal?.toFixed(2)}</td>
-                          <td style={{ padding: "12px" }}>₹{invoice.paidAmount?.toFixed(2)}</td>
+                          <td style={{ padding: "12px", fontWeight: "600" }}>₹{(parseFloat(invoice.grandTotal) || 0).toFixed(2)}</td>
+                          <td style={{ padding: "12px" }}>₹{(parseFloat(invoice.paidAmount) || 0).toFixed(2)}</td>
                           <td style={{ padding: "12px", color: invoice.dueAmount > 0 ? "#ef4444" : "#22c55e", fontWeight: "500" }}>
-                            ₹{invoice.dueAmount?.toFixed(2)}
+                            ₹{(parseFloat(invoice.dueAmount) || 0).toFixed(2)}
                           </td>
                           <td style={{ padding: "12px" }}>{invoice.invoiceDate}</td>
                         </>
@@ -589,7 +589,7 @@ function InvoiceManagement() {
                       </div>
                       <div style={{ gridColumn: isMobile ? "1" : "1 / -1" }}>
                         <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Grand Total</div>
-                        <div style={{ fontSize: "20px", color: "#1e40af", fontWeight: "700" }}>₹{selectedQuotation.grandTotal?.toFixed(2)}</div>
+                        <div style={{ fontSize: "20px", color: "#1e40af", fontWeight: "700" }}>₹{(parseFloat(selectedQuotation.grandTotal) || 0).toFixed(2)}</div>
                       </div>
                     </div>
                   </div>
@@ -744,11 +744,11 @@ function InvoiceManagement() {
                 <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "15px" }}>
                   <div>
                     <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px", fontWeight: "500" }}>Grand Total</div>
-                    <div style={{ fontSize: "20px", color: "#1e40af", fontWeight: "700" }}>₹{currentInvoiceForPayment.grandTotal?.toFixed(2)}</div>
+                    <div style={{ fontSize: "20px", color: "#1e40af", fontWeight: "700" }}>₹{(parseFloat(currentInvoiceForPayment.grandTotal) || 0).toFixed(2)}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px", fontWeight: "500" }}>Already Paid</div>
-                    <div style={{ fontSize: "18px", color: "#22c55e", fontWeight: "600" }}>₹{currentInvoiceForPayment.paidAmount?.toFixed(2)}</div>
+                    <div style={{ fontSize: "18px", color: "#22c55e", fontWeight: "600" }}>₹{(parseFloat(currentInvoiceForPayment.paidAmount) || 0).toFixed(2)}</div>
                   </div>
                   <div style={{ gridColumn: isMobile ? "1" : "1 / -1" }}>
                     <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px", fontWeight: "500" }}>Due Amount</div>
@@ -759,7 +759,7 @@ function InvoiceManagement() {
                         fontWeight: "800",
                       }}
                     >
-                      ₹{currentInvoiceForPayment.dueAmount?.toFixed(2)}
+                      ₹{(parseFloat(currentInvoiceForPayment.dueAmount) || 0).toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -799,7 +799,7 @@ function InvoiceManagement() {
                     <div style={{ fontSize: "24px", marginBottom: "8px" }}>💯</div>
                     <div style={{ fontWeight: "600", color: "#1f2937", fontSize: "14px" }}>Full Payment</div>
                     <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>
-                      ₹{currentInvoiceForPayment.dueAmount?.toFixed(2)}
+                      ₹{(parseFloat(currentInvoiceForPayment.dueAmount) || 0).toFixed(2)}
                     </div>
                   </button>
                   <button
@@ -830,7 +830,7 @@ function InvoiceManagement() {
                     <div style={{ fontSize: "24px", marginBottom: "8px" }}>➗</div>
                     <div style={{ fontWeight: "600", color: "#1f2937", fontSize: "14px" }}>Half Payment</div>
                     <div style={{ fontSize: "12px", color: "#6b7280", marginTop: "4px" }}>
-                      ₹{((currentInvoiceForPayment.dueAmount || 0) / 2).toFixed(2)}
+                      ₹{((parseFloat(currentInvoiceForPayment.dueAmount) || 0) / 2).toFixed(2)}
                     </div>
                   </button>
                   <button
@@ -894,7 +894,7 @@ function InvoiceManagement() {
                     onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                   />
                   <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>
-                    💰 Maximum: ₹{currentInvoiceForPayment.dueAmount?.toFixed(2)}
+                    💰 Maximum: ₹{(parseFloat(currentInvoiceForPayment.dueAmount) || 0).toFixed(2)}
                   </p>
                 </div>
                 <div>
@@ -1422,7 +1422,7 @@ function InvoiceManagement() {
                       <div>
                         <strong style={{ color: "#374151", fontSize: "13px" }}>Quotation Total:</strong>
                         <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "14px", fontWeight: "600" }}>
-                          ₹{selectedQuotationDetails.grandTotal?.toFixed(2)}
+                          ₹{(parseFloat(selectedQuotationDetails.grandTotal) || 0).toFixed(2)}
                         </p>
                       </div>
                       {selectedQuotationDetails.billingType && (
@@ -1478,32 +1478,32 @@ function InvoiceManagement() {
                 <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "15px" }}>
                   <div>
                     <strong style={{ color: "#374151", fontSize: "13px" }}>Subtotal:</strong>
-                    <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "16px", fontWeight: "500" }}>₹{selectedInvoice.subtotal?.toFixed(2)}</p>
+                    <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "16px", fontWeight: "500" }}>₹{(parseFloat(selectedInvoice.subtotal) || 0).toFixed(2)}</p>
                   </div>
                   {selectedInvoice.billingType === "GST" && (
                     <>
                       <div>
                         <strong style={{ color: "#374151", fontSize: "13px" }}>GST ({selectedInvoice.gstPercentage}%):</strong>
                         <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "16px", fontWeight: "500" }}>
-                          ₹{selectedInvoice.gstAmount?.toFixed(2)}
+                          ₹{(parseFloat(selectedInvoice.gstAmount) || 0).toFixed(2)}
                         </p>
                       </div>
                       {selectedInvoice.cgst && (
                         <div>
                           <strong style={{ color: "#374151", fontSize: "13px" }}>CGST:</strong>
-                          <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "14px" }}>₹{selectedInvoice.cgst?.toFixed(2)}</p>
+                          <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "14px" }}>₹{(parseFloat(selectedInvoice.cgst) || 0).toFixed(2)}</p>
                         </div>
                       )}
                       {selectedInvoice.sgst && (
                         <div>
                           <strong style={{ color: "#374151", fontSize: "13px" }}>SGST:</strong>
-                          <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "14px" }}>₹{selectedInvoice.sgst?.toFixed(2)}</p>
+                          <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "14px" }}>₹{(parseFloat(selectedInvoice.sgst) || 0).toFixed(2)}</p>
                         </div>
                       )}
                       {selectedInvoice.igst && (
                         <div>
                           <strong style={{ color: "#374151", fontSize: "13px" }}>IGST:</strong>
-                          <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "14px" }}>₹{selectedInvoice.igst?.toFixed(2)}</p>
+                          <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "14px" }}>₹{(parseFloat(selectedInvoice.igst) || 0).toFixed(2)}</p>
                         </div>
                       )}
                     </>
@@ -1511,13 +1511,13 @@ function InvoiceManagement() {
                   <div>
                     <strong style={{ color: "#374151", fontSize: "13px" }}>Grand Total:</strong>
                     <p style={{ margin: "4px 0", color: "#1f2937", fontSize: "18px", fontWeight: "700" }}>
-                      ₹{selectedInvoice.grandTotal?.toFixed(2)}
+                      ₹{(parseFloat(selectedInvoice.grandTotal) || 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <strong style={{ color: "#374151", fontSize: "13px" }}>Paid Amount:</strong>
                     <p style={{ margin: "4px 0", color: "#22c55e", fontSize: "16px", fontWeight: "600" }}>
-                      ₹{selectedInvoice.paidAmount?.toFixed(2)}
+                      ₹{(parseFloat(selectedInvoice.paidAmount) || 0).toFixed(2)}
                     </p>
                   </div>
                   <div>
@@ -1530,7 +1530,7 @@ function InvoiceManagement() {
                         fontWeight: "600",
                       }}
                     >
-                      ₹{selectedInvoice.dueAmount?.toFixed(2)}
+                      ₹{(parseFloat(selectedInvoice.dueAmount) || 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
@@ -1565,7 +1565,7 @@ function InvoiceManagement() {
                           </td>
                           <td style={{ padding: "12px" }}>{item.quantity}</td>
                           <td style={{ padding: "12px" }}>₹{item.ratePerSqft}</td>
-                          <td style={{ padding: "12px", fontWeight: "600" }}>₹{item.subtotal?.toFixed(2)}</td>
+                          <td style={{ padding: "12px", fontWeight: "600" }}>₹{(parseFloat(item.subtotal) || 0).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1598,7 +1598,7 @@ function InvoiceManagement() {
                           >
                             <td style={{ padding: "12px" }}>{new Date(payment.paymentDate).toLocaleDateString()}</td>
                             <td style={{ padding: "12px" }}>{payment.paymentMode}</td>
-                            <td style={{ padding: "12px", fontWeight: "600", color: "#22c55e" }}>₹{payment.amount?.toFixed(2)}</td>
+                            <td style={{ padding: "12px", fontWeight: "600", color: "#22c55e" }}>₹{(parseFloat(payment.amount) || 0).toFixed(2)}</td>
                             <td style={{ padding: "12px", color: "#6b7280" }}>{payment.transactionId || payment.referenceNumber || "-"}</td>
                           </tr>
                         ))}

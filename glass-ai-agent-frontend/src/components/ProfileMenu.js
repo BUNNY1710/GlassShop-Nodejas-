@@ -275,6 +275,8 @@ function ProfileMenu() {
   const [oldPass, setOldPass] = useState("");
   const [newPass, setNewPass] = useState("");
   const [dropdownStyle, setDropdownStyle] = useState({});
+  const [showMessage, setShowMessage] = useState(false);
+  const [message, setMessage] = useState({ type: "success", text: "" });
 
   const menuRef = useRef(null);
   const dropdownRef = useRef(null);
@@ -526,13 +528,30 @@ function ProfileMenu() {
                       newPassword: newPass,
                     })
                     .then(() => {
-                      alert("Password changed successfully");
+                      setMessage({ 
+                        type: "success", 
+                        text: "Password changed successfully!" 
+                      });
+                      setShowMessage(true);
                       setShowChange(false);
                       setOldPass("");
                       setNewPass("");
+                      // Auto-close message after 3 seconds
+                      setTimeout(() => {
+                        setShowMessage(false);
+                      }, 3000);
                     })
                     .catch((err) => {
-                      alert(err.response?.data || "Failed");
+                      const errorMessage = err.response?.data?.error || err.response?.data || "Failed to change password. Please try again.";
+                      setMessage({ 
+                        type: "error", 
+                        text: errorMessage 
+                      });
+                      setShowMessage(true);
+                      // Auto-close error message after 4 seconds
+                      setTimeout(() => {
+                        setShowMessage(false);
+                      }, 4000);
                     });
                 }}
               >
@@ -543,6 +562,61 @@ function ProfileMenu() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PROFESSIONAL MESSAGE MODAL */}
+      {showMessage && (
+        <div style={messageOverlay} onClick={() => setShowMessage(false)}>
+          <div 
+            style={messageModal} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: "16px"
+            }}>
+              {message.type === "success" ? (
+                <div style={successIcon}>✓</div>
+              ) : (
+                <div style={errorIcon}>✕</div>
+              )}
+            </div>
+            <h3 style={{
+              fontSize: "18px",
+              fontWeight: "700",
+              color: "#0f172a",
+              marginBottom: "8px",
+              textAlign: "center"
+            }}>
+              {message.type === "success" ? "Success!" : "Error"}
+            </h3>
+            <p style={{
+              fontSize: "14px",
+              color: "#64748b",
+              textAlign: "center",
+              marginBottom: "24px",
+              lineHeight: "1.5"
+            }}>
+              {message.text}
+            </p>
+            <button
+              style={messageButton}
+              onClick={() => setShowMessage(false)}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "scale(1.02)";
+                e.currentTarget.style.boxShadow = "0 4px 8px rgba(99, 102, 241, 0.3)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+                e.currentTarget.style.boxShadow = "0 2px 4px rgba(99, 102, 241, 0.2)";
+              }}
+            >
+              OK
+            </button>
           </div>
         </div>
       )}
@@ -683,3 +757,96 @@ const cancelBtn = {
   transition: "all 0.2s ease",
   boxShadow: "0 2px 4px rgba(239, 68, 68, 0.2)",
 };
+
+const messageOverlay = {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  width: "100vw",
+  height: "100vh",
+  background: "rgba(0, 0, 0, 0.5)",
+  backdropFilter: "blur(4px)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  zIndex: 100000,
+  animation: "fadeIn 0.2s ease-in-out",
+};
+
+const messageModal = {
+  background: "white",
+  borderRadius: "16px",
+  padding: "32px",
+  maxWidth: "400px",
+  width: "90%",
+  boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+  border: "1px solid rgba(226, 232, 240, 0.8)",
+  animation: "slideUp 0.3s ease-out",
+};
+
+const successIcon = {
+  width: "64px",
+  height: "64px",
+  borderRadius: "50%",
+  background: "linear-gradient(135deg, #22c55e, #16a34a)",
+  color: "white",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "32px",
+  fontWeight: "bold",
+  boxShadow: "0 4px 12px rgba(34, 197, 94, 0.3)",
+};
+
+const errorIcon = {
+  width: "64px",
+  height: "64px",
+  borderRadius: "50%",
+  background: "linear-gradient(135deg, #ef4444, #dc2626)",
+  color: "white",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "32px",
+  fontWeight: "bold",
+  boxShadow: "0 4px 12px rgba(239, 68, 68, 0.3)",
+};
+
+const messageButton = {
+  width: "100%",
+  background: "linear-gradient(135deg, #6366f1, #4f46e5)",
+  border: "none",
+  padding: "12px 24px",
+  borderRadius: "8px",
+  cursor: "pointer",
+  color: "white",
+  fontWeight: "600",
+  fontSize: "14px",
+  transition: "all 0.2s ease",
+  boxShadow: "0 2px 4px rgba(99, 102, 241, 0.2)",
+};
+
+// Add CSS animations
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  `;
+  if (!document.head.querySelector('style[data-profile-menu-animations]')) {
+    style.setAttribute('data-profile-menu-animations', 'true');
+    document.head.appendChild(style);
+  }
+}

@@ -7,13 +7,19 @@ const { requireAdmin, requireStaff } = require('../middleware/auth');
 // Get recent audit logs (Admin only)
 router.get('/recent', requireAdmin, async (req, res) => {
   try {
+    const username = req.user?.username;
+    if (!username) {
+      return res.status(401).json({ error: 'Username not found in token' });
+    }
+
     const user = await User.findOne({
-      where: { userName: req.user.username },
+      where: { userName: username },
       include: [{ model: Shop, as: 'shop' }]
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      console.error(`User not found in database: ${username}`);
+      return res.status(404).json({ error: `User not found: ${username}. Please register or log in again.` });
     }
 
     if (!user.shopId) {
@@ -37,13 +43,19 @@ router.get('/recent', requireAdmin, async (req, res) => {
 // Get transfer count (Admin and Staff)
 router.get('/transfer-count', requireStaff, async (req, res) => {
   try {
+    const username = req.user?.username;
+    if (!username) {
+      return res.status(401).json({ error: 'Username not found in token' });
+    }
+
     const user = await User.findOne({
-      where: { userName: req.user.username },
+      where: { userName: username },
       include: [{ model: Shop, as: 'shop' }]
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      console.error(`User not found in database: ${username}`);
+      return res.status(404).json({ error: `User not found: ${username}. Please register or log in again.` });
     }
 
     // Return 0 if user doesn't have a shop

@@ -28,30 +28,52 @@ function Dashboard() {
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
+        // Check if user is logged in
+        const token = localStorage.getItem("token");
+        if (!token) {
+          console.warn("No authentication token found. Please log in.");
+          setLoading(false);
+          return;
+        }
+
         setLoading(true);
 
         const stockPromise = api.get("/stock/all")
           .then(res => res.data)
-          .catch(() => []);
+          .catch((error) => {
+            console.error("Error fetching stock:", error.response?.status, error.response?.data);
+            return [];
+          });
 
         const staffPromise = role === "ROLE_ADMIN"
           ? api.get("/auth/staff")
             .then(res => res.data)
-            .catch(() => [])
+            .catch((error) => {
+              console.error("Error fetching staff:", error.response?.status, error.response?.data);
+              return [];
+            })
           : Promise.resolve([]);
 
         const auditPromise = role === "ROLE_ADMIN"
           ? api.get("/audit/recent")
             .then(res => res.data)
-            .catch(() => [])
+            .catch((error) => {
+              console.error("Error fetching audit logs:", error.response?.status, error.response?.data);
+              return [];
+            })
           : Promise.resolve([]);
 
         const transferCountPromise = api.get("/audit/transfer-count")
           .then(res => {
-            const count = res.data;
-            return typeof count === 'number' ? count : (typeof count === 'string' ? parseInt(count, 10) : 0);
+            // Backend returns { count: number }
+            const data = res.data;
+            if (typeof data === 'object' && data !== null && 'count' in data) {
+              return typeof data.count === 'number' ? data.count : parseInt(data.count, 10) || 0;
+            }
+            return typeof data === 'number' ? data : (typeof data === 'string' ? parseInt(data, 10) : 0);
           })
           .catch((error) => {
+            console.error('Error fetching transfer count:', error);
             if (role === "ROLE_ADMIN") {
               return null;
             }
