@@ -18,142 +18,57 @@ const aiRoutes = require('./routes/ai');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// CORS Configuration
-const getAllowedOrigins = () => {
-  if (process.env.CORS_ORIGIN) {
-    return process.env.CORS_ORIGIN.split(',').map(o => o.trim());
-  }
-  // Default allowed origins - include EC2 IP with and without ports
-  const EC2_IP = process.env.EC2_IP || '16.16.73.29';
-  return [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:3001',
-    'http://13.60.53.94',
-    `http://${EC2_IP}`,           // http://16.16.73.29
-    `http://${EC2_IP}:80`,        // http://16.16.73.29:80
-    `http://${EC2_IP}:3000`,      // http://16.16.73.29:3000
-    `https://${EC2_IP}`,         // https://16.16.73.29
-    `https://${EC2_IP}:443`,      // https://16.16.73.29:443
-  ];
-};
+// ==================== CORS CONFIGURATION ====================
+// Simplified and permissive CORS for EC2 deployment
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = getAllowedOrigins();
-    
-    // Log for debugging
-    console.log('🔍 CORS Check - Origin:', origin);
-    console.log('📋 Allowed Origins:', allowedOrigins);
-    
-    // Allow requests with no origin (like mobile apps, Postman, curl, etc.)
-    if (!origin) {
-      console.log('✅ Allowing request with no origin');
-      return callback(null, true);
+// Get EC2 IP from environment or use default
+const EC2_IP = process.env.EC2_IP || '16.16.73.29';
+
+// Universal CORS middleware - sets headers on ALL responses
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Log for debugging
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('🔍 Request - Origin:', origin, '| Method:', req.method, '| Path:', req.path);
+  }
+  
+  // Set CORS headers for ALL origins (permissive for EC2)
+  // In production, you can restrict this to specific origins
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    res.header('Access-Control-Allow-Origin', '*');
+  }
+  
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers, Cache-Control, Pragma');
+  res.header('Access-Control-Expose-Headers', 'Authorization, Content-Type');
+  res.header('Access-Control-Max-Age', '86400');
+  
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('✅ OPTIONS preflight - returning 200');
     }
-    
-    // Check exact match
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-      console.log('✅ Origin allowed (exact match):', origin);
-      callback(null, true);
-      return;
-    }
-    
-    // Check if origin matches any allowed origin by hostname (flexible matching)
-    try {
-      const originUrl = new URL(origin);
-      const originHostname = originUrl.hostname;
-      
-      const matches = allowedOrigins.some(allowed => {
-        if (allowed.includes('*')) return true;
-        
-        try {
-          const allowedUrl = new URL(allowed);
-          // Match by hostname (ignore protocol and port)
-          if (allowedUrl.hostname === originHostname) {
-            console.log('✅ Origin allowed (hostname match):', origin, 'matches', allowed);
-            return true;
-          }
-        } catch (e) {
-          // If URL parsing fails, try string matching
-          if (allowed.includes(originHostname)) {
-            console.log('✅ Origin allowed (string match):', origin, 'contains', allowed);
-            return true;
-          }
-        }
-        return false;
-      });
-      
-      if (matches) {
-        callback(null, true);
-        return;
-      }
-    } catch (e) {
-      console.warn('⚠️  Error parsing origin URL:', e.message);
-    }
-    
-    // In development, allow all origins; in production, be strict
-    if (process.env.NODE_ENV === 'production') {
-      console.error('❌ CORS blocked origin:', origin);
-      callback(new Error(`Not allowed by CORS: ${origin}`));
-    } else {
-      console.log('⚠️  Allowing origin in development mode:', origin);
-      callback(null, true); // Allow in development
-    }
-  },
+    return res.status(200).end();
+  }
+  
+  next();
+});
+
+// Also use cors middleware as backup
+app.use(cors({
+  origin: true, // Allow all origins
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'Access-Control-Request-Method',
-    'Access-Control-Request-Headers',
-    'Cache-Control',
-    'Pragma'
-  ],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Authorization', 'Content-Type'],
-  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
+  optionsSuccessStatus: 200,
   preflightContinue: false,
-  maxAge: 86400 // 24 hours
-};
-
-// Middleware - CORS must be before bodyParser
-app.use(cors(corsOptions));
-
-// Handle preflight OPTIONS requests explicitly for all routes (before other middleware)
-app.options('*', (req, res) => {
-  const origin = req.headers.origin;
-  const allowedOrigins = getAllowedOrigins();
-  
-  console.log('🔍 OPTIONS Preflight Request - Origin:', origin);
-  
-  // Set CORS headers
-  if (!origin || allowedOrigins.some(allowed => {
-    if (allowed === '*' || allowed === origin) return true;
-    try {
-      const originUrl = new URL(origin);
-      const allowedUrl = new URL(allowed);
-      return originUrl.hostname === allowedUrl.hostname;
-    } catch (e) {
-      return allowed.includes(origin);
-    }
-  }) || process.env.NODE_ENV !== 'production') {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
-    res.header('Access-Control-Max-Age', '86400');
-    console.log('✅ OPTIONS request allowed for origin:', origin);
-  } else {
-    console.log('❌ OPTIONS request blocked for origin:', origin);
-  }
-  
-  res.sendStatus(200);
-});
+  maxAge: 86400
+}));
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
