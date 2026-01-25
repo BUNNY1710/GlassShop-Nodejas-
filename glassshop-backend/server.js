@@ -23,14 +23,19 @@ const getAllowedOrigins = () => {
   if (process.env.CORS_ORIGIN) {
     return process.env.CORS_ORIGIN.split(',').map(o => o.trim());
   }
-  // Default allowed origins for development
+  // Default allowed origins - include EC2 IP with and without ports
+  const EC2_IP = process.env.EC2_IP || '16.16.73.29';
   return [
     'http://localhost:3000',
     'http://localhost:3001',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
     'http://13.60.53.94',
-    'http://16.16.73.29'  // Current EC2 IP
+    `http://${EC2_IP}`,           // http://16.16.73.29
+    `http://${EC2_IP}:80`,        // http://16.16.73.29:80
+    `http://${EC2_IP}:3000`,      // http://16.16.73.29:3000
+    `https://${EC2_IP}`,         // https://16.16.73.29
+    `https://${EC2_IP}:443`,      // https://16.16.73.29:443
   ];
 };
 
@@ -38,21 +43,63 @@ const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = getAllowedOrigins();
     
+    // Log for debugging
+    console.log('🔍 CORS Check - Origin:', origin);
+    console.log('📋 Allowed Origins:', allowedOrigins);
+    
     // Allow requests with no origin (like mobile apps, Postman, curl, etc.)
     if (!origin) {
+      console.log('✅ Allowing request with no origin');
       return callback(null, true);
     }
     
-    // Check if origin is in allowed list
+    // Check exact match
     if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+      console.log('✅ Origin allowed (exact match):', origin);
       callback(null, true);
-    } else {
-      // In development, allow all origins; in production, be strict
-      if (process.env.NODE_ENV === 'production') {
-        callback(new Error('Not allowed by CORS'));
-      } else {
-        callback(null, true); // Allow in development
+      return;
+    }
+    
+    // Check if origin matches any allowed origin by hostname (flexible matching)
+    try {
+      const originUrl = new URL(origin);
+      const originHostname = originUrl.hostname;
+      
+      const matches = allowedOrigins.some(allowed => {
+        if (allowed.includes('*')) return true;
+        
+        try {
+          const allowedUrl = new URL(allowed);
+          // Match by hostname (ignore protocol and port)
+          if (allowedUrl.hostname === originHostname) {
+            console.log('✅ Origin allowed (hostname match):', origin, 'matches', allowed);
+            return true;
+          }
+        } catch (e) {
+          // If URL parsing fails, try string matching
+          if (allowed.includes(originHostname)) {
+            console.log('✅ Origin allowed (string match):', origin, 'contains', allowed);
+            return true;
+          }
+        }
+        return false;
+      });
+      
+      if (matches) {
+        callback(null, true);
+        return;
       }
+    } catch (e) {
+      console.warn('⚠️  Error parsing origin URL:', e.message);
+    }
+    
+    // In development, allow all origins; in production, be strict
+    if (process.env.NODE_ENV === 'production') {
+      console.error('❌ CORS blocked origin:', origin);
+      callback(new Error(`Not allowed by CORS: ${origin}`));
+    } else {
+      console.log('⚠️  Allowing origin in development mode:', origin);
+      callback(null, true); // Allow in development
     }
   },
   credentials: true,
@@ -77,8 +124,36 @@ const corsOptions = {
 // Middleware - CORS must be before bodyParser
 app.use(cors(corsOptions));
 
-// Handle preflight requests explicitly for all routes
-app.options('*', cors(corsOptions));
+// Handle preflight OPTIONS requests explicitly for all routes (before other middleware)
+app.options('*', (req, res) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = getAllowedOrigins();
+  
+  console.log('🔍 OPTIONS Preflight Request - Origin:', origin);
+  
+  // Set CORS headers
+  if (!origin || allowedOrigins.some(allowed => {
+    if (allowed === '*' || allowed === origin) return true;
+    try {
+      const originUrl = new URL(origin);
+      const allowedUrl = new URL(allowed);
+      return originUrl.hostname === allowedUrl.hostname;
+    } catch (e) {
+      return allowed.includes(origin);
+    }
+  }) || process.env.NODE_ENV !== 'production') {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Access-Control-Request-Method, Access-Control-Request-Headers');
+    res.header('Access-Control-Max-Age', '86400');
+    console.log('✅ OPTIONS request allowed for origin:', origin);
+  } else {
+    console.log('❌ OPTIONS request blocked for origin:', origin);
+  }
+  
+  res.sendStatus(200);
+});
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
