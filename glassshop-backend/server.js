@@ -29,8 +29,8 @@ const getAllowedOrigins = () => {
     'http://localhost:3001',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
-    'http://13.60.53.94'
-
+    'http://13.60.53.94',
+    'http://16.16.73.29'  // Current EC2 IP
   ];
 };
 
@@ -117,8 +117,10 @@ const startServer = async () => {
       console.log('✅ Database models synchronized.');
     }
 
-    app.listen(PORT, () => {
-      console.log(`🚀 Server is running on http://localhost:${PORT}`);
+    // Listen on all interfaces (0.0.0.0) so nginx can proxy to it
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Server is running on http://0.0.0.0:${PORT}`);
+      console.log(`📡 Accessible at http://localhost:${PORT} and http://127.0.0.1:${PORT}`);
     });
   } catch (error) {
     console.error('❌ Unable to connect to the database:', error);
