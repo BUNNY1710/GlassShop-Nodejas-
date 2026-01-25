@@ -24,6 +24,15 @@ const PORT = process.env.PORT || 8080;
 // Get EC2 IP from environment or use default
 const EC2_IP = process.env.EC2_IP || '16.16.73.29';
 
+// ==================== REQUEST LOGGING MIDDLEWARE ====================
+// Log ALL incoming requests FIRST (before CORS)
+app.use((req, res, next) => {
+  console.log('📥 [REQUEST]', req.method, req.path);
+  console.log('   Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('   IP:', req.ip, '| X-Forwarded-For:', req.get('X-Forwarded-For'));
+  next();
+});
+
 // ==================== CORS MIDDLEWARE ====================
 // Universal CORS - handles ALL requests and sets headers on ALL responses
 app.use((req, res, next) => {
@@ -72,19 +81,39 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Public routes (no auth required)
-app.use('/auth', authRoutes);
+app.use('/api/auth', authRoutes);
 
 // Protected routes (auth required)
-app.use('/stock', authMiddleware, stockRoutes);
+app.use('/api/stock', authMiddleware, stockRoutes);
 app.use('/api/customers', authMiddleware, customerRoutes);
 app.use('/api/quotations', authMiddleware, quotationRoutes);
 app.use('/api/invoices', authMiddleware, invoiceRoutes);
-app.use('/audit', authMiddleware, auditRoutes);
-app.use('/ai', authMiddleware, aiRoutes);
+app.use('/api/audit', authMiddleware, auditRoutes);
+app.use('/api/ai', authMiddleware, aiRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', message: 'GlassShop Backend API is running' });
+  console.log('✅ [HEALTH] Health check requested');
+  res.json({ status: 'OK', message: 'GlassShop Backend API is running', timestamp: new Date().toISOString() });
+});
+
+// Test endpoint for debugging
+app.get('/test', (req, res) => {
+  console.log('✅ [TEST] Test endpoint hit');
+  res.json({ 
+    message: 'Backend is reachable!', 
+    method: req.method,
+    path: req.path,
+    origin: req.headers.origin,
+    headers: req.headers,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Test OPTIONS endpoint
+app.options('/test', (req, res) => {
+  console.log('✅ [TEST] OPTIONS test endpoint hit');
+  res.status(200).end();
 });
 
 // Error handling middleware
