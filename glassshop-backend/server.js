@@ -24,21 +24,21 @@ const PORT = process.env.PORT || 8080;
 // Get EC2 IP from environment or use default
 const EC2_IP = process.env.EC2_IP || '16.16.73.29';
 
-// Universal CORS middleware - sets headers on ALL responses
+// ==================== CORS MIDDLEWARE ====================
+// Universal CORS - handles ALL requests and sets headers on ALL responses
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   
-  // Log for debugging
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('🔍 Request - Origin:', origin, '| Method:', req.method, '| Path:', req.path);
-  }
+  // ALWAYS log for debugging (even in production for now)
+  console.log('🔍 [CORS] Request:', req.method, req.path, '| Origin:', origin || 'none');
   
   // Set CORS headers for ALL origins (permissive for EC2)
-  // In production, you can restrict this to specific origins
   if (origin) {
     res.header('Access-Control-Allow-Origin', origin);
+    console.log('✅ [CORS] Set Allow-Origin:', origin);
   } else {
     res.header('Access-Control-Allow-Origin', '*');
+    console.log('✅ [CORS] Set Allow-Origin: * (no origin header)');
   }
   
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -47,11 +47,9 @@ app.use((req, res, next) => {
   res.header('Access-Control-Expose-Headers', 'Authorization, Content-Type');
   res.header('Access-Control-Max-Age', '86400');
   
-  // Handle preflight OPTIONS requests
+  // Handle preflight OPTIONS requests IMMEDIATELY
   if (req.method === 'OPTIONS') {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('✅ OPTIONS preflight - returning 200');
-    }
+    console.log('✅ [CORS] OPTIONS preflight - returning 200');
     return res.status(200).end();
   }
   
