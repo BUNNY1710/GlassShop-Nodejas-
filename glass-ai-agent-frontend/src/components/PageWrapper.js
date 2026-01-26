@@ -64,17 +64,19 @@ function PageWrapper({ background, children, backgroundImage }) {
         }}
       />
 
-      {/* Content Container */}
+      {/* Content Container - Mobile-first responsive */}
       <div
         style={{
           position: "relative",
           zIndex: 1,
           minHeight: "calc(100vh - 70px)",
-          padding: "clamp(16px, 4vw, 40px)",
+          padding: "clamp(12px, 4vw, 40px)", // Responsive padding: 12px mobile, scales up
           color: bg ? "white" : "#0f172a",
           maxWidth: "1600px",
           margin: "0 auto",
           width: "100%",
+          boxSizing: "border-box", // Prevent overflow
+          overflowX: "hidden", // Prevent horizontal scroll
         }}
       >
         {children}

@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
 import { StatCard, Card, Button } from "../components/ui";
 import api from "../api/api";
+import { useResponsive } from "../hooks/useResponsive";
 import "../styles/design-system.css";
 
 function Dashboard() {
   const navigate = useNavigate();
-  const role = localStorage.getItem("role");
+  const role = sessionStorage.getItem("role");
   const [auditLogs, setAuditLogs] = useState([]);
   const [stats, setStats] = useState({
     totalStock: 0,
@@ -17,19 +18,15 @@ function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [billingMenuOpen, setBillingMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const { isMobile } = useResponsive(); // Use responsive hook
 
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  // Removed manual resize handler - useResponsive hook handles it
 
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
         // Check if user is logged in
-        const token = localStorage.getItem("token");
+        const token = sessionStorage.getItem("token");
         if (!token) {
           console.warn("No authentication token found. Please log in.");
           setLoading(false);
@@ -38,7 +35,7 @@ function Dashboard() {
 
         setLoading(true);
 
-        const stockPromise = api.get("/stock/all")
+        const stockPromise = api.get("/api/stock/all")
           .then(res => res.data)
           .catch((error) => {
             console.error("Error fetching stock:", error.response?.status, error.response?.data);
@@ -46,7 +43,7 @@ function Dashboard() {
           });
 
         const staffPromise = role === "ROLE_ADMIN"
-          ? api.get("/auth/staff")
+          ? api.get("/api/auth/staff")
             .then(res => res.data)
             .catch((error) => {
               console.error("Error fetching staff:", error.response?.status, error.response?.data);
@@ -55,7 +52,7 @@ function Dashboard() {
           : Promise.resolve([]);
 
         const auditPromise = role === "ROLE_ADMIN"
-          ? api.get("/audit/recent")
+          ? api.get("/api/audit/recent")
             .then(res => res.data)
             .catch((error) => {
               console.error("Error fetching audit logs:", error.response?.status, error.response?.data);
@@ -63,7 +60,7 @@ function Dashboard() {
             })
           : Promise.resolve([]);
 
-        const transferCountPromise = api.get("/audit/transfer-count")
+        const transferCountPromise = api.get("/api/audit/transfer-count")
           .then(res => {
             // Backend returns { count: number }
             const data = res.data;
@@ -153,6 +150,7 @@ function Dashboard() {
                 variant="primary"
                 icon="➕"
                 onClick={() => navigate("/manage-stock")}
+                fullWidth={isMobile} // Full width on mobile
               >
                 Add Stock
               </Button>
@@ -160,6 +158,7 @@ function Dashboard() {
                 variant="outline"
                 icon="📊"
                 onClick={() => navigate("/view-stock")}
+                fullWidth={isMobile} // Full width on mobile
               >
                 View Stock
               </Button>
@@ -357,20 +356,25 @@ export default Dashboard;
 
 /* ================= STYLES ================= */
 
+// Mobile-first container with responsive padding
 const getContainerStyle = (isMobile) => ({
   maxWidth: "1400px",
   margin: "0 auto",
-  padding: isMobile ? "24px 16px" : "40px 24px",
+  padding: isMobile ? "16px 12px" : "40px 24px", // Tighter padding on mobile
   width: "100%",
+  boxSizing: "border-box",
+  overflowX: "hidden", // Prevent horizontal scroll
 });
 
+// Responsive header - stacks on mobile
 const headerSection = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "flex-start",
-  marginBottom: "40px",
+  marginBottom: "32px", // Reduced on mobile
   flexWrap: "wrap",
-  gap: "24px",
+  gap: "16px", // Smaller gap on mobile
+  flexDirection: "column", // Stack on mobile by default
 };
 
 const getMainTitleStyle = (isMobile) => ({
@@ -385,62 +389,72 @@ const getMainTitleStyle = (isMobile) => ({
   backgroundClip: "text",
 });
 
+// Responsive subtitle
 const subtitle = {
-  fontSize: "18px",
+  fontSize: "clamp(14px, 4vw, 18px)", // Fluid typography
   color: "#64748b",
   margin: "0",
   fontWeight: "400",
+  lineHeight: "1.5",
 };
 
+// Full-width buttons on mobile for better touch targets
 const quickActions = {
   display: "flex",
   gap: "12px",
   flexWrap: "wrap",
+  width: "100%", // Full width on mobile
 };
 
+// Mobile-first responsive grid
 const getStatsGridStyle = (isMobile, role) => ({
   display: "grid",
   gridTemplateColumns: isMobile 
-    ? "1fr" 
+    ? "1fr" // Single column on mobile
     : role === "ROLE_ADMIN" 
-      ? "repeat(auto-fit, minmax(240px, 1fr))" 
+      ? "repeat(auto-fit, minmax(240px, 1fr))" // Auto-fit on larger screens
       : "1fr",
-  gap: "24px",
-  marginBottom: "32px",
+  gap: isMobile ? "16px" : "24px", // Smaller gap on mobile
+  marginBottom: isMobile ? "24px" : "32px",
 });
 
 const billingSection = {
   marginBottom: "32px",
 };
 
+// Responsive billing card - stacks on mobile
 const billingCardContent = {
   display: "flex",
   alignItems: "center",
   gap: "20px",
+  flexWrap: "wrap", // Allow wrapping on small screens
 };
 
 const billingIconWrapper = {
   flexShrink: 0,
 };
 
+// Responsive billing icon
 const billingIcon = {
-  width: "64px",
-  height: "64px",
+  width: "clamp(48px, 12vw, 64px)", // Scales with viewport
+  height: "clamp(48px, 12vw, 64px)",
   borderRadius: "16px",
   background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  fontSize: "32px",
+  fontSize: "clamp(24px, 6vw, 32px)", // Responsive font size
   boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+  flexShrink: 0, // Prevent shrinking
 };
 
 const billingInfo = {
   flex: 1,
 };
 
+// Responsive billing title
 const billingTitle = {
-  fontSize: "24px",
+  fontSize: "clamp(18px, 5vw, 24px)", // Fluid typography
   fontWeight: "700",
   color: "#0f172a",
   margin: "0 0 4px 0",

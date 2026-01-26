@@ -295,9 +295,9 @@ import ProfileMenu from "./ProfileMenu";
 
 function Navbar() {
   const navigate = useNavigate();
-  const role = localStorage.getItem("role");
+  const role = sessionStorage.getItem("role");
   const [open, setOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
   const [billingMenuOpen, setBillingMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -306,10 +306,40 @@ function Navbar() {
     return () => window.removeEventListener("resize", resize);
   }, []);
 
+  // Dynamic styles based on screen size
+  const navBarStyle = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: isMobile ? "60px" : "70px",
+    zIndex: 10000,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: isMobile ? "0 12px" : "0 24px",
+    background: "rgba(255, 255, 255, 0.95)",
+    backdropFilter: "blur(12px)",
+    boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+    borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
+  };
+
+  const logoStyle = {
+    color: "#4f46e5",
+    fontWeight: "800",
+    fontSize: isMobile ? "16px" : "20px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: isMobile ? "4px" : "8px",
+    transition: "all 0.2s ease",
+    whiteSpace: "nowrap",
+  };
+
   return (
-    <nav style={navBar}>
+    <nav style={navBarStyle}>
       {/* LEFT LOGO */}
-      <div style={logo} onClick={() => navigate("/dashboard")}>
+      <div style={logoStyle} onClick={() => navigate("/dashboard")}>
         <span style={{ fontSize: "24px" }}>🧱</span>
         <span>Glass Shop</span>
       </div>
@@ -347,19 +377,59 @@ function Navbar() {
           borderBottom: isMobile ? "1px solid rgba(226, 232, 240, 0.8)" : "none",
         }}
       >
-        <NavLink to="/dashboard" style={navLinkStyle} onClick={() => setOpen(false)}>
+        <NavLink 
+          to="/dashboard" 
+          style={({ isActive }) => ({
+            ...navLinkStyle({ isActive }),
+            fontSize: isMobile ? "13px" : "14px",
+            padding: isMobile ? "12px 14px" : "10px 16px",
+            gap: isMobile ? "4px" : "6px",
+            minHeight: isMobile ? "44px" : "auto",
+          })} 
+          onClick={() => setOpen(false)}
+        >
           <span>📊</span> Dashboard
         </NavLink>
 
-        <NavLink to="/manage-stock" style={navLinkStyle} onClick={() => setOpen(false)}>
+        <NavLink 
+          to="/manage-stock" 
+          style={({ isActive }) => ({
+            ...navLinkStyle({ isActive }),
+            fontSize: isMobile ? "13px" : "14px",
+            padding: isMobile ? "12px 14px" : "10px 16px",
+            gap: isMobile ? "4px" : "6px",
+            minHeight: isMobile ? "44px" : "auto",
+          })} 
+          onClick={() => setOpen(false)}
+        >
           <span>➕</span> Manage Stock
         </NavLink>
 
-        <NavLink to="/view-stock" style={navLinkStyle} onClick={() => setOpen(false)}>
+        <NavLink 
+          to="/view-stock" 
+          style={({ isActive }) => ({
+            ...navLinkStyle({ isActive }),
+            fontSize: isMobile ? "13px" : "14px",
+            padding: isMobile ? "12px 14px" : "10px 16px",
+            gap: isMobile ? "4px" : "6px",
+            minHeight: isMobile ? "44px" : "auto",
+          })} 
+          onClick={() => setOpen(false)}
+        >
           <span>📦</span> View Stock
         </NavLink>
 
-        <NavLink to="/stock-transfer" style={navLinkStyle} onClick={() => setOpen(false)}>
+        <NavLink 
+          to="/stock-transfer" 
+          style={({ isActive }) => ({
+            ...navLinkStyle({ isActive }),
+            fontSize: isMobile ? "13px" : "14px",
+            padding: isMobile ? "12px 14px" : "10px 16px",
+            gap: isMobile ? "4px" : "6px",
+            minHeight: isMobile ? "44px" : "auto",
+          })} 
+          onClick={() => setOpen(false)}
+        >
           <span>🔁</span> Transfer Stock
         </NavLink>
 
@@ -427,15 +497,45 @@ function Navbar() {
 
         {role === "ROLE_ADMIN" && (
           <>
-            <NavLink to="/ai" style={navLinkStyle} onClick={() => setOpen(false)}>
+            <NavLink 
+              to="/ai" 
+              style={({ isActive }) => ({
+                ...navLinkStyle({ isActive }),
+                fontSize: isMobile ? "13px" : "14px",
+                padding: isMobile ? "12px 14px" : "10px 16px",
+                gap: isMobile ? "4px" : "6px",
+                minHeight: isMobile ? "44px" : "auto",
+              })} 
+              onClick={() => setOpen(false)}
+            >
               <span>🤖</span> AI Assistant
             </NavLink>
 
-            <NavLink to="/audit" style={navLinkStyle} onClick={() => setOpen(false)}>
+            <NavLink 
+              to="/audit" 
+              style={({ isActive }) => ({
+                ...navLinkStyle({ isActive }),
+                fontSize: isMobile ? "13px" : "14px",
+                padding: isMobile ? "12px 14px" : "10px 16px",
+                gap: isMobile ? "4px" : "6px",
+                minHeight: isMobile ? "44px" : "auto",
+              })} 
+              onClick={() => setOpen(false)}
+            >
               <span>📜</span> Audit Logs
             </NavLink>
 
-            <NavLink to="/create-staff" style={navLinkStyle} onClick={() => setOpen(false)}>
+            <NavLink 
+              to="/create-staff" 
+              style={({ isActive }) => ({
+                ...navLinkStyle({ isActive }),
+                fontSize: isMobile ? "13px" : "14px",
+                padding: isMobile ? "12px 14px" : "10px 16px",
+                gap: isMobile ? "4px" : "6px",
+                minHeight: isMobile ? "44px" : "auto",
+              })} 
+              onClick={() => setOpen(false)}
+            >
               <span>👤</span> Create Staff
             </NavLink>
           </>
@@ -448,34 +548,7 @@ function Navbar() {
 export default Navbar;
 
 /* ================= STYLES ================= */
-
-const navBar = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  right: 0,
-  height: "70px",
-  zIndex: 10000,
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "0 24px",
-  background: "rgba(255, 255, 255, 0.95)",
-  backdropFilter: "blur(12px)",
-  boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
-  borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
-};
-
-const logo = {
-  color: "#4f46e5",
-  fontWeight: "800",
-  fontSize: "20px",
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  gap: "8px",
-  transition: "all 0.2s ease",
-};
+// Note: Dynamic styles are computed in component using isMobile state
 
 const rightBar = {
   display: "flex",
@@ -489,12 +562,13 @@ const menu = {
   alignItems: "center",
 };
 
+// Base nav link style - responsive adjustments applied in component
 const navLinkStyle = ({ isActive }) => ({
   color: isActive ? "#4f46e5" : "#64748b",
   textDecoration: "none",
-  fontSize: "14px",
+  fontSize: "14px", // Base size, adjusted dynamically
   fontWeight: isActive ? "600" : "500",
-  padding: "10px 16px",
+  padding: "10px 16px", // Base padding, adjusted dynamically
   borderRadius: "8px",
   background: isActive 
     ? "rgba(99, 102, 241, 0.1)" 
@@ -502,22 +576,25 @@ const navLinkStyle = ({ isActive }) => ({
   transition: "all 0.2s ease",
   display: "flex",
   alignItems: "center",
-  gap: "6px",
+  gap: "6px", // Base gap, adjusted dynamically
   position: "relative",
 });
 
+// Larger touch target for hamburger menu
 const hamburger = {
   fontSize: "24px",
   background: "transparent",
   border: "none",
   color: "#475569",
   cursor: "pointer",
-  padding: "8px",
+  padding: "12px",
   borderRadius: "8px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   transition: "all 0.2s ease",
+  minWidth: "44px", // Minimum touch target size (WCAG recommendation)
+  minHeight: "44px",
 };
 
 const billingDropdownNav = {

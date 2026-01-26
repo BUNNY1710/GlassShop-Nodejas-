@@ -266,8 +266,8 @@ import api from "../api/api";
 function ProfileMenu() {
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState({
-    username: localStorage.getItem("username") || "User",
-    role: localStorage.getItem("role") || "",
+    username: sessionStorage.getItem("username") || "User",
+    role: sessionStorage.getItem("role") || "",
     shopName: "Glass Shop",
   });
 
@@ -285,7 +285,7 @@ function ProfileMenu() {
   /* ===== LOAD PROFILE (SAFE) ===== */
   useEffect(() => {
     api
-      .get("/auth/profile")
+      .get("/api/auth/profile")
       .then((res) => setProfile(res.data))
       .catch(() => {
         // ❗ DO NOTHING — fallback already exists
@@ -405,7 +405,7 @@ function ProfileMenu() {
   }, [open]);
 
   const logout = () => {
-    localStorage.clear();
+    sessionStorage.clear();
     navigate("/login");
   };
 

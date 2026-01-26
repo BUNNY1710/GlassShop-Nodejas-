@@ -17,7 +17,7 @@ import Register from "./auth/Register";
 import Layout from "./layout/Layout";
 
 const RequireAdmin = ({ children }) => {
-  const role = localStorage.getItem("role");
+  const role = sessionStorage.getItem("role");
   return role === "ROLE_ADMIN"
     ? children
     : <Navigate to="/dashboard" />;
@@ -25,7 +25,7 @@ const RequireAdmin = ({ children }) => {
 
 
 function App() {
-  const isLoggedIn = localStorage.getItem("token");
+  const isLoggedIn = sessionStorage.getItem("token");
 
   return (
     <Routes>

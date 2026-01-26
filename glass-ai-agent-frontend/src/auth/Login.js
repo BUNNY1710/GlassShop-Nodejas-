@@ -33,9 +33,9 @@ function Login() {
     setLoading(true);
     
     try {
-      const res = await api.post("/auth/login", form);
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("role", res.data.role);
+      const res = await api.post("/api/auth/login", form);
+      sessionStorage.setItem("token", res.data.token);
+      sessionStorage.setItem("role", res.data.role);
       navigate("/dashboard");
     } catch (err) {
       let errorMessage = "Invalid username or password";

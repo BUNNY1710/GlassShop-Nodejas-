@@ -164,7 +164,7 @@ function AuditLogs() {
   };
 
   useEffect(() => {
-    api.get("/audit/recent")
+    api.get("/api/audit/recent")
       .then(res => setLogs(res.data))
       .catch(err => {
         if (err.response?.status === 403) {

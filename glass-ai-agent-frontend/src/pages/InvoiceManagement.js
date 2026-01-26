@@ -431,7 +431,8 @@ function InvoiceManagement() {
               alignItems: "center",
               justifyContent: "center",
               zIndex: 10004,
-              paddingTop: "80px",
+              padding: isMobile ? "20px 12px" : "80px 20px 20px 20px",
+              overflowY: "auto",
             }}
             onClick={() => {
               setShowConvertModal(false);
@@ -441,22 +442,44 @@ function InvoiceManagement() {
             <div
               style={{
                 backgroundColor: "white",
-                padding: isMobile ? "20px" : "30px",
-                borderRadius: "16px",
-                maxWidth: "700px",
+                padding: isMobile ? "16px" : "30px",
+                borderRadius: isMobile ? "12px" : "16px",
+                maxWidth: isMobile ? "100%" : "700px",
                 width: "100%",
+                maxHeight: isMobile ? "calc(100vh - 40px)" : "90vh",
+                overflowY: "auto",
                 boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
                 position: "relative",
                 zIndex: 10005,
+                boxSizing: "border-box",
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ marginBottom: "25px", borderBottom: "2px solid #e5e7eb", paddingBottom: "15px" }}>
-                <h2 style={{ margin: 0, color: "#1f2937", fontSize: isMobile ? "20px" : "24px", fontWeight: "600" }}>🔄 Convert Quotation to Invoice</h2>
-                <p style={{ margin: "5px 0 0 0", color: "#6b7280", fontSize: "14px" }}>Select a confirmed quotation to create an invoice</p>
+              <div style={{ 
+                marginBottom: isMobile ? "16px" : "25px", 
+                borderBottom: "2px solid #e5e7eb", 
+                paddingBottom: isMobile ? "12px" : "15px" 
+              }}>
+                <h2 style={{ 
+                  margin: 0, 
+                  color: "#1f2937", 
+                  fontSize: isMobile ? "18px" : "24px", 
+                  fontWeight: "600" 
+                }}>🔄 Convert Quotation to Invoice</h2>
+                <p style={{ 
+                  margin: "5px 0 0 0", 
+                  color: "#6b7280", 
+                  fontSize: isMobile ? "13px" : "14px" 
+                }}>Select a confirmed quotation to create an invoice</p>
               </div>
-              <div style={{ marginBottom: "20px" }}>
-                <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+              <div style={{ marginBottom: isMobile ? "16px" : "20px" }}>
+                <label style={{ 
+                  display: "block", 
+                  marginBottom: "8px", 
+                  color: "#374151", 
+                  fontWeight: "500", 
+                  fontSize: isMobile ? "13px" : "14px" 
+                }}>
                   Select Quotation * <span style={{ color: "#ef4444" }}>●</span>
                 </label>
                 <select
@@ -484,14 +507,15 @@ function InvoiceManagement() {
                   }}
                   style={{
                     width: "100%",
-                    padding: "12px",
+                    padding: isMobile ? "14px 12px" : "12px",
                     borderRadius: "8px",
                     border: "1px solid #d1d5db",
-                    fontSize: "14px",
+                    fontSize: "16px", // Prevent iOS zoom
                     backgroundColor: "#fff",
                     cursor: "pointer",
                     transition: "all 0.2s",
                     boxSizing: "border-box",
+                    minHeight: "44px", // Touch target
                   }}
                   onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                   onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -519,8 +543,14 @@ function InvoiceManagement() {
               </div>
               {selectedQuotation && (
                 <>
-                  <div style={{ marginBottom: "20px" }}>
-                    <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                  <div style={{ marginBottom: isMobile ? "16px" : "20px" }}>
+                    <label style={{ 
+                      display: "block", 
+                      marginBottom: "8px", 
+                      color: "#374151", 
+                      fontWeight: "500", 
+                      fontSize: isMobile ? "13px" : "14px" 
+                    }}>
                       Invoice Type * <span style={{ color: "#ef4444" }}>●</span>
                     </label>
                     <select
@@ -528,14 +558,15 @@ function InvoiceManagement() {
                       onChange={(e) => setConvertForm({ ...convertForm, invoiceType: e.target.value })}
                       style={{
                         width: "100%",
-                        padding: "12px",
+                        padding: isMobile ? "14px 12px" : "12px",
                         borderRadius: "8px",
                         border: "1px solid #d1d5db",
-                        fontSize: "14px",
+                        fontSize: "16px", // Prevent iOS zoom
                         backgroundColor: "#fff",
                         cursor: "pointer",
                         transition: "all 0.2s",
                         boxSizing: "border-box",
+                        minHeight: "44px", // Touch target
                       }}
                       onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                       onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -543,10 +574,16 @@ function InvoiceManagement() {
                       <option value="ADVANCE">Advance Bill</option>
                       <option value="FINAL">Final Bill</option>
                     </select>
-                    <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>💡 Select invoice type</p>
+                    <p style={{ marginTop: "5px", color: "#6b7280", fontSize: isMobile ? "11px" : "12px" }}>💡 Select invoice type</p>
                   </div>
-                  <div style={{ marginBottom: "20px" }}>
-                    <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                  <div style={{ marginBottom: isMobile ? "16px" : "20px" }}>
+                    <label style={{ 
+                      display: "block", 
+                      marginBottom: "8px", 
+                      color: "#374151", 
+                      fontWeight: "500", 
+                      fontSize: isMobile ? "13px" : "14px" 
+                    }}>
                       Invoice Date * <span style={{ color: "#ef4444" }}>●</span>
                     </label>
                     <input
@@ -556,61 +593,104 @@ function InvoiceManagement() {
                       onChange={(e) => setConvertForm({ ...convertForm, invoiceDate: e.target.value })}
                       style={{
                         width: "100%",
-                        padding: "12px",
+                        maxWidth: "100%",
+                        padding: isMobile ? "14px 12px" : "12px",
                         borderRadius: "8px",
                         border: "1px solid #d1d5db",
-                        fontSize: "14px",
+                        fontSize: "16px", // Prevent iOS zoom
                         transition: "all 0.2s",
                         boxSizing: "border-box",
+                        minHeight: "44px", // Touch target
                       }}
                       onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                       onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                     />
-                    <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>📅 Date for the invoice</p>
+                    <p style={{ marginTop: "5px", color: "#6b7280", fontSize: isMobile ? "11px" : "12px" }}>📅 Date for the invoice</p>
                   </div>
                   <div
                     style={{
-                      marginBottom: "20px",
-                      padding: "20px",
+                      marginBottom: isMobile ? "16px" : "20px",
+                      padding: isMobile ? "12px" : "20px",
                       backgroundColor: "#f0f9ff",
-                      borderRadius: "10px",
+                      borderRadius: isMobile ? "8px" : "10px",
                       border: "2px solid #bae6fd",
                     }}
                   >
-                    <h4 style={{ margin: "0 0 12px 0", color: "#1e40af", fontSize: "16px", fontWeight: "600" }}>📄 Selected Quotation</h4>
-                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "12px" }}>
+                    <h4 style={{ 
+                      margin: "0 0 12px 0", 
+                      color: "#1e40af", 
+                      fontSize: isMobile ? "14px" : "16px", 
+                      fontWeight: "600" 
+                    }}>📄 Selected Quotation</h4>
+                    <div style={{ 
+                      display: "grid", 
+                      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", 
+                      gap: isMobile ? "10px" : "12px" 
+                    }}>
                       <div>
-                        <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Quotation Number</div>
-                        <div style={{ fontSize: "15px", color: "#1f2937", fontWeight: "600" }}>{selectedQuotation.quotationNumber}</div>
+                        <div style={{ 
+                          fontSize: isMobile ? "11px" : "12px", 
+                          color: "#6b7280", 
+                          marginBottom: "4px" 
+                        }}>Quotation Number</div>
+                        <div style={{ 
+                          fontSize: isMobile ? "14px" : "15px", 
+                          color: "#1f2937", 
+                          fontWeight: "600" 
+                        }}>{selectedQuotation.quotationNumber}</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Customer</div>
-                        <div style={{ fontSize: "15px", color: "#1f2937", fontWeight: "600" }}>{selectedQuotation.customerName}</div>
+                        <div style={{ 
+                          fontSize: isMobile ? "11px" : "12px", 
+                          color: "#6b7280", 
+                          marginBottom: "4px" 
+                        }}>Customer</div>
+                        <div style={{ 
+                          fontSize: isMobile ? "14px" : "15px", 
+                          color: "#1f2937", 
+                          fontWeight: "600" 
+                        }}>{selectedQuotation.customerName}</div>
                       </div>
                       <div style={{ gridColumn: isMobile ? "1" : "1 / -1" }}>
-                        <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "4px" }}>Grand Total</div>
-                        <div style={{ fontSize: "20px", color: "#1e40af", fontWeight: "700" }}>₹{(parseFloat(selectedQuotation.grandTotal) || 0).toFixed(2)}</div>
+                        <div style={{ 
+                          fontSize: isMobile ? "11px" : "12px", 
+                          color: "#6b7280", 
+                          marginBottom: "4px" 
+                        }}>Grand Total</div>
+                        <div style={{ 
+                          fontSize: isMobile ? "18px" : "20px", 
+                          color: "#1e40af", 
+                          fontWeight: "700" 
+                        }}>₹{(parseFloat(selectedQuotation.grandTotal) || 0).toFixed(2)}</div>
                       </div>
                     </div>
                   </div>
                 </>
               )}
-              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: "12px", paddingTop: "20px", borderTop: "2px solid #e5e7eb" }}>
+              <div style={{ 
+                display: "flex", 
+                flexDirection: isMobile ? "column" : "row", 
+                gap: isMobile ? "10px" : "12px", 
+                paddingTop: isMobile ? "16px" : "20px", 
+                borderTop: "2px solid #e5e7eb" 
+              }}>
                 <button
                   onClick={handleConvertToInvoice}
                   disabled={!selectedQuotation}
                   style={{
                     flex: 1,
-                    padding: "12px 24px",
+                    padding: isMobile ? "14px 20px" : "12px 24px",
                     backgroundColor: selectedQuotation ? "#22c55e" : "#9ca3af",
                     color: "white",
                     border: "none",
                     borderRadius: "8px",
                     cursor: selectedQuotation ? "pointer" : "not-allowed",
-                    fontSize: "14px",
+                    fontSize: isMobile ? "16px" : "14px",
                     fontWeight: "600",
                     transition: "all 0.2s",
                     boxShadow: selectedQuotation ? "0 4px 6px -1px rgba(34, 197, 94, 0.3)" : "none",
+                    minHeight: "44px", // Touch target
+                    width: isMobile ? "100%" : "auto",
                   }}
                   onMouseOver={(e) => {
                     if (selectedQuotation) {
@@ -634,15 +714,17 @@ function InvoiceManagement() {
                   }}
                   style={{
                     flex: 1,
-                    padding: "12px 24px",
+                    padding: isMobile ? "14px 20px" : "12px 24px",
                     backgroundColor: "#6b7280",
                     color: "white",
                     border: "none",
                     borderRadius: "8px",
                     cursor: "pointer",
-                    fontSize: "14px",
+                    fontSize: isMobile ? "16px" : "14px",
                     fontWeight: "500",
                     transition: "all 0.2s",
+                    minHeight: "44px", // Touch target
+                    width: isMobile ? "100%" : "auto",
                   }}
                   onMouseOver={(e) => (e.target.style.backgroundColor = "#4b5563")}
                   onMouseOut={(e) => (e.target.style.backgroundColor = "#6b7280")}

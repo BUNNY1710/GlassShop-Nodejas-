@@ -98,7 +98,7 @@ function Register() {
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      await api.post("/auth/register-shop", {
+      await api.post("/api/auth/register-shop", {
         shopName,
         username,
         password,

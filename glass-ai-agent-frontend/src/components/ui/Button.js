@@ -1,4 +1,5 @@
 import React from 'react';
+import { useResponsive } from '../../hooks/useResponsive';
 
 const Button = ({
   children,
@@ -31,10 +32,24 @@ const Button = ({
     opacity: disabled || loading ? 0.6 : 1,
   };
 
+  // Responsive button sizes - larger touch targets on mobile
+  const { isMobile } = useResponsive();
   const sizeStyles = {
-    sm: { padding: '10px 16px', fontSize: '14px', minHeight: '40px' },
-    md: { padding: '14px 24px', fontSize: '15px', minHeight: '48px' },
-    lg: { padding: '16px 32px', fontSize: '16px', minHeight: '56px' },
+    sm: { 
+      padding: isMobile ? '12px 18px' : '10px 16px', 
+      fontSize: isMobile ? '15px' : '14px', // Prevent iOS zoom (min 16px)
+      minHeight: isMobile ? '44px' : '40px' // Minimum touch target
+    },
+    md: { 
+      padding: isMobile ? '14px 24px' : '14px 24px', 
+      fontSize: isMobile ? '16px' : '15px', 
+      minHeight: isMobile ? '48px' : '48px' 
+    },
+    lg: { 
+      padding: isMobile ? '18px 32px' : '16px 32px', 
+      fontSize: isMobile ? '17px' : '16px', 
+      minHeight: isMobile ? '52px' : '56px' 
+    },
   };
 
   const variantStyles = {

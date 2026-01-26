@@ -73,5 +73,5 @@ export const getInvoicesByPaymentStatus = (status) => api.get(`/api/invoices/pay
 export const addPayment = (invoiceId, data) => api.post(`/api/invoices/${invoiceId}/payments`, data);
 
 // Stock APIs (for glass type selection)
-export const getAllStock = () => api.get("/stock/all");
+export const getAllStock = () => api.get("/api/stock/all");
 

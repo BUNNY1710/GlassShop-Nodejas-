@@ -10,7 +10,7 @@ function ManageStaff() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.get("/auth/staff")
+    api.get("/api/auth/staff")
       .then(res => setStaff(res.data))
       .catch(() => alert("Failed to load staff"));
   }, []);

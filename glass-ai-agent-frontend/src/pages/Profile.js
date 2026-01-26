@@ -7,7 +7,7 @@ function Profile() {
   const [profile, setProfile] = useState(null);
 
   useEffect(() => {
-    api.get("/auth/profile")
+    api.get("/api/auth/profile")
       .then(res => setProfile(res.data))
       .catch(() => console.log("Failed to load profile"));
   }, []);

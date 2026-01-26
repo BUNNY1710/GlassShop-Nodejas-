@@ -69,7 +69,7 @@ function CreateStaff() {
     try {
       setLoading(true);
       setMsg(""); // Clear previous messages
-      const response = await api.post("/auth/create-staff", {
+      const response = await api.post("/api/auth/create-staff", {
         username: username.trim(),
         password: password.trim(),
       });

@@ -65,7 +65,7 @@ function StockManager() {
 
   const confirmSaveStock = async () => {
     try {
-      await api.post("/stock/update", pendingPayload);
+      await api.post("/api/stock/update", pendingPayload);
       setStockMessage("✅ Stock updated successfully");
       setShowUndo(true);
 
@@ -91,7 +91,7 @@ function StockManager() {
 
   const undoLastAction = async () => {
     try {
-      const res = await api.post("/stock/undo");
+      const res = await api.post("/api/stock/undo");
       const responseMessage = typeof res.data === 'string' 
         ? res.data 
         : (res.data?.message || "✅ Stock updated successfully");

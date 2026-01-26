@@ -13,6 +13,7 @@ import {
   downloadQuotationPdf,
   printCuttingPad,
 } from "../api/quotationApi";
+import { useResponsive } from "../hooks/useResponsive";
 import "../styles/design-system.css";
 
 function QuotationManagement() {
@@ -23,7 +24,7 @@ function QuotationManagement() {
   const [message, setMessage] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const { isMobile, isTablet } = useResponsive(); // Use responsive hook
   const [showStockDropdown, setShowStockDropdown] = useState({});
   const [confirmAction, setConfirmAction] = useState(null); // { type: 'CONFIRM'|'REJECT'|'DELETE', quotationId: number, quotationNumber: string }
   const [showRejectionModal, setShowRejectionModal] = useState(false);
@@ -94,9 +95,7 @@ function QuotationManagement() {
     loadCustomers();
     loadQuotations();
     loadStock();
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    // Removed manual resize handler - useResponsive hook handles it
   }, []);
 
   const loadStock = async () => {
@@ -1091,12 +1090,43 @@ function QuotationManagement() {
 
   return (
     <PageWrapper backgroundImage={dashboardBg}>
-      <div style={{ padding: isMobile ? "15px" : "20px", maxWidth: "1400px", margin: "0 auto" }}>
-        <div style={{ marginBottom: "25px", padding: "20px", backgroundColor: "rgba(0,0,0,0.5)", borderRadius: "12px", backdropFilter: "blur(10px)" }}>
-          <h1 style={{ color: "#fff", marginBottom: "8px", fontSize: isMobile ? "26px" : "32px", fontWeight: "800", textShadow: "2px 2px 4px rgba(0,0,0,0.5)" }}>
+      <div style={{ 
+        padding: isMobile ? "8px" : "20px", 
+        maxWidth: isMobile ? "100%" : "1400px", 
+        margin: "0 auto",
+        width: "100%",
+        boxSizing: "border-box",
+        overflowX: "hidden", // Prevent horizontal overflow
+      }}>
+        <div style={{ 
+          marginBottom: isMobile ? "16px" : "25px", 
+          padding: isMobile ? "12px" : "20px", 
+          backgroundColor: "rgba(0,0,0,0.5)", 
+          borderRadius: "12px", 
+          backdropFilter: "blur(10px)",
+          width: "100%",
+          maxWidth: "100%",
+          boxSizing: "border-box",
+        }}>
+          <h1 style={{ 
+            color: "#fff", 
+            marginBottom: "8px", 
+            fontSize: isMobile ? "22px" : "32px", 
+            fontWeight: "800", 
+            textShadow: "2px 2px 4px rgba(0,0,0,0.5)",
+            lineHeight: "1.2",
+            wordWrap: "break-word",
+          }}>
             📄 Quotation Management
           </h1>
-          <p style={{ color: "#fff", fontSize: "15px", margin: 0, fontWeight: "500", textShadow: "1px 1px 2px rgba(0,0,0,0.5)" }}>
+          <p style={{ 
+            color: "#fff", 
+            fontSize: isMobile ? "13px" : "15px", 
+            margin: 0, 
+            fontWeight: "500", 
+            textShadow: "1px 1px 2px rgba(0,0,0,0.5)",
+            lineHeight: "1.4",
+          }}>
             Create and manage quotations for your customers
           </p>
         </div>
@@ -1121,20 +1151,23 @@ function QuotationManagement() {
             resetForm();
           }}
           style={{
-            padding: "12px 24px",
+            padding: isMobile ? "14px 20px" : "12px 24px",
             backgroundColor: "#22c55e",
             color: "white",
             border: "none",
             borderRadius: "8px",
             cursor: "pointer",
             marginBottom: "20px",
-            fontSize: "15px",
+            fontSize: isMobile ? "16px" : "15px", // 16px prevents iOS zoom
             fontWeight: "600",
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
             gap: "8px",
             boxShadow: "0 4px 6px -1px rgba(34, 197, 94, 0.3)",
             transition: "all 0.2s",
+            width: isMobile ? "100%" : "auto",
+            minHeight: "44px", // Touch target
           }}
           onMouseOver={(e) => {
             e.target.style.backgroundColor = "#16a34a";
@@ -1154,27 +1187,63 @@ function QuotationManagement() {
           <div
             style={{
               backgroundColor: "white",
-              padding: isMobile ? "20px" : "30px",
+              padding: isMobile ? "12px" : "30px",
               borderRadius: "12px",
-              marginBottom: "20px",
+              marginBottom: isMobile ? "16px" : "20px",
               boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+              width: "100%",
+              maxWidth: "100%",
+              boxSizing: "border-box",
+              overflowX: "hidden", // Prevent horizontal overflow
             }}
           >
-            <div style={{ marginBottom: "25px", borderBottom: "2px solid #e5e7eb", paddingBottom: "15px" }}>
-              <h2 style={{ margin: 0, color: "#1f2937", fontSize: "24px", fontWeight: "600" }}>
+            <div style={{ 
+              marginBottom: isMobile ? "16px" : "25px", 
+              borderBottom: "2px solid #e5e7eb", 
+              paddingBottom: isMobile ? "12px" : "15px" 
+            }}>
+              <h2 style={{ 
+                margin: 0, 
+                color: "#1f2937", 
+                fontSize: isMobile ? "20px" : "24px", 
+                fontWeight: "600" 
+              }}>
                 📄 Create New Quotation
               </h2>
-              <p style={{ margin: "5px 0 0 0", color: "#6b7280", fontSize: "14px" }}>
+              <p style={{ 
+                margin: "5px 0 0 0", 
+                color: "#6b7280", 
+                fontSize: isMobile ? "13px" : "14px" 
+              }}>
                 Fill in the details below to create a quotation for your customer
               </p>
             </div>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} style={{
+              width: "100%",
+              maxWidth: "100%",
+              boxSizing: "border-box",
+            }}>
               {/* Customer & Billing Section */}
-              <div style={{ marginBottom: "30px" }}>
-                <h3 style={{ color: "#374151", fontSize: "18px", fontWeight: "600", marginBottom: "15px" }}>
+              <div style={{ 
+                marginBottom: isMobile ? "20px" : "30px",
+                width: "100%",
+                boxSizing: "border-box",
+              }}>
+                <h3 style={{ 
+                  color: "#374151", 
+                  fontSize: isMobile ? "16px" : "18px", 
+                  fontWeight: "600", 
+                  marginBottom: isMobile ? "12px" : "15px" 
+                }}>
                   👤 Customer & Billing Information
                 </h3>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "25px" }}>
+                <div style={{ 
+                  display: "grid", 
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", 
+                  gap: isMobile ? "16px" : "25px",
+                  width: "100%",
+                  boxSizing: "border-box",
+                }}>
                   <div>
                     <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                       Customer Selection * <span style={{ color: "#ef4444" }}>●</span>
@@ -1192,17 +1261,19 @@ function QuotationManagement() {
                           manualCustomerAddress: "",
                         })
                       }
-                      style={{
-                        width: "100%",
-                        padding: "12px",
-                        borderRadius: "8px",
-                        border: "1px solid #d1d5db",
-                        fontSize: "14px",
-                        backgroundColor: "#fff",
-                        cursor: "pointer",
-                        transition: "all 0.2s",
-                        marginBottom: "15px",
-                      }}
+                        style={{
+                          width: "100%",
+                          padding: isMobile ? "14px 12px" : "12px", // Larger touch target
+                          borderRadius: "8px",
+                          border: "1px solid #d1d5db",
+                          fontSize: "16px", // Prevent iOS zoom
+                          backgroundColor: "#fff",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                          marginBottom: "15px",
+                          minHeight: "44px", // Touch target
+                          boxSizing: "border-box",
+                        }}
                       onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                       onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                     >
@@ -1218,13 +1289,15 @@ function QuotationManagement() {
                           onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
                           style={{
                             width: "100%",
-                            padding: "12px",
+                            padding: isMobile ? "14px 12px" : "12px", // Larger touch target
                             borderRadius: "8px",
                             border: "1px solid #d1d5db",
-                            fontSize: "14px",
+                            fontSize: "16px", // Prevent iOS zoom
                             backgroundColor: "#fff",
                             cursor: "pointer",
                             transition: "all 0.2s",
+                            minHeight: "44px", // Touch target
+                            boxSizing: "border-box",
                           }}
                           onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                           onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -1256,11 +1329,13 @@ function QuotationManagement() {
                             placeholder="Enter customer name"
                             style={{
                               width: "100%",
-                              padding: "12px",
+                              padding: isMobile ? "14px 12px" : "12px", // Larger touch target
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
-                              fontSize: "14px",
+                              fontSize: "16px", // Prevent iOS zoom
                               transition: "all 0.2s",
+                              minHeight: "44px", // Touch target
+                              boxSizing: "border-box",
                             }}
                             onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                             onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -1278,11 +1353,13 @@ function QuotationManagement() {
                             placeholder="Enter mobile number"
                             style={{
                               width: "100%",
-                              padding: "12px",
+                              padding: isMobile ? "14px 12px" : "12px", // Larger touch target
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
-                              fontSize: "14px",
+                              fontSize: "16px", // Prevent iOS zoom
                               transition: "all 0.2s",
+                              minHeight: "44px", // Touch target
+                              boxSizing: "border-box",
                             }}
                             onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                             onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -1299,11 +1376,13 @@ function QuotationManagement() {
                             placeholder="Enter email address"
                             style={{
                               width: "100%",
-                              padding: "12px",
+                              padding: isMobile ? "14px 12px" : "12px", // Larger touch target
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
-                              fontSize: "14px",
+                              fontSize: "16px", // Prevent iOS zoom
                               transition: "all 0.2s",
+                              minHeight: "44px", // Touch target
+                              boxSizing: "border-box",
                             }}
                             onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                             onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -1320,11 +1399,13 @@ function QuotationManagement() {
                             placeholder="Enter address"
                             style={{
                               width: "100%",
-                              padding: "12px",
+                              padding: isMobile ? "14px 12px" : "12px", // Larger touch target
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
-                              fontSize: "14px",
+                              fontSize: "16px", // Prevent iOS zoom
                               transition: "all 0.2s",
+                              minHeight: "44px", // Touch target
+                              boxSizing: "border-box",
                             }}
                             onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                             onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -1340,11 +1421,12 @@ function QuotationManagement() {
                     <div
                       style={{
                         display: "flex",
-                        gap: "15px",
-                        padding: "12px",
+                        gap: isMobile ? "10px" : "15px", // Smaller gap on mobile
+                        padding: isMobile ? "10px" : "12px",
                         borderRadius: "8px",
                         border: "1px solid #d1d5db",
                         backgroundColor: "#f9fafb",
+                        flexWrap: isMobile ? "wrap" : "nowrap", // Wrap on mobile
                       }}
                     >
                       <label
@@ -1353,12 +1435,14 @@ function QuotationManagement() {
                           alignItems: "center",
                           gap: "8px",
                           cursor: "pointer",
-                          padding: "8px 12px",
+                          padding: isMobile ? "12px 16px" : "8px 12px", // Larger touch target
                           borderRadius: "6px",
                           backgroundColor: formData.billingType === "GST" ? "#eef2ff" : "transparent",
                           border: formData.billingType === "GST" ? "2px solid #6366f1" : "2px solid transparent",
                           transition: "all 0.2s",
-                          flex: 1,
+                          flex: isMobile ? "1 1 100%" : "1", // Full width on mobile
+                          minHeight: "44px", // Touch target
+                          justifyContent: "center",
                         }}
                       >
                         <input
@@ -1380,12 +1464,14 @@ function QuotationManagement() {
                           alignItems: "center",
                           gap: "8px",
                           cursor: "pointer",
-                          padding: "8px 12px",
+                          padding: isMobile ? "12px 16px" : "8px 12px", // Larger touch target
                           borderRadius: "6px",
                           backgroundColor: formData.billingType === "NON_GST" ? "#eef2ff" : "transparent",
                           border: formData.billingType === "NON_GST" ? "2px solid #6366f1" : "2px solid transparent",
                           transition: "all 0.2s",
-                          flex: 1,
+                          flex: isMobile ? "1 1 100%" : "1", // Full width on mobile
+                          minHeight: "44px", // Touch target
+                          justifyContent: "center",
                         }}
                       >
                         <input
@@ -1412,12 +1498,30 @@ function QuotationManagement() {
               </div>
 
               {/* Dates Section */}
-              <div style={{ marginBottom: "30px" }}>
-                <h3 style={{ color: "#374151", fontSize: "18px", fontWeight: "600", marginBottom: "15px" }}>
+              <div style={{ 
+                marginBottom: isMobile ? "20px" : "30px",
+                width: "100%",
+                boxSizing: "border-box",
+              }}>
+                <h3 style={{ 
+                  color: "#374151", 
+                  fontSize: isMobile ? "16px" : "18px", 
+                  fontWeight: "600", 
+                  marginBottom: isMobile ? "12px" : "15px" 
+                }}>
                   📅 Quotation Dates
                 </h3>
-                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "25px" }}>
-                    <div>
+                  <div style={{ 
+                    display: "grid", 
+                    gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", 
+                    gap: isMobile ? "16px" : "25px",
+                    width: "100%",
+                    boxSizing: "border-box",
+                  }}>
+                    <div style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                    }}>
                       <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                         Quotation Date * <span style={{ color: "#ef4444" }}>●</span>
                       </label>
@@ -1435,18 +1539,24 @@ function QuotationManagement() {
                       }}
                       style={{
                         width: "100%",
-                        padding: "12px",
+                        maxWidth: "100%",
+                        padding: isMobile ? "14px 12px" : "12px",
                         borderRadius: "8px",
                         border: "1px solid #d1d5db",
-                        fontSize: "14px",
+                        fontSize: "16px", // Prevent iOS zoom
                         transition: "all 0.2s",
+                        boxSizing: "border-box",
+                        minHeight: "44px", // Touch target
                       }}
                       onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                       onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                     />
                     <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>📌 Date when quotation is created</p>
                   </div>
-                  <div>
+                  <div style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                  }}>
                     <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                       Valid Until (Optional)
                     </label>
@@ -1457,11 +1567,14 @@ function QuotationManagement() {
                       placeholder="Select expiry date"
                       style={{
                         width: "100%",
-                        padding: "12px",
+                        maxWidth: "100%",
+                        padding: isMobile ? "14px 12px" : "12px",
                         borderRadius: "8px",
                         border: "1px solid #d1d5db",
-                        fontSize: "14px",
+                        fontSize: "16px", // Prevent iOS zoom
                         transition: "all 0.2s",
+                        boxSizing: "border-box",
+                        minHeight: "44px", // Touch target
                       }}
                       onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                       onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -1477,7 +1590,12 @@ function QuotationManagement() {
                   <h3 style={{ color: "#374151", fontSize: "18px", fontWeight: "600", marginBottom: "15px" }}>
                     🧾 GST Information
                   </h3>
-                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "25px" }}>
+                  <div style={{ 
+                    display: "grid", 
+                    gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", 
+                    gap: isMobile ? "16px" : "25px",
+                    width: "100%",
+                  }}>
                     <div>
                       <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                         GST Percentage (%) * <span style={{ color: "#ef4444" }}>●</span>
@@ -1493,11 +1611,13 @@ function QuotationManagement() {
                         placeholder="e.g., 18 for 18%"
                         style={{
                           width: "100%",
-                          padding: "12px",
+                          padding: isMobile ? "14px 12px" : "12px",
                           borderRadius: "8px",
                           border: "1px solid #d1d5db",
-                          fontSize: "14px",
+                          fontSize: "16px", // Prevent iOS zoom
                           transition: "all 0.2s",
+                          minHeight: "44px", // Touch target
+                          boxSizing: "border-box",
                         }}
                         onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                         onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -1515,11 +1635,13 @@ function QuotationManagement() {
                         placeholder="e.g., Maharashtra, Karnataka"
                         style={{
                           width: "100%",
-                          padding: "12px",
+                          padding: isMobile ? "14px 12px" : "12px",
                           borderRadius: "8px",
                           border: "1px solid #d1d5db",
-                          fontSize: "14px",
+                          fontSize: "16px", // Prevent iOS zoom
                           transition: "all 0.2s",
+                          minHeight: "44px", // Touch target
+                          boxSizing: "border-box",
                         }}
                         onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                         onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -1549,7 +1671,12 @@ function QuotationManagement() {
                     Check if customer needs transportation/delivery service
                   </p>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: "25px" }}>
+                <div style={{ 
+                  display: "grid", 
+                  gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", 
+                  gap: isMobile ? "16px" : "25px",
+                  width: "100%",
+                }}>
                   <div>
                     <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                       Installation Charge (₹)
@@ -1575,12 +1702,13 @@ function QuotationManagement() {
                       placeholder="0.00"
                       style={{
                         width: "100%",
-                        padding: "12px",
+                        padding: isMobile ? "14px 12px" : "12px",
                         borderRadius: "8px",
                         border: "1px solid #d1d5db",
-                        fontSize: "14px",
+                        fontSize: "16px", // Prevent iOS zoom
                         transition: "all 0.2s",
                         boxSizing: "border-box",
+                        minHeight: "44px", // Touch target
                       }}
                     />
                     <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>💰 Installation service charge</p>
@@ -1624,7 +1752,12 @@ function QuotationManagement() {
                     <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                       Discount
                     </label>
-                    <div style={{ display: "flex", gap: "10px", marginBottom: "8px" }}>
+                    <div style={{ 
+                      display: "flex", 
+                      gap: isMobile ? "8px" : "10px", 
+                      marginBottom: "8px",
+                      flexDirection: isMobile ? "column" : "row",
+                    }}>
                       <button
                         type="button"
                         onClick={() => {
@@ -1632,15 +1765,17 @@ function QuotationManagement() {
                         }}
                         style={{
                           flex: 1,
-                          padding: "10px",
+                          padding: isMobile ? "12px 16px" : "10px",
                           backgroundColor: formData.discountType === "AMOUNT" ? "#6366f1" : "#e5e7eb",
                           color: formData.discountType === "AMOUNT" ? "white" : "#374151",
                           border: "none",
                           borderRadius: "8px",
                           cursor: "pointer",
-                          fontSize: "13px",
+                          fontSize: isMobile ? "14px" : "13px",
                           fontWeight: "500",
                           transition: "all 0.2s",
+                          minHeight: "44px", // Touch target
+                          width: isMobile ? "100%" : "auto",
                         }}
                         onMouseOver={(e) => {
                           if (formData.discountType !== "AMOUNT") {
@@ -1662,15 +1797,17 @@ function QuotationManagement() {
                         }}
                         style={{
                           flex: 1,
-                          padding: "10px",
+                          padding: isMobile ? "12px 16px" : "10px",
                           backgroundColor: formData.discountType === "PERCENTAGE" ? "#6366f1" : "#e5e7eb",
                           color: formData.discountType === "PERCENTAGE" ? "white" : "#374151",
                           border: "none",
                           borderRadius: "8px",
                           cursor: "pointer",
-                          fontSize: "13px",
+                          fontSize: isMobile ? "14px" : "13px",
                           fontWeight: "500",
                           transition: "all 0.2s",
+                          minHeight: "44px", // Touch target
+                          width: isMobile ? "100%" : "auto",
                         }}
                         onMouseOver={(e) => {
                           if (formData.discountType !== "PERCENTAGE") {
@@ -1711,12 +1848,13 @@ function QuotationManagement() {
                       placeholder={formData.discountType === "PERCENTAGE" ? "0.00" : "0.00"}
                       style={{
                         width: "100%",
-                        padding: "12px",
+                        padding: isMobile ? "14px 12px" : "12px",
                         borderRadius: "8px",
                         border: "1px solid #d1d5db",
-                        fontSize: "14px",
+                        fontSize: "16px", // Prevent iOS zoom
                         transition: "all 0.2s",
                         boxSizing: "border-box",
+                        minHeight: "44px", // Touch target
                       }}
                     />
                     <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>
@@ -1766,11 +1904,15 @@ function QuotationManagement() {
                     key={index}
                     style={{
                       border: "2px solid #e5e7eb",
-                      padding: "25px",
-                      marginBottom: "20px",
+                      padding: isMobile ? "16px" : "25px",
+                      marginBottom: isMobile ? "16px" : "20px",
                       borderRadius: "12px",
                       backgroundColor: "#fafafa",
                       transition: "all 0.2s",
+                      width: "100%",
+                      maxWidth: "100%",
+                      boxSizing: "border-box",
+                      overflow: "hidden", // Prevent content from overflowing
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = "#6366f1";
@@ -1824,7 +1966,13 @@ function QuotationManagement() {
                       )}
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+                    <div style={{ 
+                      display: "grid", 
+                      gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", 
+                      gap: isMobile ? "16px" : "20px", 
+                      marginBottom: isMobile ? "16px" : "20px",
+                      width: "100%",
+                    }}>
                       <div style={{ position: "relative" }}>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                           Glass Type * <span style={{ color: "#ef4444" }}>●</span>
@@ -1865,13 +2013,13 @@ function QuotationManagement() {
                             placeholder="e.g., 5MM or 5 (auto-converts to 5MM)"
                             style={{
                               width: "100%",
-                              padding: "12px",
-                              paddingRight: "40px",
+                              padding: isMobile ? "14px 40px 14px 12px" : "12px 40px 12px 12px",
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
-                              fontSize: "14px",
+                              fontSize: "16px", // Prevent iOS zoom
                               transition: "all 0.2s",
                               boxSizing: "border-box",
+                              minHeight: "44px", // Touch target
                             }}
                             onFocus={(e) => {
                               e.target.style.borderColor = "#6366f1";
@@ -2008,11 +2156,19 @@ function QuotationManagement() {
                         </label>
                       </div>
                       
-                      <div>
+                      <div style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                      }}>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                           Height * <span style={{ color: "#ef4444" }}>●</span>
                         </label>
-                        <div style={{ display: "flex", gap: "10px" }}>
+                        <div style={{ 
+                          display: "flex", 
+                          gap: isMobile ? "8px" : "10px",
+                          width: "100%",
+                          boxSizing: "border-box",
+                        }}>
                           <input
                             type="text"
                             required
@@ -2020,28 +2176,35 @@ function QuotationManagement() {
                             onChange={(e) => handleItemChange(index, "height", e.target.value)}
                             placeholder={item.sizeInMM ? "e.g., 3000 (mm)" : "e.g., 9 or 9 1/2 (inch)"}
                             style={{
-                              flex: 1,
-                              padding: "12px",
+                              flex: "1 1 auto",
+                              padding: isMobile ? "14px 12px" : "12px",
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
-                              fontSize: "14px",
+                              fontSize: "16px", // Prevent iOS zoom
                               transition: "all 0.2s",
                               boxSizing: "border-box",
+                              minHeight: "44px", // Touch target
+                              minWidth: 0, // Allow flex shrinking
                             }}
                             onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                             onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                           />
                           <div style={{
-                              padding: "12px",
+                              padding: isMobile ? "14px 8px" : "12px",
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
-                              fontSize: "14px",
+                              fontSize: isMobile ? "13px" : "14px",
                               backgroundColor: "#f3f4f6",
                               color: "#6b7280",
-                              minWidth: "100px",
+                              width: isMobile ? "65px" : "100px",
+                              minWidth: isMobile ? "65px" : "100px",
+                              maxWidth: isMobile ? "65px" : "100px",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
+                              flexShrink: 0, // Prevent shrinking
+                              boxSizing: "border-box",
+                              minHeight: "44px", // Touch target
                             }}>
                             {item.sizeInMM ? "MM" : "INCH"}
                           </div>
@@ -2050,11 +2213,19 @@ function QuotationManagement() {
                           {item.sizeInMM ? "📏 Height in millimeters" : "📏 Height in inches (supports fractions: 9 1/2, 9-1/2)"}
                         </p>
                       </div>
-                      <div>
+                      <div style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                      }}>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                           Width * <span style={{ color: "#ef4444" }}>●</span>
                         </label>
-                        <div style={{ display: "flex", gap: "10px" }}>
+                        <div style={{ 
+                          display: "flex", 
+                          gap: isMobile ? "8px" : "10px",
+                          width: "100%",
+                          boxSizing: "border-box",
+                        }}>
                           <input
                             type="text"
                             required
@@ -2062,28 +2233,35 @@ function QuotationManagement() {
                             onChange={(e) => handleItemChange(index, "width", e.target.value)}
                             placeholder={item.sizeInMM ? "e.g., 2000 (mm)" : "e.g., 6 or 6 1/2 (inch)"}
                             style={{
-                              flex: 1,
-                              padding: "12px",
+                              flex: "1 1 auto",
+                              padding: isMobile ? "14px 12px" : "12px",
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
-                              fontSize: "14px",
+                              fontSize: "16px", // Prevent iOS zoom
                               transition: "all 0.2s",
                               boxSizing: "border-box",
+                              minHeight: "44px", // Touch target
+                              minWidth: 0, // Allow flex shrinking
                             }}
                             onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                             onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                           />
                           <div style={{
-                              padding: "12px",
+                              padding: isMobile ? "14px 8px" : "12px",
                               borderRadius: "8px",
                               border: "1px solid #d1d5db",
-                              fontSize: "14px",
+                              fontSize: isMobile ? "13px" : "14px",
                               backgroundColor: "#f3f4f6",
                               color: "#6b7280",
-                              minWidth: "100px",
+                              width: isMobile ? "65px" : "100px",
+                              minWidth: isMobile ? "65px" : "100px",
+                              maxWidth: isMobile ? "65px" : "100px",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
+                              flexShrink: 0, // Prevent shrinking
+                              boxSizing: "border-box",
+                              minHeight: "44px", // Touch target
                             }}>
                             {item.sizeInMM ? "MM" : "INCH"}
                           </div>
@@ -2164,7 +2342,11 @@ function QuotationManagement() {
                                 }}
                               />
                             </div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                            <div style={{ 
+                              display: "flex", 
+                              flexWrap: "wrap", 
+                              gap: isMobile ? "6px" : "8px", // Smaller gap on mobile
+                            }}>
                               {generateTableValues(item.heightTableNumber || 6).map((val) => (
                                 <button
                                   key={val}
@@ -2176,7 +2358,7 @@ function QuotationManagement() {
                                     setFormData({ ...formData, items: newItems });
                                   }}
                                   style={{
-                                    padding: "8px 12px",
+                                    padding: isMobile ? "10px 14px" : "8px 12px", // Larger touch target on mobile
                                     borderRadius: "6px",
                                     border: "2px solid",
                                     borderColor: item.selectedHeightTableValue === val ? "#6366f1" : "#d1d5db",
@@ -2184,8 +2366,12 @@ function QuotationManagement() {
                                     color: item.selectedHeightTableValue === val ? "#6366f1" : "#374151",
                                     fontWeight: item.selectedHeightTableValue === val ? "600" : "400",
                                     cursor: "pointer",
-                                    fontSize: "13px",
+                                    fontSize: isMobile ? "14px" : "13px", // Larger font on mobile
                                     transition: "all 0.2s",
+                                    minHeight: isMobile ? "44px" : "auto", // Touch target
+                                    minWidth: isMobile ? "44px" : "auto",
+                                    flex: isMobile ? "1 1 calc(33.333% - 4px)" : "none", // Responsive button sizing
+                                    maxWidth: isMobile ? "calc(33.333% - 4px)" : "none",
                                   }}
                                   onMouseOver={(e) => {
                                     if (item.selectedHeightTableValue !== val) {
@@ -2215,8 +2401,10 @@ function QuotationManagement() {
                           <div style={{
                             border: "2px solid #e5e7eb",
                             borderRadius: "8px",
-                            padding: "15px",
+                            padding: isMobile ? "12px" : "15px",
                             backgroundColor: "#fafafa",
+                            width: "100%",
+                            boxSizing: "border-box",
                           }}>
                             <label style={{ display: "block", marginBottom: "10px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                               Width Table
@@ -2277,7 +2465,11 @@ function QuotationManagement() {
                                 }}
                               />
                             </div>
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                            <div style={{ 
+                              display: "flex", 
+                              flexWrap: "wrap", 
+                              gap: isMobile ? "6px" : "8px", // Smaller gap on mobile
+                            }}>
                               {generateTableValues(item.widthTableNumber || 6).map((val) => (
                                 <button
                                   key={val}
@@ -2289,7 +2481,7 @@ function QuotationManagement() {
                                     setFormData({ ...formData, items: newItems });
                                   }}
                                   style={{
-                                    padding: "8px 12px",
+                                    padding: isMobile ? "10px 14px" : "8px 12px", // Larger touch target on mobile
                                     borderRadius: "6px",
                                     border: "2px solid",
                                     borderColor: item.selectedWidthTableValue === val ? "#6366f1" : "#d1d5db",
@@ -2297,8 +2489,12 @@ function QuotationManagement() {
                                     color: item.selectedWidthTableValue === val ? "#6366f1" : "#374151",
                                     fontWeight: item.selectedWidthTableValue === val ? "600" : "400",
                                     cursor: "pointer",
-                                    fontSize: "13px",
+                                    fontSize: isMobile ? "14px" : "13px", // Larger font on mobile
                                     transition: "all 0.2s",
+                                    minHeight: isMobile ? "44px" : "auto", // Touch target
+                                    minWidth: isMobile ? "44px" : "auto",
+                                    flex: isMobile ? "1 1 calc(33.333% - 4px)" : "none", // Responsive button sizing
+                                    maxWidth: isMobile ? "calc(33.333% - 4px)" : "none",
                                   }}
                                   onMouseOver={(e) => {
                                     if (item.selectedWidthTableValue !== val) {
@@ -2707,11 +2903,13 @@ function QuotationManagement() {
                           placeholder="e.g., 2"
                           style={{
                             width: "100%",
-                            padding: "12px",
+                            padding: isMobile ? "14px 12px" : "12px",
                             borderRadius: "8px",
                             border: "1px solid #d1d5db",
-                            fontSize: "14px",
+                            fontSize: "16px", // Prevent iOS zoom
                             transition: "all 0.2s",
+                            minHeight: "44px", // Touch target
+                            boxSizing: "border-box",
                           }}
                           onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                           onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -2732,12 +2930,13 @@ function QuotationManagement() {
                           placeholder="e.g., 50.00"
                           style={{
                             width: "100%",
-                            padding: "12px",
+                            padding: isMobile ? "14px 12px" : "12px",
                             borderRadius: "8px",
                             border: "1px solid #d1d5db",
-                            fontSize: "14px",
+                            fontSize: "16px", // Prevent iOS zoom
                             transition: "all 0.2s",
                             boxSizing: "border-box",
+                            minHeight: "44px", // Touch target
                           }}
                           onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                           onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -2745,8 +2944,17 @@ function QuotationManagement() {
                         <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>💰 Price per square foot</p>
                       </div>
 
-                      <div>
-                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                      <div style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                      }}>
+                        <label style={{ 
+                          display: "block", 
+                          marginBottom: "8px", 
+                          color: "#374151", 
+                          fontWeight: "500", 
+                          fontSize: isMobile ? "13px" : "14px" 
+                        }}>
                           Area ({getAreaUnitLabel(item.heightUnit, item.widthUnit)}) 🔒
                         </label>
                         <input
@@ -2762,22 +2970,33 @@ function QuotationManagement() {
                           }
                           style={{
                             width: "100%",
-                            padding: "12px",
+                            maxWidth: "100%",
+                            padding: isMobile ? "14px 12px" : "12px",
                             borderRadius: "8px",
                             border: "1px solid #d1d5db",
-                            fontSize: "14px",
+                            fontSize: "16px", // Prevent iOS zoom
                             backgroundColor: "#f3f4f6",
                             color: "#6b7280",
                             cursor: "not-allowed",
                             boxSizing: "border-box",
+                            minHeight: "44px", // Touch target
                           }}
                         />
-                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: isMobile ? "11px" : "11px" }}>
                           ✨ Auto-calculated in {getAreaUnitLabel(item.heightUnit, item.widthUnit)} (rate calculation uses SqFt)
                         </p>
                       </div>
-                      <div>
-                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                      <div style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                      }}>
+                        <label style={{ 
+                          display: "block", 
+                          marginBottom: "8px", 
+                          color: "#374151", 
+                          fontWeight: "500", 
+                          fontSize: isMobile ? "13px" : "14px" 
+                        }}>
                           Subtotal (₹) 🔒
                         </label>
                         <input
@@ -2802,21 +3021,32 @@ function QuotationManagement() {
                           }
                           style={{
                             width: "100%",
-                            padding: "12px",
+                            maxWidth: "100%",
+                            padding: isMobile ? "14px 12px" : "12px",
                             borderRadius: "8px",
                             border: "1px solid #d1d5db",
-                            fontSize: "14px",
+                            fontSize: "16px", // Prevent iOS zoom
                             backgroundColor: "#fef3c7",
                             color: "#92400e",
                             fontWeight: "600",
                             cursor: "not-allowed",
                             boxSizing: "border-box",
+                            minHeight: "44px", // Touch target
                           }}
                         />
-                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>✨ Auto-calculated: (Table height × Table width in ft) × Rate per SqFt × Quantity</p>
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: isMobile ? "11px" : "11px" }}>✨ Auto-calculated: (Table height × Table width in ft) × Rate per SqFt × Quantity</p>
                       </div>
-                      <div>
-                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                      <div style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                      }}>
+                        <label style={{ 
+                          display: "block", 
+                          marginBottom: "8px", 
+                          color: "#374151", 
+                          fontWeight: "500", 
+                          fontSize: isMobile ? "13px" : "14px" 
+                        }}>
                           Running Ft (₹) 🔒
                         </label>
                         <input
@@ -2895,15 +3125,17 @@ function QuotationManagement() {
                           }
                           style={{
                             width: "100%",
-                            padding: "12px",
+                            maxWidth: "100%",
+                            padding: isMobile ? "14px 12px" : "12px",
                             borderRadius: "8px",
                             border: "1px solid #d1d5db",
-                            fontSize: "14px",
+                            fontSize: "16px", // Prevent iOS zoom
                             backgroundColor: "#e0f2fe",
                             color: "#0c4a6e",
                             fontWeight: "600",
                             cursor: "not-allowed",
                             boxSizing: "border-box",
+                            minHeight: "44px", // Touch target
                           }}
                         />
                         <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>✨ Auto-calculated: Group by polish type, sum sides, convert to ft, × polish rate, sum all, × Quantity</p>
@@ -2911,8 +3143,18 @@ function QuotationManagement() {
                     </div>
 
                     {formData.billingType === "GST" && (
-                      <div style={{ marginBottom: "15px" }}>
-                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                      <div style={{ 
+                        marginBottom: isMobile ? "12px" : "15px",
+                        width: "100%",
+                        boxSizing: "border-box",
+                      }}>
+                        <label style={{ 
+                          display: "block", 
+                          marginBottom: "8px", 
+                          color: "#374151", 
+                          fontWeight: "500", 
+                          fontSize: isMobile ? "13px" : "14px" 
+                        }}>
                           HSN Code (Optional)
                         </label>
                         <input
@@ -2922,21 +3164,33 @@ function QuotationManagement() {
                           placeholder="e.g., 7003, 7004"
                           style={{
                             width: "100%",
-                            padding: "12px",
+                            maxWidth: "100%",
+                            padding: isMobile ? "14px 12px" : "12px",
                             borderRadius: "8px",
                             border: "1px solid #d1d5db",
-                            fontSize: "14px",
+                            fontSize: "16px", // Prevent iOS zoom
                             transition: "all 0.2s",
+                            boxSizing: "border-box",
+                            minHeight: "44px", // Touch target
                           }}
                           onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                           onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                         />
-                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>📋 HSN code for GST (optional)</p>
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: isMobile ? "11px" : "11px" }}>📋 HSN code for GST (optional)</p>
                       </div>
                     )}
 
-                    <div>
-                      <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                    <div style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                    }}>
+                      <label style={{ 
+                        display: "block", 
+                        marginBottom: "8px", 
+                        color: "#374151", 
+                        fontWeight: "500", 
+                        fontSize: isMobile ? "13px" : "14px" 
+                      }}>
                         Description (Optional)
                       </label>
                       <textarea
@@ -2945,14 +3199,16 @@ function QuotationManagement() {
                         placeholder="Add any additional notes or specifications for this item..."
                         style={{
                           width: "100%",
-                          padding: "12px",
+                          maxWidth: "100%",
+                          padding: isMobile ? "14px 12px" : "12px",
                           borderRadius: "8px",
                           border: "1px solid #d1d5db",
-                          fontSize: "14px",
-                          minHeight: "80px",
+                          fontSize: "16px", // Prevent iOS zoom
+                          minHeight: isMobile ? "100px" : "80px",
                           resize: "vertical",
                           fontFamily: "inherit",
                           transition: "all 0.2s",
+                          boxSizing: "border-box",
                         }}
                         onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                         onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
@@ -3039,7 +3295,11 @@ function QuotationManagement() {
             }}
           >
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "800px" }}>
+              <table style={{ 
+                width: "100%", 
+                borderCollapse: "collapse", 
+                minWidth: isMobile ? "auto" : "800px", // Remove fixed minWidth on mobile
+              }}>
                 <thead>
                   <tr style={{ backgroundColor: "#f5f5f5" }}>
                     <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Quotation #</th>
@@ -3147,6 +3407,9 @@ function QuotationManagement() {
               </tbody>
             </table>
             </div>
+            )}
+
+            {/* Empty State */}
             {quotations.length === 0 && (
               <div style={{ padding: "60px 20px", textAlign: "center", color: "#6b7280" }}>
                 <div style={{ fontSize: "48px", marginBottom: "16px", opacity: 0.5 }}>📄</div>

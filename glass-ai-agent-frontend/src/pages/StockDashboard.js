@@ -95,7 +95,7 @@ function StockDashboard() {
   const loadStock = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/stock/all");
+      const res = await api.get("/api/stock/all");
       const stockWithQuantity = res.data.filter(item => 
         item.quantity != null && item.quantity > 0
       );
@@ -168,7 +168,7 @@ function StockDashboard() {
 
   const confirmSaveStock = async () => {
     try {
-      await api.post("/stock/update", pendingPayload);
+      await api.post("/api/stock/update", pendingPayload);
       setShowConfirm(false);
       setPendingPayload(null);
       toast.success("✅ Stock updated successfully");
@@ -186,7 +186,7 @@ function StockDashboard() {
 
   const undoLastAction = async () => {
     try {
-      const res = await api.post("/stock/undo");
+      const res = await api.post("/api/stock/undo");
       setStockMessage(res.data);
       setShowUndo(false);
       await loadStock();
@@ -250,7 +250,7 @@ function StockDashboard() {
         formattedGlassType = formattedGlassType.trim() + "MM";
       }
 
-      const res = await api.post("/stock/transfer", {
+      const res = await api.post("/api/stock/transfer", {
         glassType: formattedGlassType,
         unit: transferStock.glass?.unit || "MM",
         height: transferStock.height,

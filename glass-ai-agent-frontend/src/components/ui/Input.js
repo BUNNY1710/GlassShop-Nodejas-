@@ -1,4 +1,5 @@
 import React from 'react';
+import { useResponsive } from '../../hooks/useResponsive';
 
 const Input = ({
   label,
@@ -10,10 +11,16 @@ const Input = ({
   size = 'md',
   ...props
 }) => {
+  // Responsive input - ensure minimum 16px font to prevent iOS zoom
+  const { isMobile } = useResponsive();
   const baseStyle = {
     width: fullWidth ? '100%' : 'auto',
-    padding: size === 'sm' ? '10px 14px' : size === 'lg' ? '16px 20px' : '12px 16px',
-    fontSize: '16px', // Prevent iOS zoom
+    padding: size === 'sm' 
+      ? (isMobile ? '12px 16px' : '10px 14px')
+      : size === 'lg' 
+        ? (isMobile ? '18px 20px' : '16px 20px')
+        : (isMobile ? '14px 18px' : '12px 16px'),
+    fontSize: '16px', // Always 16px minimum to prevent iOS zoom
     borderRadius: '12px',
     border: error ? '2px solid #ef4444' : '1.5px solid #e2e8f0',
     background: '#ffffff',
@@ -21,6 +28,7 @@ const Input = ({
     transition: 'all 0.2s ease',
     fontFamily: 'inherit',
     boxSizing: 'border-box',
+    minHeight: isMobile ? '44px' : 'auto', // Minimum touch target
   };
 
   const inputWrapperStyle = {

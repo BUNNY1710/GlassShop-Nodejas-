@@ -1,5 +1,6 @@
 import React from 'react';
 import Card from './Card';
+import { useResponsive } from '../../hooks/useResponsive';
 
 const StatCard = ({ 
   icon, 
@@ -10,6 +11,7 @@ const StatCard = ({
   trend,
   subtitle 
 }) => {
+  const { isMobile } = useResponsive();
   const iconBg = {
     background: `linear-gradient(135deg, ${color}15, ${color}25)`,
     color: color,
@@ -93,7 +95,7 @@ const StatCard = ({
         ) : (
           <div
             style={{
-              fontSize: '36px',
+              fontSize: isMobile ? '28px' : '36px', // Smaller on mobile
               fontWeight: '800',
               color: '#0f172a',
               lineHeight: '1.2',

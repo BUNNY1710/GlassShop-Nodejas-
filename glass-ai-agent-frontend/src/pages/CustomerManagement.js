@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import PageWrapper from "../components/PageWrapper";
 import dashboardBg from "../assets/dashboard-bg.jpg";
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer, searchCustomers } from "../api/quotationApi";
+import { useResponsive } from "../hooks/useResponsive";
 import "../styles/design-system.css";
 
 function CustomerManagement() {
@@ -11,11 +12,8 @@ function CustomerManagement() {
   const [showForm, setShowForm] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const isMobile = windowWidth < 768;
-  const isTablet = windowWidth >= 768 && windowWidth < 1024;
-  const isSmallMobile = windowWidth < 480;
+  const { isMobile, isTablet, isSmallMobile } = useResponsive(); // Use responsive hook
 
   const [formData, setFormData] = useState({
     name: "",
@@ -31,9 +29,7 @@ function CustomerManagement() {
 
   useEffect(() => {
     loadCustomers();
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    // Removed manual resize handler - useResponsive hook handles it
   }, []);
 
   const loadCustomers = async () => {
@@ -673,7 +669,149 @@ function CustomerManagement() {
                 📋 Customer List ({customers.length} {customers.length === 1 ? "customer" : "customers"})
               </h3>
             </div>
-            {customers.length === 0 ? (
+            {/* Mobile Card View */}
+            {isMobile && customers.length > 0 && (
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+                width: "100%",
+              }}>
+                {customers.map((customer) => (
+                  <div
+                    key={customer.id}
+                    style={{
+                      backgroundColor: "#ffffff",
+                      borderRadius: "12px",
+                      padding: "16px",
+                      boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+                      border: "1px solid #e5e7eb",
+                    }}
+                  >
+                    {/* Customer Name - Header */}
+                    <div style={{
+                      fontSize: "18px",
+                      fontWeight: "600",
+                      color: "#1f2937",
+                      marginBottom: "12px",
+                      paddingBottom: "12px",
+                      borderBottom: "1px solid #e5e7eb",
+                    }}>
+                      {customer.name}
+                    </div>
+
+                    {/* Contact Info */}
+                    <div style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "10px",
+                      marginBottom: "12px",
+                    }}>
+                      {customer.mobile && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#4b5563" }}>
+                          <span>📱</span>
+                          <span>{customer.mobile}</span>
+                        </div>
+                      )}
+                      {customer.email && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#4b5563" }}>
+                          <span>📧</span>
+                          <span style={{ fontSize: "14px", wordBreak: "break-word" }}>{customer.email}</span>
+                        </div>
+                      )}
+                      {customer.gstin && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#4b5563" }}>
+                          <span>🧾</span>
+                          <span>{customer.gstin}</span>
+                        </div>
+                      )}
+                      {(customer.state || customer.city) && (
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#4b5563" }}>
+                          <span>📍</span>
+                          <span>
+                            {customer.city && customer.state ? `${customer.city}, ${customer.state}` : customer.city || customer.state}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{
+                      display: "flex",
+                      gap: "8px",
+                      flexDirection: isSmallMobile ? "column" : "row",
+                      marginTop: "12px",
+                      paddingTop: "12px",
+                      borderTop: "1px solid #e5e7eb",
+                    }}>
+                      <button
+                        onClick={() => handleEdit(customer)}
+                        style={{
+                          padding: "12px 16px",
+                          backgroundColor: "#6366f1",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          fontSize: "14px",
+                          fontWeight: "500",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "6px",
+                          transition: "all 0.2s",
+                          minHeight: "44px",
+                          flex: isSmallMobile ? "1" : "none",
+                          width: isSmallMobile ? "100%" : "auto",
+                          touchAction: "manipulation",
+                        }}
+                        onMouseOver={(e) => {
+                          e.target.style.backgroundColor = "#4f46e5";
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.backgroundColor = "#6366f1";
+                        }}
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete({ id: customer.id, name: customer.name })}
+                        style={{
+                          padding: "12px 16px",
+                          backgroundColor: "#ef4444",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          fontSize: "14px",
+                          fontWeight: "500",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "6px",
+                          transition: "all 0.2s",
+                          minHeight: "44px",
+                          flex: isSmallMobile ? "1" : "none",
+                          width: isSmallMobile ? "100%" : "auto",
+                          touchAction: "manipulation",
+                        }}
+                        onMouseOver={(e) => {
+                          e.target.style.backgroundColor = "#dc2626";
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.backgroundColor = "#ef4444";
+                        }}
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {customers.length === 0 && (
               <div
                 style={{
                   padding: "60px 20px",
@@ -689,22 +827,22 @@ function CustomerManagement() {
                     : "Click 'Add Customer' to create your first customer"}
                 </p>
               </div>
-            ) : (
-              <div 
-                style={{ 
+            )}
+
+            {/* Desktop Table View */}
+            {!isMobile && customers.length > 0 && (
+              <div
+                style={{
                   overflowX: "auto",
                   WebkitOverflowScrolling: "touch",
                   width: "100%",
-                  margin: isMobile ? "0 -12px" : "0",
-                  padding: isMobile ? "0 12px" : "0",
                 }}
                 className="table-wrapper"
               >
                 <table style={{ 
                   width: "100%", 
                   borderCollapse: "collapse", 
-                  minWidth: isMobile ? "600px" : "auto",
-                  fontSize: isMobile ? "13px" : "14px",
+                  fontSize: "14px",
                 }}>
                   <thead>
                     <tr style={{ backgroundColor: "#f3f4f6" }}>
@@ -814,7 +952,8 @@ function CustomerManagement() {
                             <span style={{ color: "#9ca3af" }}>-</span>
                           )}
                         </td>
-                        {!isMobile && (
+                        {/* Desktop-only columns */}
+                        {(
                           <>
                             <td style={{ padding: isMobile ? "10px 8px" : "16px", color: "#4b5563" }}>
                               {customer.email ? (

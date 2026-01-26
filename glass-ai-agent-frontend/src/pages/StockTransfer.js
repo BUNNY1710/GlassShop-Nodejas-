@@ -29,7 +29,7 @@ function StockTransfer() {
     try {
       setLoading(true);
       setMessage("");
-      const response = await api.get("/stock/all");
+      const response = await api.get("/api/stock/all");
       const allStock = response.data;
       
       // Filter by stand number and quantity > 0 (exclude items with 0 or null quantity)
@@ -193,7 +193,7 @@ function StockTransfer() {
           quantity: quantity,
         };
 
-        return api.post("/stock/transfer", transferData);
+        return api.post("/api/stock/transfer", transferData);
       });
 
       const results = await Promise.all(transferPromises);
