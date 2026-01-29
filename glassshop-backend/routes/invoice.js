@@ -83,6 +83,7 @@ router.post('/from-quotation', async (req, res) => {
       customerAddress: quotation.customerAddress,
       customerGstin: quotation.customerGstin,
       customerState: quotation.customerState,
+      shippingAddress: quotation.shippingAddress || "",
       subtotal: parseFloat(quotation.subtotal || 0),
       installationCharge: parseFloat(quotation.installationCharge || 0),
       transportCharge: parseFloat(quotation.transportCharge || 0),

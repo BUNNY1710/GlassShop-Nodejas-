@@ -163,20 +163,7 @@ const buildItemDescription = (item) => {
     parts.push(`${glassTypeStr} Plain Toughened`);
   }
   
-  // Dimensions - format like "4'X8'-1" or "36*54-1"
-  const heightUnit = item.heightUnit === 'INCH' ? '"' : item.heightUnit === 'MM' ? 'mm' : "'";
-  const widthUnit = item.widthUnit === 'INCH' ? '"' : item.widthUnit === 'MM' ? 'mm' : "'";
-  
-  // Format dimensions based on unit - make it concise
-  let dimensions = '';
-  if (item.heightUnit === 'FEET' && item.widthUnit === 'FEET') {
-    dimensions = `${item.height}'X${item.width}'`;
-  } else if (item.heightUnit === 'INCH' && item.widthUnit === 'INCH') {
-    dimensions = `${item.height}*${item.width}`;
-  } else {
-    dimensions = `${item.height}${heightUnit}x${item.width}${widthUnit}`;
-  }
-  parts.push(`Size-${dimensions}`);
+  // Remove size from description - it will be shown in separate Length and Height columns
   
   // Design - only if exists
   if (item.design) {
@@ -317,7 +304,11 @@ const generateQuotationPdf = async (quotationId, userId) => {
         separate: true,
         order: [['itemOrder', 'ASC']]
       },
-      { model: Shop, as: 'shop' }
+      { 
+        model: Shop, 
+        as: 'shop',
+        attributes: { exclude: [] } // Include all attributes, even if some don't exist in DB
+      }
     ]
   });
 
@@ -355,16 +346,23 @@ const generateQuotationPdf = async (quotationId, userId) => {
   if (quotation.shop) {
     doc.fontSize(12).font('Helvetica-Bold').text(quotation.shop.shopName || '', 40, currentY);
     currentY += 15;
-    if (quotation.shop.address) {
+    // Address and phone - only show if fields exist (columns may not exist in database yet)
+    if (quotation.shop && quotation.shop.address) {
       doc.fontSize(10).font('Helvetica').text(quotation.shop.address, 40, currentY);
       currentY += 12;
     }
-    if (quotation.shop.phone) {
+    if (quotation.shop && quotation.shop.phone) {
       doc.fontSize(10).font('Helvetica').text(`Phone no.: ${quotation.shop.phone}`, 40, currentY);
       currentY += 12;
     }
     if (quotation.shop.email) {
       doc.fontSize(10).font('Helvetica').text(`Email: ${quotation.shop.email}`, 40, currentY);
+      currentY += 12;
+    }
+    // GST number - only show if field exists (column may not exist in database yet)
+    if (quotation.shop && (quotation.shop.gstNumber || quotation.shop.gst_number)) {
+      const gstNo = quotation.shop.gstNumber || quotation.shop.gst_number;
+      doc.fontSize(10).font('Helvetica').text(`GST No.: ${gstNo}`, 40, currentY);
       currentY += 12;
     }
   }
@@ -394,6 +392,14 @@ const generateQuotationPdf = async (quotationId, userId) => {
     doc.fontSize(10).font('Helvetica').text(quotation.customerAddress, 40, currentY, { width: 250 });
     currentY += 20;
   }
+  // Shipping Address
+  if (quotation.shippingAddress) {
+    currentY += 5;
+    doc.fontSize(10).font('Helvetica-Bold').text('Shipping Address:', 40, currentY);
+    currentY += 12;
+    doc.fontSize(10).font('Helvetica').text(quotation.shippingAddress, 40, currentY, { width: 250 });
+    currentY += 20;
+  }
   currentY += 10;
 
   // Items Table Header - Adjusted column positions to fit within page
@@ -405,13 +411,15 @@ const generateQuotationPdf = async (quotationId, userId) => {
   
   doc.fontSize(8).font('Helvetica-Bold').fillColor('white');
   doc.text('#', 40, tableTop + 6);
-  doc.text('Item Name', 60, tableTop + 6);
-  doc.text('HSN/SAC', 200, tableTop + 6);
-  doc.text('Qty', 260, tableTop + 6);
-  doc.text('Unit', 290, tableTop + 6);
-  doc.text('Price', 330, tableTop + 6);
-  doc.text('GST', 380, tableTop + 6);
-  doc.text('Amount', 450, tableTop + 6);
+  doc.text('Item Name', 50, tableTop + 6);
+  doc.text('Length', 140, tableTop + 6);
+  doc.text('Height', 180, tableTop + 6);
+  doc.text('HSN/SAC', 220, tableTop + 6);
+  doc.text('Qty', 280, tableTop + 6);
+  doc.text('Unit', 310, tableTop + 6);
+  doc.text('Price', 350, tableTop + 6);
+  doc.text('GST', 400, tableTop + 6);
+  doc.text('Amount', 470, tableTop + 6);
   
   doc.fillColor('black');
   currentY = tableTop + 25;
@@ -437,14 +445,16 @@ const generateQuotationPdf = async (quotationId, userId) => {
            .fill()
            .fillColor('white');
         doc.fontSize(8).font('Helvetica-Bold').fillColor('white');
-        doc.text('#', 45, currentY + 6);
-        doc.text('Item Name', 60, currentY + 6);
-        doc.text('HSN/SAC', 200, currentY + 6);
-        doc.text('Qty', 260, currentY + 6);
-        doc.text('Unit', 290, currentY + 6);
-        doc.text('Price', 330, currentY + 6);
-        doc.text('GST', 380, currentY + 6);
-        doc.text('Amount', 450, currentY + 6);
+        doc.text('#', 40, currentY + 6);
+        doc.text('Item Name', 50, currentY + 6);
+        doc.text('Length', 140, currentY + 6);
+        doc.text('Height', 180, currentY + 6);
+        doc.text('HSN/SAC', 220, currentY + 6);
+        doc.text('Qty', 280, currentY + 6);
+        doc.text('Unit', 310, currentY + 6);
+        doc.text('Price', 350, currentY + 6);
+        doc.text('GST', 400, currentY + 6);
+        doc.text('Amount', 470, currentY + 6);
         doc.fillColor('black');
         currentY += 25;
       }
@@ -516,7 +526,7 @@ const generateQuotationPdf = async (quotationId, userId) => {
       doc.fontSize(8).font('Helvetica').fillColor('black');
       
       // Calculate item name height first
-      const itemNameWidth = 135;
+      const itemNameWidth = 85;
       const wrappedText = doc.heightOfString(itemDescription, { width: itemNameWidth, align: 'left' });
       const itemNameHeight = wrappedText > 12 ? wrappedText : 12;
       const rowHeight = Math.max(12, itemNameHeight + 2);
@@ -527,15 +537,24 @@ const generateQuotationPdf = async (quotationId, userId) => {
       // Define explicit column boundaries to prevent ANY text overflow
       // Each column has a fixed X position and maximum width
       const columns = {
-        num: { x: 40, w: 15 },
-        itemName: { x: 60, w: 135 },
-        hsn: { x: 200, w: 55 },
-        qty: { x: 260, w: 25 },
-        unit: { x: 290, w: 35 },
-        price: { x: 330, w: 45 },
-        gst: { x: 380, w: 65 },
-        amount: { x: 450, w: 100 }
+        num: { x: 40, w: 10 },
+        itemName: { x: 50, w: 85 },
+        length: { x: 140, w: 35 },
+        height: { x: 180, w: 35 },
+        hsn: { x: 220, w: 55 },
+        qty: { x: 280, w: 25 },
+        unit: { x: 310, w: 35 },
+        price: { x: 350, w: 45 },
+        gst: { x: 400, w: 65 },
+        amount: { x: 470, w: 85 }
       };
+      
+      // Format length and height with units
+      // Safely access heightUnit and widthUnit with fallbacks
+      const heightUnit = (item.heightUnit === 'INCH' ? '"' : item.heightUnit === 'MM' ? 'mm' : "'") || "'";
+      const widthUnit = (item.widthUnit === 'INCH' ? '"' : item.widthUnit === 'MM' ? 'mm' : "'") || "'";
+      const lengthText = item.width ? `${item.width}${widthUnit}` : '-';
+      const heightText = item.height ? `${item.height}${heightUnit}` : '-';
       
       // FINAL FIX: Render item number in completely isolated graphics state
       // Save state, render item number, restore - this ensures complete isolation
@@ -548,6 +567,15 @@ const generateQuotationPdf = async (quotationId, userId) => {
       
       // Render item description (only column that needs width for wrapping)
       doc.text(itemDescription, columns.itemName.x, baseY, { width: columns.itemName.w, align: 'left' });
+      
+      // Render length and height columns
+      doc.save();
+      doc.text(lengthText, columns.length.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text(heightText, columns.height.x, baseY);
+      doc.restore();
       
       // Render all other columns - each in its own save/restore block for isolation
       doc.save();
@@ -979,16 +1007,26 @@ const generateInvoicePdf = async (invoiceId, userId) => {
   if (invoice.shop) {
     doc.fontSize(12).font('Helvetica-Bold').text(invoice.shop.shopName || '', 40, currentY);
     currentY += 15;
-    if (invoice.shop.address) {
+    // Address and phone - only show if fields exist (columns may not exist in database yet)
+    if (invoice.shop && invoice.shop.address) {
       doc.fontSize(10).font('Helvetica').text(invoice.shop.address, 40, currentY);
       currentY += 12;
     }
-    if (invoice.shop.phone) {
+    if (invoice.shop && invoice.shop.phone) {
       doc.fontSize(10).font('Helvetica').text(`Phone no.: ${invoice.shop.phone}`, 40, currentY);
       currentY += 12;
     }
     if (invoice.shop.email) {
       doc.fontSize(10).font('Helvetica').text(`Email: ${invoice.shop.email}`, 40, currentY);
+      currentY += 12;
+    }
+    // GST number - check if field exists
+    if (invoice.shop && invoice.shop.gstNumber) {
+      doc.fontSize(10).font('Helvetica').text(`GST No.: ${invoice.shop.gstNumber}`, 40, currentY);
+      currentY += 12;
+    } else if (invoice.shop && invoice.shop.gst_number) {
+      // Fallback for snake_case
+      doc.fontSize(10).font('Helvetica').text(`GST No.: ${invoice.shop.gst_number}`, 40, currentY);
       currentY += 12;
     }
   }
@@ -1018,6 +1056,14 @@ const generateInvoicePdf = async (invoiceId, userId) => {
     doc.fontSize(10).font('Helvetica').text(invoice.customerAddress, 40, currentY, { width: 250 });
     currentY += 20;
   }
+  // Shipping Address
+  if (invoice.shippingAddress) {
+    currentY += 5;
+    doc.fontSize(10).font('Helvetica-Bold').text('Shipping Address:', 40, currentY);
+    currentY += 12;
+    doc.fontSize(10).font('Helvetica').text(invoice.shippingAddress, 40, currentY, { width: 250 });
+    currentY += 20;
+  }
   currentY += 10;
 
   // Items Table Header - Adjusted column positions to fit within page
@@ -1029,13 +1075,15 @@ const generateInvoicePdf = async (invoiceId, userId) => {
   
   doc.fontSize(8).font('Helvetica-Bold').fillColor('white');
   doc.text('#', 40, tableTop + 6);
-  doc.text('Item Name', 60, tableTop + 6);
-  doc.text('HSN/SAC', 200, tableTop + 6);
-  doc.text('Qty', 260, tableTop + 6);
-  doc.text('Unit', 290, tableTop + 6);
-  doc.text('Price', 330, tableTop + 6);
-  doc.text('GST', 380, tableTop + 6);
-  doc.text('Amount', 450, tableTop + 6);
+  doc.text('Item Name', 50, tableTop + 6);
+  doc.text('Length', 140, tableTop + 6);
+  doc.text('Height', 180, tableTop + 6);
+  doc.text('HSN/SAC', 220, tableTop + 6);
+  doc.text('Qty', 280, tableTop + 6);
+  doc.text('Unit', 310, tableTop + 6);
+  doc.text('Price', 350, tableTop + 6);
+  doc.text('GST', 400, tableTop + 6);
+  doc.text('Amount', 470, tableTop + 6);
   
   doc.fillColor('black');
   currentY = tableTop + 25;
@@ -1058,14 +1106,16 @@ const generateInvoicePdf = async (invoiceId, userId) => {
            .fill()
            .fillColor('white');
         doc.fontSize(8).font('Helvetica-Bold').fillColor('white');
-        doc.text('#', 45, currentY + 6);
-        doc.text('Item Name', 60, currentY + 6);
-        doc.text('HSN/SAC', 200, currentY + 6);
-        doc.text('Qty', 260, currentY + 6);
-        doc.text('Unit', 290, currentY + 6);
-        doc.text('Price', 330, currentY + 6);
-        doc.text('GST', 380, currentY + 6);
-        doc.text('Amount', 450, currentY + 6);
+        doc.text('#', 40, currentY + 6);
+        doc.text('Item Name', 50, currentY + 6);
+        doc.text('Length', 140, currentY + 6);
+        doc.text('Height', 180, currentY + 6);
+        doc.text('HSN/SAC', 220, currentY + 6);
+        doc.text('Qty', 280, currentY + 6);
+        doc.text('Unit', 310, currentY + 6);
+        doc.text('Price', 350, currentY + 6);
+        doc.text('GST', 400, currentY + 6);
+        doc.text('Amount', 470, currentY + 6);
         doc.fillColor('black');
         currentY += 25;
       }
@@ -1087,7 +1137,7 @@ const generateInvoicePdf = async (invoiceId, userId) => {
       doc.fontSize(8).font('Helvetica').fillColor('black');
       
       // Calculate item name height first
-      const itemNameWidth = 135;
+      const itemNameWidth = 85;
       const wrappedText = doc.heightOfString(itemDescription, { width: itemNameWidth, align: 'left' });
       const itemNameHeight = wrappedText > 12 ? wrappedText : 12;
       const rowHeight = Math.max(12, itemNameHeight + 2);
@@ -1098,15 +1148,24 @@ const generateInvoicePdf = async (invoiceId, userId) => {
       // Define explicit column boundaries to prevent ANY text overflow
       // Each column has a fixed X position and maximum width
       const columns = {
-        num: { x: 40, w: 15 },
-        itemName: { x: 60, w: 135 },
-        hsn: { x: 200, w: 55 },
-        qty: { x: 260, w: 25 },
-        unit: { x: 290, w: 35 },
-        price: { x: 330, w: 45 },
-        gst: { x: 380, w: 65 },
-        amount: { x: 450, w: 100 }
+        num: { x: 40, w: 10 },
+        itemName: { x: 50, w: 85 },
+        length: { x: 140, w: 35 },
+        height: { x: 180, w: 35 },
+        hsn: { x: 220, w: 55 },
+        qty: { x: 280, w: 25 },
+        unit: { x: 310, w: 35 },
+        price: { x: 350, w: 45 },
+        gst: { x: 400, w: 65 },
+        amount: { x: 470, w: 85 }
       };
+      
+      // Format length and height with units
+      // Safely access heightUnit and widthUnit with fallbacks
+      const heightUnit = (item.heightUnit === 'INCH' ? '"' : item.heightUnit === 'MM' ? 'mm' : "'") || "'";
+      const widthUnit = (item.widthUnit === 'INCH' ? '"' : item.widthUnit === 'MM' ? 'mm' : "'") || "'";
+      const lengthText = item.width ? `${item.width}${widthUnit}` : '-';
+      const heightText = item.height ? `${item.height}${heightUnit}` : '-';
       
       // FINAL FIX: Render item number in completely isolated graphics state
       // Save state, render item number, restore - this ensures complete isolation
@@ -1119,6 +1178,15 @@ const generateInvoicePdf = async (invoiceId, userId) => {
       
       // Render item description (only column that needs width for wrapping)
       doc.text(itemDescription, columns.itemName.x, baseY, { width: columns.itemName.w, align: 'left' });
+      
+      // Render length and height columns
+      doc.save();
+      doc.text(lengthText, columns.length.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text(heightText, columns.height.x, baseY);
+      doc.restore();
       
       // Render all other columns - each in its own save/restore block for isolation
       doc.save();
@@ -1354,6 +1422,14 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
     doc.fontSize(10).font('Helvetica').text(invoice.customerAddress, 40, currentY, { width: 250 });
     currentY += 20;
   }
+  // Shipping Address
+  if (invoice.shippingAddress) {
+    currentY += 5;
+    doc.fontSize(10).font('Helvetica-Bold').text('Shipping Address:', 40, currentY);
+    currentY += 12;
+    doc.fontSize(10).font('Helvetica').text(invoice.shippingAddress, 40, currentY, { width: 250 });
+    currentY += 20;
+  }
   currentY += 10;
 
   // Items Table Header - Adjusted column positions to fit within page
@@ -1365,13 +1441,15 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
   
   doc.fontSize(8).font('Helvetica-Bold').fillColor('white');
   doc.text('#', 40, tableTop + 6);
-  doc.text('Item Name', 60, tableTop + 6);
-  doc.text('HSN/SAC', 200, tableTop + 6);
-  doc.text('Qty', 260, tableTop + 6);
-  doc.text('Unit', 290, tableTop + 6);
-  doc.text('Price', 330, tableTop + 6);
-  doc.text('GST', 380, tableTop + 6);
-  doc.text('Amount', 450, tableTop + 6);
+  doc.text('Item Name', 50, tableTop + 6);
+  doc.text('Length', 140, tableTop + 6);
+  doc.text('Height', 180, tableTop + 6);
+  doc.text('HSN/SAC', 220, tableTop + 6);
+  doc.text('Qty', 280, tableTop + 6);
+  doc.text('Unit', 310, tableTop + 6);
+  doc.text('Price', 350, tableTop + 6);
+  doc.text('GST', 400, tableTop + 6);
+  doc.text('Amount', 470, tableTop + 6);
   
   doc.fillColor('black');
   currentY = tableTop + 25;
@@ -1394,14 +1472,16 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
            .fill()
            .fillColor('white');
         doc.fontSize(8).font('Helvetica-Bold').fillColor('white');
-        doc.text('#', 45, currentY + 6);
-        doc.text('Item Name', 60, currentY + 6);
-        doc.text('HSN/SAC', 200, currentY + 6);
-        doc.text('Qty', 260, currentY + 6);
-        doc.text('Unit', 290, currentY + 6);
-        doc.text('Price', 330, currentY + 6);
-        doc.text('GST', 380, currentY + 6);
-        doc.text('Amount', 450, currentY + 6);
+        doc.text('#', 40, currentY + 6);
+        doc.text('Item Name', 50, currentY + 6);
+        doc.text('Length', 140, currentY + 6);
+        doc.text('Height', 180, currentY + 6);
+        doc.text('HSN/SAC', 220, currentY + 6);
+        doc.text('Qty', 280, currentY + 6);
+        doc.text('Unit', 310, currentY + 6);
+        doc.text('Price', 350, currentY + 6);
+        doc.text('GST', 400, currentY + 6);
+        doc.text('Amount', 470, currentY + 6);
         doc.fillColor('black');
         currentY += 25;
       }
@@ -1423,7 +1503,7 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
       doc.fontSize(8).font('Helvetica').fillColor('black');
       
       // Calculate item name height first
-      const itemNameWidth = 135;
+      const itemNameWidth = 85;
       const wrappedText = doc.heightOfString(itemDescription, { width: itemNameWidth, align: 'left' });
       const itemNameHeight = wrappedText > 12 ? wrappedText : 12;
       const rowHeight = Math.max(12, itemNameHeight + 2);
@@ -1434,15 +1514,24 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
       // Define explicit column boundaries to prevent ANY text overflow
       // Each column has a fixed X position and maximum width
       const columns = {
-        num: { x: 40, w: 15 },
-        itemName: { x: 60, w: 135 },
-        hsn: { x: 200, w: 55 },
-        qty: { x: 260, w: 25 },
-        unit: { x: 290, w: 35 },
-        price: { x: 330, w: 45 },
-        gst: { x: 380, w: 65 },
-        amount: { x: 450, w: 100 }
+        num: { x: 40, w: 10 },
+        itemName: { x: 50, w: 85 },
+        length: { x: 140, w: 35 },
+        height: { x: 180, w: 35 },
+        hsn: { x: 220, w: 55 },
+        qty: { x: 280, w: 25 },
+        unit: { x: 310, w: 35 },
+        price: { x: 350, w: 45 },
+        gst: { x: 400, w: 65 },
+        amount: { x: 470, w: 85 }
       };
+      
+      // Format length and height with units
+      // Safely access heightUnit and widthUnit with fallbacks
+      const heightUnit = (item.heightUnit === 'INCH' ? '"' : item.heightUnit === 'MM' ? 'mm' : "'") || "'";
+      const widthUnit = (item.widthUnit === 'INCH' ? '"' : item.widthUnit === 'MM' ? 'mm' : "'") || "'";
+      const lengthText = item.width ? `${item.width}${widthUnit}` : '-';
+      const heightText = item.height ? `${item.height}${heightUnit}` : '-';
       
       // FINAL FIX: Render item number in completely isolated graphics state
       // Save state, render item number, restore - this ensures complete isolation
@@ -1455,6 +1544,15 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
       
       // Render item description (only column that needs width for wrapping)
       doc.text(itemDescription, columns.itemName.x, baseY, { width: columns.itemName.w, align: 'left' });
+      
+      // Render length and height columns
+      doc.save();
+      doc.text(lengthText, columns.length.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text(heightText, columns.height.x, baseY);
+      doc.restore();
       
       // Render all other columns - each in its own save/restore block for isolation
       doc.save();
@@ -1702,6 +1800,14 @@ const generateChallanPdf = async (invoiceId, userId) => {
   if (invoice.customerAddress) {
     doc.text(invoice.customerAddress, 30, y + 36, { width: 250 });
     y += 15; // Extra space for address
+  }
+  // Shipping Address
+  if (invoice.shippingAddress) {
+    y += 5;
+    doc.fontSize(9).font('Helvetica-Bold').text('Shipping Address:', 30, y + 36);
+    y += 12;
+    doc.fontSize(9).font('Helvetica').text(invoice.shippingAddress, 30, y + 36, { width: 250 });
+    y += 20;
   }
   y += 55; // Increased spacing before table
 

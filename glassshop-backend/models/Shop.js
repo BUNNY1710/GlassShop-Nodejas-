@@ -26,6 +26,21 @@ module.exports = (sequelize) => {
       allowNull: true,
       field: 'whatsapp_number'
     },
+    // Optional fields - may not exist in database yet
+    // These are commented out until columns are added to database
+    // gstNumber: {
+    //   type: DataTypes.STRING(50),
+    //   allowNull: true,
+    //   field: 'gst_number'
+    // },
+    // address: {
+    //   type: DataTypes.TEXT,
+    //   allowNull: true
+    // },
+    // phone: {
+    //   type: DataTypes.STRING(50),
+    //   allowNull: true
+    // },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,

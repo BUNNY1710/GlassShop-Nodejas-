@@ -125,7 +125,13 @@ router.post('/', async (req, res) => {
 
     res.status(201).json(fullQuotation);
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    console.error('Error creating quotation:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(400).json({ 
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -209,7 +215,20 @@ router.get('/:id', async (req, res) => {
         id: req.params.id,
         shopId: user.shopId
       },
-      include: [{ model: QuotationItem, as: 'items' }]
+      include: [
+        { 
+          model: QuotationItem, 
+          as: 'items',
+          separate: true,
+          order: [['itemOrder', 'ASC']]
+        },
+        { 
+          model: Shop, 
+          as: 'shop',
+          required: false,
+          attributes: ['id', 'shopName', 'ownerName', 'email', 'whatsappNumber']
+        }
+      ]
     });
 
     if (!quotation) {
@@ -218,7 +237,9 @@ router.get('/:id', async (req, res) => {
 
     res.json(quotation);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error fetching quotation by ID:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: error.message, details: process.env.NODE_ENV === 'development' ? error.stack : undefined });
   }
 });
 

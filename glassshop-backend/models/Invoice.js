@@ -81,6 +81,11 @@ module.exports = (sequelize) => {
       allowNull: true,
       field: 'customer_state'
     },
+    shippingAddress: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'shipping_address'
+    },
     subtotal: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,

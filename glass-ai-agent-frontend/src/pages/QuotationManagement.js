@@ -58,6 +58,7 @@ function QuotationManagement() {
     discount: 0,
     discountType: "AMOUNT", // "AMOUNT" or "PERCENTAGE"
     discountValue: 0,
+    shippingAddress: "", // Shipping address for delivery
     items: [
       {
         glassType: "", // Glass type: Plan, Extra Clear, etc.
@@ -960,6 +961,7 @@ function QuotationManagement() {
         discount: calculatedDiscount, // Send calculated discount amount
         discountType: formData.discountType, // Send discount type
         discountValue: formData.discountValue, // Send discount value
+        shippingAddress: formData.shippingAddress || "", // Shipping address for delivery
         items: formData.items.map((item) => {
           // Parse height/width (handle fractions)
           const heightValue = parseFraction(item.height || 0);
@@ -2146,6 +2148,50 @@ function QuotationManagement() {
                 </div>
               </div>
 
+              {/* Shipping Address Section */}
+              <div style={{ marginBottom: "30px" }}>
+                <h3 style={{ color: "#374151", fontSize: "18px", fontWeight: "600", marginBottom: "15px" }}>
+                  📦 Shipping Address (Optional)
+                </h3>
+                <div style={{ 
+                  width: "100%",
+                  boxSizing: "border-box",
+                }}>
+                  <label style={{ 
+                    display: "block", 
+                    marginBottom: "8px", 
+                    color: "#374151", 
+                    fontWeight: "500", 
+                    fontSize: "14px" 
+                  }}>
+                    Delivery Address
+                  </label>
+                  <textarea
+                    value={formData.shippingAddress || ""}
+                    onChange={(e) => setFormData({ ...formData, shippingAddress: e.target.value })}
+                    placeholder="Enter shipping/delivery address (will be included in quotation, invoice, estimate, and challan)..."
+                    style={{
+                      width: "100%",
+                      maxWidth: "100%",
+                      padding: isMobile ? "14px 12px" : "12px",
+                      borderRadius: "8px",
+                      border: "1px solid #d1d5db",
+                      fontSize: "16px", // Prevent iOS zoom
+                      minHeight: isMobile ? "100px" : "80px",
+                      resize: "vertical",
+                      fontFamily: "inherit",
+                      transition: "all 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
+                    onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+                  />
+                  <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>
+                    📦 This address will be displayed in quotation, invoice, estimate, and delivery challan PDFs
+                  </p>
+                </div>
+              </div>
+
               {/* Items Section */}
               <div style={{ marginBottom: "30px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -3277,6 +3323,67 @@ function QuotationManagement() {
                         />
                         <p style={{ marginTop: "5px", color: "#6b7280", fontSize: isMobile ? "11px" : "11px" }}>✨ Auto-calculated: (Table height × Table width in ft) × Rate per SqFt × Quantity</p>
                       </div>
+                      
+                      {/* Profit Field - Read Only */}
+                      <div style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                      }}>
+                        <label style={{ 
+                          display: "block", 
+                          marginBottom: "8px", 
+                          color: "#374151", 
+                          fontWeight: "500", 
+                          fontSize: isMobile ? "13px" : "14px" 
+                        }}>
+                          Profit (₹) 🔒
+                        </label>
+                        <input
+                          type="number"
+                          readOnly
+                          value={
+                            (() => {
+                              // Calculate profit for this item
+                              const purchasePrice = parseFloat(item.purchasePrice) || 0;
+                              const sellingPrice = parseFloat(item.sellingPrice || item.ratePerSqft) || 0;
+                              
+                              // Use table values if available, otherwise fallback to input values
+                              const heightTableValue = item.selectedHeightTableValue ? parseFloat(item.selectedHeightTableValue) : parseFraction(item.height || 0);
+                              const widthTableValue = item.selectedWidthTableValue ? parseFloat(item.selectedWidthTableValue) : parseFraction(item.width || 0);
+                              
+                              // Convert table values to feet
+                              const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
+                              const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
+                              
+                              // Calculate area and profit
+                              const areaInFeet = heightInFeet * widthInFeet;
+                              const qty = parseInt(item.quantity) || 0;
+                              const totalArea = areaInFeet * qty;
+                              
+                              // Profit = (Selling Price - Purchase Price) × Area
+                              const profit = (sellingPrice - purchasePrice) * totalArea;
+                              return profit.toFixed(2);
+                            })()
+                          }
+                          style={{
+                            width: "100%",
+                            maxWidth: "100%",
+                            padding: isMobile ? "14px 12px" : "12px",
+                            borderRadius: "8px",
+                            border: "1px solid #d1d5db",
+                            fontSize: "16px", // Prevent iOS zoom
+                            backgroundColor: "#d1fae5",
+                            color: "#065f46",
+                            fontWeight: "600",
+                            cursor: "not-allowed",
+                            boxSizing: "border-box",
+                            minHeight: "44px", // Touch target
+                          }}
+                        />
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: isMobile ? "11px" : "11px" }}>
+                          ✨ Auto-calculated: (Selling Price - Purchase Price) × Area × Quantity
+                        </p>
+                      </div>
                       <div style={{
                         width: "100%",
                         boxSizing: "border-box",
@@ -3955,8 +4062,23 @@ function QuotationManagement() {
                       const width = parseFloat(item.width) || 0;
                       const quantity = parseFloat(item.quantity) || 0;
                       
+                      // Convert dimensions to feet based on unit
+                      const convertToFeet = (value, unit) => {
+                        if (!value || value === 0) return 0;
+                        const numValue = parseFloat(value) || 0;
+                        if (unit === 'FEET') return numValue;
+                        if (unit === 'INCH') return numValue / 12;
+                        if (unit === 'MM') return numValue / 304.8;
+                        return numValue; // Default assume feet
+                      };
+                      
+                      const heightUnit = item.heightUnit || 'FEET';
+                      const widthUnit = item.widthUnit || 'FEET';
+                      const heightInFeet = convertToFeet(height, heightUnit);
+                      const widthInFeet = convertToFeet(width, widthUnit);
+                      
                       // Calculate area in square feet
-                      const areaInSqFt = (height * width) / 144; // Convert square inches to square feet
+                      const areaInSqFt = heightInFeet * widthInFeet;
                       const itemArea = areaInSqFt * quantity;
                       
                       // Purchase cost = purchase price per SqFt * area

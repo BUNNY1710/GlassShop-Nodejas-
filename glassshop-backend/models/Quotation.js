@@ -105,6 +105,11 @@ module.exports = (sequelize) => {
       defaultValue: false,
       field: 'transportation_required'
     },
+    shippingAddress: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'shipping_address'
+    },
     discount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
