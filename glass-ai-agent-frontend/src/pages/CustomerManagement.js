@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
 import dashboardBg from "../assets/dashboard-bg.jpg";
 import { getCustomers, createCustomer, updateCustomer, deleteCustomer, searchCustomers } from "../api/quotationApi";
@@ -6,6 +7,7 @@ import { useResponsive } from "../hooks/useResponsive";
 import "../styles/design-system.css";
 
 function CustomerManagement() {
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -1244,6 +1246,47 @@ function CustomerManagement() {
             </div>
           </div>
         )}
+
+        {/* Next Button to Quotation Page */}
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "flex-end", 
+          marginTop: "30px",
+          paddingTop: "20px",
+          borderTop: "2px solid rgba(255, 255, 255, 0.2)"
+        }}>
+          <button
+            onClick={() => navigate("/quotations")}
+            style={{
+              padding: "12px 32px",
+              backgroundColor: "#6366f1",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontSize: "16px",
+              fontWeight: "600",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              transition: "all 0.2s",
+              boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.3)",
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = "#4f46e5";
+              e.target.style.boxShadow = "0 6px 8px -1px rgba(99, 102, 241, 0.4)";
+              e.target.style.transform = "translateY(-2px)";
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = "#6366f1";
+              e.target.style.boxShadow = "0 4px 6px -1px rgba(99, 102, 241, 0.3)";
+              e.target.style.transform = "translateY(0)";
+            }}
+          >
+            Next: Quotations
+            <span style={{ fontSize: "18px" }}>→</span>
+          </button>
+        </div>
       </div>
     </PageWrapper>
   );

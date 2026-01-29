@@ -701,41 +701,41 @@ function StockDashboard() {
 
       {/* Add/Remove Modal */}
       {showAddRemoveModal && selectedStock && (
-        <div style={modalOverlay} onClick={closeAddRemoveModal}>
+        <div style={getModalOverlayStyle(isMobile)} onClick={closeAddRemoveModal}>
           <Card style={getModalCardStyle(isMobile)} onClick={(e) => e.stopPropagation()}>
-            <div style={modalHeader}>
+            <div style={getModalHeaderStyle(isMobile)}>
               <div>
-                <h3 style={modalTitle}>Add/Remove Stock</h3>
-                <p style={modalSubtitle}>Update stock quantity</p>
+                <h3 style={getModalTitleStyle(isMobile)}>Add/Remove Stock</h3>
+                <p style={getModalSubtitleStyle(isMobile)}>Update stock quantity</p>
               </div>
-              <button style={closeModalBtn} onClick={closeAddRemoveModal}>✕</button>
+              <button style={getCloseModalBtnStyle(isMobile)} onClick={closeAddRemoveModal}>✕</button>
             </div>
 
-            <div style={modalContent}>
-              <Card style={stockInfoCard}>
-                <h4 style={infoTitle}>Stock Details</h4>
-                <div style={infoGrid}>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>Glass Type:</span>
-                    <span style={infoValue}>{selectedStock.glass?.type || "N/A"}</span>
+            <div style={getModalContentStyle(isMobile)}>
+              <Card style={getStockInfoCardStyle(isMobile)}>
+                <h4 style={getInfoTitleStyle(isMobile)}>Stock Details</h4>
+                <div style={getInfoGridStyle(isMobile)}>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Glass Type:</span>
+                    <span style={getInfoValueStyle(isMobile)}>{selectedStock.glass?.type || "N/A"}</span>
                   </div>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>Thickness:</span>
-                    <span style={infoValue}>{selectedStock.glass?.thickness ? `${selectedStock.glass.thickness} mm` : "N/A"}</span>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Thickness:</span>
+                    <span style={getInfoValueStyle(isMobile)}>{selectedStock.glass?.thickness ? `${selectedStock.glass.thickness} mm` : "N/A"}</span>
                   </div>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>Size:</span>
-                    <span style={infoValue}>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Size:</span>
+                    <span style={getInfoValueStyle(isMobile)}>
                       {selectedStock.height} × {selectedStock.width} {selectedStock.glass?.unit || "MM"}
                     </span>
                   </div>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>Stand No:</span>
-                    <span style={infoValue}>#{selectedStock.standNo}</span>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Stand No:</span>
+                    <span style={getInfoValueStyle(isMobile)}>#{selectedStock.standNo}</span>
                   </div>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>Current Quantity:</span>
-                    <span style={infoValue}>{selectedStock.quantity} units</span>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Current Quantity:</span>
+                    <span style={getInfoValueStyle(isMobile)}>{selectedStock.quantity} units</span>
                   </div>
                 </div>
               </Card>
@@ -752,9 +752,9 @@ function StockDashboard() {
               />
 
               {/* Purchase Price and Selling Price Section */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #e2e8f0" }}>
-                <h4 style={{ fontSize: "14px", fontWeight: "600", color: "#374151", margin: "0 0 8px 0" }}>💰 Pricing Information</h4>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "16px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? "10px" : "12px", marginTop: isMobile ? "8px" : "10px", paddingTop: isMobile ? "10px" : "12px", borderTop: "1px solid #e2e8f0" }}>
+                <h4 style={{ fontSize: isMobile ? "13px" : "14px", fontWeight: "600", color: "#374151", margin: "0 0 4px 0" }}>💰 Pricing Information</h4>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "10px" : "12px" }}>
                   <Input
                     label="Purchase Price (₹)"
                     type="number"
@@ -778,7 +778,7 @@ function StockDashboard() {
                 </div>
               </div>
 
-              <div style={buttonGroup}>
+              <div style={getButtonGroupStyle(isMobile)}>
                 <Button
                   variant="success"
                   icon="➕"
@@ -823,41 +823,41 @@ function StockDashboard() {
 
       {/* Transfer Modal */}
       {showTransferModal && transferStock && (
-        <div style={modalOverlay} onClick={closeTransferModal}>
+        <div style={getModalOverlayStyle(isMobile)} onClick={closeTransferModal}>
           <Card style={getModalCardStyle(isMobile)} onClick={(e) => e.stopPropagation()}>
-            <div style={modalHeader}>
+            <div style={getModalHeaderStyle(isMobile)}>
               <div>
-                <h3 style={modalTitle}>Transfer Stock</h3>
-                <p style={modalSubtitle}>Move stock between stands</p>
+                <h3 style={getModalTitleStyle(isMobile)}>Transfer Stock</h3>
+                <p style={getModalSubtitleStyle(isMobile)}>Move stock between stands</p>
               </div>
-              <button style={closeModalBtn} onClick={closeTransferModal}>✕</button>
+              <button style={getCloseModalBtnStyle(isMobile)} onClick={closeTransferModal}>✕</button>
             </div>
 
-            <div style={modalContent}>
-              <Card style={stockInfoCard}>
-                <h4 style={infoTitle}>Stock Details</h4>
-                <div style={infoGrid}>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>Glass Type:</span>
-                    <span style={infoValue}>{transferStock.glass?.type || "N/A"}</span>
+            <div style={getModalContentStyle(isMobile)}>
+              <Card style={getStockInfoCardStyle(isMobile)}>
+                <h4 style={getInfoTitleStyle(isMobile)}>Stock Details</h4>
+                <div style={getInfoGridStyle(isMobile)}>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Glass Type:</span>
+                    <span style={getInfoValueStyle(isMobile)}>{transferStock.glass?.type || "N/A"}</span>
                   </div>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>Thickness:</span>
-                    <span style={infoValue}>{transferStock.glass?.thickness ? `${transferStock.glass.thickness} mm` : "N/A"}</span>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Thickness:</span>
+                    <span style={getInfoValueStyle(isMobile)}>{transferStock.glass?.thickness ? `${transferStock.glass.thickness} mm` : "N/A"}</span>
                   </div>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>Size:</span>
-                    <span style={infoValue}>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Size:</span>
+                    <span style={getInfoValueStyle(isMobile)}>
                       {transferStock.height} × {transferStock.width} {transferStock.glass?.unit || "MM"}
                     </span>
                   </div>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>From Stand:</span>
-                    <span style={infoValue}>#{transferStock.standNo}</span>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>From Stand:</span>
+                    <span style={getInfoValueStyle(isMobile)}>#{transferStock.standNo}</span>
                   </div>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>Available:</span>
-                    <span style={infoValue}>{transferStock.quantity} units</span>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Available:</span>
+                    <span style={getInfoValueStyle(isMobile)}>{transferStock.quantity} units</span>
                   </div>
                 </div>
               </Card>
@@ -909,46 +909,46 @@ function StockDashboard() {
 
       {/* Transfer Confirm Modal */}
       {showTransferConfirm && transferStock && (
-        <div style={modalOverlay} onClick={() => setShowTransferConfirm(false)}>
+        <div style={getModalOverlayStyle(isMobile)} onClick={() => setShowTransferConfirm(false)}>
           <Card style={getModalCardStyle(isMobile)} onClick={(e) => e.stopPropagation()}>
-            <div style={modalHeader}>
+            <div style={getModalHeaderStyle(isMobile)}>
               <div>
-                <h3 style={modalTitle}>Confirm Transfer</h3>
-                <p style={modalSubtitle}>Review transfer details</p>
+                <h3 style={getModalTitleStyle(isMobile)}>Confirm Transfer</h3>
+                <p style={getModalSubtitleStyle(isMobile)}>Review transfer details</p>
               </div>
-              <button style={closeModalBtn} onClick={() => setShowTransferConfirm(false)}>✕</button>
+              <button style={getCloseModalBtnStyle(isMobile)} onClick={() => setShowTransferConfirm(false)}>✕</button>
             </div>
 
-            <div style={modalContent}>
-              <Card style={stockInfoCard}>
-                <h4 style={infoTitle}>Transfer Summary</h4>
-                <div style={infoGrid}>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>Glass Type:</span>
-                    <span style={infoValue}>{transferStock.glass?.type || "N/A"}</span>
+            <div style={getModalContentStyle(isMobile)}>
+              <Card style={getStockInfoCardStyle(isMobile)}>
+                <h4 style={getInfoTitleStyle(isMobile)}>Transfer Summary</h4>
+                <div style={getInfoGridStyle(isMobile)}>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Glass Type:</span>
+                    <span style={getInfoValueStyle(isMobile)}>{transferStock.glass?.type || "N/A"}</span>
                   </div>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>Size:</span>
-                    <span style={infoValue}>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Size:</span>
+                    <span style={getInfoValueStyle(isMobile)}>
                       {transferStock.height} × {transferStock.width} {transferStock.glass?.unit || "MM"}
                     </span>
                   </div>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>From Stand:</span>
-                    <span style={infoValue}>#{transferStock.standNo}</span>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>From Stand:</span>
+                    <span style={getInfoValueStyle(isMobile)}>#{transferStock.standNo}</span>
                   </div>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>To Stand:</span>
-                    <span style={infoValue}>#{toStand}</span>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>To Stand:</span>
+                    <span style={getInfoValueStyle(isMobile)}>#{toStand}</span>
                   </div>
-                  <div style={infoItem}>
-                    <span style={infoLabel}>Quantity:</span>
-                    <span style={infoValue}>{transferQuantity} units</span>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Quantity:</span>
+                    <span style={getInfoValueStyle(isMobile)}>{transferQuantity} units</span>
                   </div>
                 </div>
               </Card>
 
-              <div style={buttonGroup}>
+              <div style={getButtonGroupStyle(isMobile)}>
                 <Button
                   variant="secondary"
                   fullWidth={isMobile}
@@ -1227,7 +1227,7 @@ const skeletonRow = {
   animation: "shimmer 1.5s infinite",
 };
 
-const modalOverlay = {
+const getModalOverlayStyle = (isMobile) => ({
   position: "fixed",
   top: 0,
   left: 0,
@@ -1239,106 +1239,114 @@ const modalOverlay = {
   alignItems: "center",
   zIndex: 10000,
   backdropFilter: "blur(4px)",
-  padding: "20px",
-};
+  padding: isMobile ? "16px" : "20px",
+});
 
 const getModalCardStyle = (isMobile) => ({
   width: "100%",
-  maxWidth: "500px",
-  maxHeight: "90vh",
+  maxWidth: isMobile ? "90%" : "380px",
+  maxHeight: "85vh",
   overflowY: "auto",
-  padding: isMobile ? "24px" : "32px",
+  padding: isMobile ? "16px" : "18px",
+  paddingTop: isMobile ? "14px" : "16px",
+  paddingBottom: isMobile ? "14px" : "16px",
   animation: "fadeIn 0.3s ease-out",
+  display: "flex",
+  flexDirection: "column",
 });
 
-const modalHeader = {
+const getModalHeaderStyle = (isMobile) => ({
   display: "flex",
   justifyContent: "space-between",
   alignItems: "flex-start",
-  marginBottom: "24px",
-  paddingBottom: "20px",
+  marginBottom: isMobile ? "12px" : "14px",
+  paddingBottom: isMobile ? "8px" : "10px",
   borderBottom: "1px solid #e2e8f0",
-};
+});
 
-const modalTitle = {
-  fontSize: "24px",
+const getModalTitleStyle = (isMobile) => ({
+  fontSize: isMobile ? "18px" : "20px",
   fontWeight: "700",
   color: "#0f172a",
-  margin: "0 0 4px 0",
-};
+  margin: "0 0 2px 0",
+});
 
-const modalSubtitle = {
-  fontSize: "14px",
+const getModalSubtitleStyle = (isMobile) => ({
+  fontSize: isMobile ? "11px" : "12px",
   color: "#64748b",
   margin: "0",
-};
+});
 
-const closeModalBtn = {
+const getCloseModalBtnStyle = (isMobile) => ({
   background: "transparent",
   border: "none",
-  fontSize: "24px",
+  fontSize: isMobile ? "20px" : "22px",
   color: "#64748b",
   cursor: "pointer",
   padding: "4px 8px",
   borderRadius: "8px",
   transition: "all 0.2s ease",
-  width: "32px",
-  height: "32px",
+  width: isMobile ? "28px" : "32px",
+  height: isMobile ? "28px" : "32px",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-};
+});
 
-const modalContent = {
+const getModalContentStyle = (isMobile) => ({
   display: "flex",
   flexDirection: "column",
-  gap: "20px",
-};
+  gap: isMobile ? "10px" : "12px",
+  flex: 1,
+  minHeight: 0,
+  overflowY: "auto",
+});
 
-const stockInfoCard = {
+const getStockInfoCardStyle = (isMobile) => ({
   background: "#f8fafc",
-  padding: "20px",
+  padding: isMobile ? "12px" : "14px",
   border: "1px solid #e2e8f0",
-};
+  borderRadius: "8px",
+});
 
-const infoTitle = {
-  fontSize: "16px",
+const getInfoTitleStyle = (isMobile) => ({
+  fontSize: isMobile ? "13px" : "14px",
   fontWeight: "700",
   color: "#0f172a",
-  margin: "0 0 16px 0",
-};
+  margin: "0 0 10px 0",
+});
 
-const infoGrid = {
+const getInfoGridStyle = (isMobile) => ({
   display: "grid",
   gridTemplateColumns: "1fr",
-  gap: "12px",
-};
+  gap: isMobile ? "6px" : "8px",
+});
 
-const infoItem = {
+const getInfoItemStyle = (isMobile) => ({
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  padding: "8px 0",
+  padding: isMobile ? "5px 0" : "6px 0",
   borderBottom: "1px solid #e2e8f0",
-};
+});
 
-const infoLabel = {
-  fontSize: "14px",
+const getInfoLabelStyle = (isMobile) => ({
+  fontSize: isMobile ? "13px" : "14px",
   fontWeight: "600",
   color: "#475569",
-};
+});
 
-const infoValue = {
-  fontSize: "14px",
+const getInfoValueStyle = (isMobile) => ({
+  fontSize: isMobile ? "13px" : "14px",
   fontWeight: "500",
   color: "#0f172a",
-};
+});
 
-const buttonGroup = {
+const getButtonGroupStyle = (isMobile) => ({
   display: "flex",
-  gap: "12px",
+  gap: isMobile ? "10px" : "12px",
   flexWrap: "wrap",
-};
+});
 
 const getMessageStyle = (isSuccess) => ({
   padding: "16px",

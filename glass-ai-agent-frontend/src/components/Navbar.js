@@ -317,11 +317,12 @@ function Navbar() {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: isMobile ? "0 12px" : "0 24px",
+    padding: isMobile ? "0 12px" : "0 16px",
     background: "rgba(255, 255, 255, 0.95)",
     backdropFilter: "blur(12px)",
     boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
     borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
+    gap: isMobile ? "8px" : "12px",
   };
 
   const logoStyle = {
@@ -361,12 +362,13 @@ function Navbar() {
       <div
         style={{
           ...menu,
+          gap: isMobile ? "8px" : "6px",
           display: isMobile ? (open ? "flex" : "none") : "flex",
           flexDirection: isMobile ? "column" : "row",
           position: isMobile ? "absolute" : "static",
-          top: "70px",
-          left: 0,
-          right: 0,
+          top: isMobile ? "70px" : "auto",
+          left: isMobile ? 0 : "auto",
+          right: isMobile ? 0 : "auto",
           background: isMobile 
             ? "rgba(255, 255, 255, 0.98)" 
             : "transparent",
@@ -375,6 +377,12 @@ function Navbar() {
             ? "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"
             : "none",
           borderBottom: isMobile ? "1px solid rgba(226, 232, 240, 0.8)" : "none",
+          flex: isMobile ? "none" : 1,
+          justifyContent: isMobile ? "flex-start" : "center",
+          overflowX: isMobile ? "visible" : "auto",
+          overflowY: isMobile ? "auto" : "visible",
+          maxHeight: isMobile ? "calc(100vh - 70px)" : "none",
+          zIndex: isMobile ? 9999 : "auto",
         }}
       >
         <NavLink 
@@ -558,8 +566,11 @@ const rightBar = {
 
 const menu = {
   display: "flex",
-  gap: "8px",
+  gap: "6px",
   alignItems: "center",
+  flexWrap: "nowrap",
+  minWidth: 0,
+  whiteSpace: "nowrap",
 };
 
 // Base nav link style - responsive adjustments applied in component

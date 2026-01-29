@@ -379,27 +379,34 @@ const generateQuotationPdf = async (quotationId, userId) => {
   doc.fontSize(10).font('Helvetica').text(quotation.customerState || 'N/A', 150, detailsBoxY + 40);
   currentY = detailsBoxY + 70;
 
-  // Customer Section
-  doc.fontSize(12).font('Helvetica-Bold').text('Quotation For:', 40, currentY);
+  // Customer Section and Shipping Address side by side
+  const leftX = 40;
+  const rightX = 320; // Right side position
+  const sectionStartY = currentY;
+  
+  // Left side: Quotation For
+  doc.fontSize(12).font('Helvetica-Bold').text('Quotation For:', leftX, currentY);
   currentY += 15;
-  doc.fontSize(10).font('Helvetica').text(quotation.customerName || '', 40, currentY);
+  doc.fontSize(10).font('Helvetica').text(quotation.customerName || '', leftX, currentY);
   currentY += 12;
   if (quotation.customerMobile) {
-    doc.fontSize(10).font('Helvetica').text(`Contact No.: ${quotation.customerMobile}`, 40, currentY);
+    doc.fontSize(10).font('Helvetica').text(`Contact No.: ${quotation.customerMobile}`, leftX, currentY);
     currentY += 12;
   }
   if (quotation.customerAddress) {
-    doc.fontSize(10).font('Helvetica').text(quotation.customerAddress, 40, currentY, { width: 250 });
+    doc.fontSize(10).font('Helvetica').text(quotation.customerAddress, leftX, currentY, { width: 250 });
     currentY += 20;
   }
-  // Shipping Address
+  
+  // Right side: Shipping Address
   if (quotation.shippingAddress) {
-    currentY += 5;
-    doc.fontSize(10).font('Helvetica-Bold').text('Shipping Address:', 40, currentY);
-    currentY += 12;
-    doc.fontSize(10).font('Helvetica').text(quotation.shippingAddress, 40, currentY, { width: 250 });
-    currentY += 20;
+    let shippingY = sectionStartY;
+    doc.fontSize(12).font('Helvetica-Bold').text('Shipping Address:', rightX, shippingY);
+    shippingY += 15;
+    doc.fontSize(10).font('Helvetica').text(quotation.shippingAddress, rightX, shippingY, { width: 250 });
   }
+  
+  // Use the maximum Y position from both sections
   currentY += 10;
 
   // Items Table Header - Adjusted column positions to fit within page
@@ -1043,27 +1050,34 @@ const generateInvoicePdf = async (invoiceId, userId) => {
   doc.fontSize(10).font('Helvetica').text(invoice.customerState || 'N/A', 150, detailsBoxY + 40);
   currentY = detailsBoxY + 70;
 
-  // Customer Section
-  doc.fontSize(12).font('Helvetica-Bold').text('Invoice For:', 40, currentY);
+  // Customer Section and Shipping Address side by side
+  const leftX = 40;
+  const rightX = 320; // Right side position
+  const sectionStartY = currentY;
+  
+  // Left side: Invoice For
+  doc.fontSize(12).font('Helvetica-Bold').text('Invoice For:', leftX, currentY);
   currentY += 15;
-  doc.fontSize(10).font('Helvetica').text(invoice.customerName || '', 40, currentY);
+  doc.fontSize(10).font('Helvetica').text(invoice.customerName || '', leftX, currentY);
   currentY += 12;
   if (invoice.customerMobile) {
-    doc.fontSize(10).font('Helvetica').text(`Contact No.: ${invoice.customerMobile}`, 40, currentY);
+    doc.fontSize(10).font('Helvetica').text(`Contact No.: ${invoice.customerMobile}`, leftX, currentY);
     currentY += 12;
   }
   if (invoice.customerAddress) {
-    doc.fontSize(10).font('Helvetica').text(invoice.customerAddress, 40, currentY, { width: 250 });
+    doc.fontSize(10).font('Helvetica').text(invoice.customerAddress, leftX, currentY, { width: 250 });
     currentY += 20;
   }
-  // Shipping Address
+  
+  // Right side: Shipping Address
   if (invoice.shippingAddress) {
-    currentY += 5;
-    doc.fontSize(10).font('Helvetica-Bold').text('Shipping Address:', 40, currentY);
-    currentY += 12;
-    doc.fontSize(10).font('Helvetica').text(invoice.shippingAddress, 40, currentY, { width: 250 });
-    currentY += 20;
+    let shippingY = sectionStartY;
+    doc.fontSize(12).font('Helvetica-Bold').text('Shipping Address:', rightX, shippingY);
+    shippingY += 15;
+    doc.fontSize(10).font('Helvetica').text(invoice.shippingAddress, rightX, shippingY, { width: 250 });
   }
+  
+  // Use the maximum Y position from both sections
   currentY += 10;
 
   // Items Table Header - Adjusted column positions to fit within page
@@ -1409,27 +1423,34 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
   doc.fontSize(10).font('Helvetica').text(invoice.customerState || 'N/A', 150, detailsBoxY + 40);
   currentY = detailsBoxY + 70;
 
-  // Customer Section
-  doc.fontSize(12).font('Helvetica-Bold').text('Estimate For:', 40, currentY);
+  // Customer Section and Shipping Address side by side
+  const leftX = 40;
+  const rightX = 320; // Right side position
+  const sectionStartY = currentY;
+  
+  // Left side: Estimate For
+  doc.fontSize(12).font('Helvetica-Bold').text('Estimate For:', leftX, currentY);
   currentY += 15;
-  doc.fontSize(10).font('Helvetica').text(invoice.customerName || '', 40, currentY);
+  doc.fontSize(10).font('Helvetica').text(invoice.customerName || '', leftX, currentY);
   currentY += 12;
   if (invoice.customerMobile) {
-    doc.fontSize(10).font('Helvetica').text(`Contact No.: ${invoice.customerMobile}`, 40, currentY);
+    doc.fontSize(10).font('Helvetica').text(`Contact No.: ${invoice.customerMobile}`, leftX, currentY);
     currentY += 12;
   }
   if (invoice.customerAddress) {
-    doc.fontSize(10).font('Helvetica').text(invoice.customerAddress, 40, currentY, { width: 250 });
+    doc.fontSize(10).font('Helvetica').text(invoice.customerAddress, leftX, currentY, { width: 250 });
     currentY += 20;
   }
-  // Shipping Address
+  
+  // Right side: Shipping Address
   if (invoice.shippingAddress) {
-    currentY += 5;
-    doc.fontSize(10).font('Helvetica-Bold').text('Shipping Address:', 40, currentY);
-    currentY += 12;
-    doc.fontSize(10).font('Helvetica').text(invoice.shippingAddress, 40, currentY, { width: 250 });
-    currentY += 20;
+    let shippingY = sectionStartY;
+    doc.fontSize(12).font('Helvetica-Bold').text('Shipping Address:', rightX, shippingY);
+    shippingY += 15;
+    doc.fontSize(10).font('Helvetica').text(invoice.shippingAddress, rightX, shippingY, { width: 250 });
   }
+  
+  // Use the maximum Y position from both sections
   currentY += 10;
 
   // Items Table Header - Adjusted column positions to fit within page
@@ -1791,24 +1812,31 @@ const generateChallanPdf = async (invoiceId, userId) => {
   doc.fontSize(9).font('Helvetica').text(invoice.shop?.shopName || 'mayurShop', 30, y + 12);
   y += 28; // Increased spacing
 
-  doc.fontSize(10).font('Helvetica-Bold').text('To:', 30, y);
+  // To section and Shipping Address side by side
+  const leftXChallan = 30;
+  const rightXChallan = 300; // Right side position
+  const challanSectionStartY = y;
+  
+  // Left side: To
+  doc.fontSize(10).font('Helvetica-Bold').text('To:', leftXChallan, y);
   doc.fontSize(9).font('Helvetica');
-  doc.text(invoice.customerName || '', 30, y + 12);
+  doc.text(invoice.customerName || '', leftXChallan, y + 12);
   if (invoice.customerMobile) {
-    doc.text(`Mobile: ${invoice.customerMobile}`, 30, y + 24);
+    doc.text(`Mobile: ${invoice.customerMobile}`, leftXChallan, y + 24);
   }
   if (invoice.customerAddress) {
-    doc.text(invoice.customerAddress, 30, y + 36, { width: 250 });
+    doc.text(invoice.customerAddress, leftXChallan, y + 36, { width: 250 });
     y += 15; // Extra space for address
   }
-  // Shipping Address
+  
+  // Right side: Shipping Address
   if (invoice.shippingAddress) {
-    y += 5;
-    doc.fontSize(9).font('Helvetica-Bold').text('Shipping Address:', 30, y + 36);
-    y += 12;
-    doc.fontSize(9).font('Helvetica').text(invoice.shippingAddress, 30, y + 36, { width: 250 });
-    y += 20;
+    let shippingYChallan = challanSectionStartY;
+    doc.fontSize(10).font('Helvetica-Bold').text('Shipping Address:', rightXChallan, shippingYChallan);
+    shippingYChallan += 12;
+    doc.fontSize(9).font('Helvetica').text(invoice.shippingAddress, rightXChallan, shippingYChallan, { width: 250 });
   }
+  
   y += 55; // Increased spacing before table
 
   // Items Table Header

@@ -180,11 +180,13 @@ function StockTransfer() {
         if (!stock) return null;
         
         const glassType = stock.glass?.type || "";
+        const thickness = stock.glass?.thickness || "";
         const unit = stock.glass?.unit || "MM";
         const quantity = parseInt(transferQuantities[stockId]);
         
         const transferData = {
           glassType: glassType,
+          thickness: thickness,
           unit: unit,
           height: stock.height || "",
           width: stock.width || "",

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
 import dashboardBg from "../assets/dashboard-bg.jpg";
 import {
@@ -18,6 +19,7 @@ import { getUserRole } from "../utils/auth";
 import "../styles/design-system.css";
 
 function QuotationManagement() {
+  const navigate = useNavigate();
   const [quotations, setQuotations] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [allStock, setAllStock] = useState([]);
@@ -2194,36 +2196,14 @@ function QuotationManagement() {
 
               {/* Items Section */}
               <div style={{ marginBottom: "30px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                  <h3 style={{ color: "#374151", fontSize: "18px", fontWeight: "600", margin: 0 }}>
+                <div style={{ marginBottom: "20px" }}>
+                  <h3 style={{ color: "#374151", fontSize: "18px", fontWeight: "600", margin: 0, marginBottom: "10px" }}>
                     📦 Quotation Items
                   </h3>
-                  <button
-                    type="button"
-                    onClick={handleAddItem}
-                    style={{
-                      padding: "10px 20px",
-                      backgroundColor: "#6366f1",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "8px",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      fontWeight: "500",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      transition: "all 0.2s",
-                    }}
-                    onMouseOver={(e) => (e.target.style.backgroundColor = "#4f46e5")}
-                    onMouseOut={(e) => (e.target.style.backgroundColor = "#6366f1")}
-                  >
-                    ➕ Add Item
-                  </button>
+                  <p style={{ color: "#6b7280", fontSize: "14px", margin: 0 }}>
+                    Add glass items to your quotation. Area and subtotal are calculated automatically.
+                  </p>
                 </div>
-                <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "20px" }}>
-                  Add glass items to your quotation. Area and subtotal are calculated automatically.
-                </p>
 
                 {formData.items.map((item, index) => (
                   <div
@@ -3564,6 +3544,45 @@ function QuotationManagement() {
                     </div>
                   </div>
                 ))}
+                
+                {/* Add Item Button at Bottom */}
+                <div style={{ 
+                  display: "flex", 
+                  justifyContent: "center", 
+                  marginTop: "20px",
+                  paddingTop: "20px",
+                  borderTop: "1px solid #e5e7eb"
+                }}>
+                  <button
+                    type="button"
+                    onClick={handleAddItem}
+                    style={{
+                      padding: "12px 24px",
+                      backgroundColor: "#6366f1",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      transition: "all 0.2s",
+                      boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.3)",
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.backgroundColor = "#4f46e5";
+                      e.target.style.boxShadow = "0 6px 8px -1px rgba(99, 102, 241, 0.4)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.backgroundColor = "#6366f1";
+                      e.target.style.boxShadow = "0 4px 6px -1px rgba(99, 102, 241, 0.3)";
+                    }}
+                  >
+                    ➕ Add Item
+                  </button>
+                </div>
               </div>
 
               {/* Action Buttons */}
@@ -4534,6 +4553,47 @@ function QuotationManagement() {
             </div>
           </div>
         )}
+
+        {/* Next Button to Invoice Page */}
+        <div style={{ 
+          display: "flex", 
+          justifyContent: "flex-end", 
+          marginTop: "30px",
+          paddingTop: "20px",
+          borderTop: "2px solid rgba(255, 255, 255, 0.2)"
+        }}>
+          <button
+            onClick={() => navigate("/invoices")}
+            style={{
+              padding: "12px 32px",
+              backgroundColor: "#6366f1",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontSize: "16px",
+              fontWeight: "600",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              transition: "all 0.2s",
+              boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.3)",
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = "#4f46e5";
+              e.target.style.boxShadow = "0 6px 8px -1px rgba(99, 102, 241, 0.4)";
+              e.target.style.transform = "translateY(-2px)";
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = "#6366f1";
+              e.target.style.boxShadow = "0 4px 6px -1px rgba(99, 102, 241, 0.3)";
+              e.target.style.transform = "translateY(0)";
+            }}
+          >
+            Next: Invoices
+            <span style={{ fontSize: "18px" }}>→</span>
+          </button>
+        </div>
       </div>
     </PageWrapper>
   );
