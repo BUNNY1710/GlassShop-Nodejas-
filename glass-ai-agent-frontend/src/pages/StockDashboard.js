@@ -62,7 +62,7 @@ const convertFromMM = (valueInMM, targetUnit) => {
 
 function StockDashboard() {
   const [allStock, setAllStock] = useState([]);
-  const [filterGlassType, setFilterGlassType] = useState("");
+  const [filterThickness, setFilterThickness] = useState(""); // Changed: search by thickness instead of glass type
   const [filterHeight, setFilterHeight] = useState("");
   const [filterWidth, setFilterWidth] = useState("");
   const [searchUnit, setSearchUnit] = useState("MM");
@@ -73,6 +73,8 @@ function StockDashboard() {
   const [showAddRemoveModal, setShowAddRemoveModal] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
   const [quantity, setQuantity] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [sellingPrice, setSellingPrice] = useState("");
   const [stockMessage, setStockMessage] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingPayload, setPendingPayload] = useState(null);
@@ -103,9 +105,11 @@ function StockDashboard() {
 
       stockWithQuantity.forEach(item => {
         if (item.quantity < item.minQuantity) {
+          const glassTypeLabel = item.glass?.type || 'N/A';
+          const thicknessLabel = item.glass?.thickness ? `${item.glass.thickness}mm` : '';
           toast.error(
-            `🚨 LOW STOCK: ${item.glass?.type} (Stand ${item.standNo})`,
-            { toastId: `${item.standNo}-${item.glass?.type}` }
+            `🚨 LOW STOCK: ${glassTypeLabel} ${thicknessLabel} (Stand ${item.standNo})`,
+            { toastId: `${item.standNo}-${item.glass?.id}` }
           );
         }
       });
@@ -126,6 +130,8 @@ function StockDashboard() {
   const openAddRemoveModal = (stock) => {
     setSelectedStock(stock);
     setQuantity("");
+    setPurchasePrice(stock.purchasePrice || "");
+    setSellingPrice(stock.sellingPrice || "");
     setStockMessage("");
     setShowAddRemoveModal(true);
   };
@@ -134,6 +140,8 @@ function StockDashboard() {
     setShowAddRemoveModal(false);
     setSelectedStock(null);
     setQuantity("");
+    setPurchasePrice("");
+    setSellingPrice("");
     setStockMessage("");
   };
 
@@ -154,8 +162,8 @@ function StockDashboard() {
       standNo: selectedStock.standNo,
       quantity: Number(quantity),
       action,
-      glassType: selectedStock.glass?.type,
-      thickness: selectedStock.glass?.thickness,
+      glassType: selectedStock.glass?.type, // Glass type (Plan, Extra Clear, etc.)
+      thickness: selectedStock.glass?.thickness, // Thickness value
       height: selectedStock.height,
       width: selectedStock.width,
       unit: selectedStock.glass?.unit || "MM"
@@ -168,7 +176,25 @@ function StockDashboard() {
 
   const confirmSaveStock = async () => {
     try {
-      await api.post("/api/stock/update", pendingPayload);
+      // Update stock quantity if there's a pending payload
+      if (pendingPayload) {
+        await api.post("/api/stock/update", pendingPayload);
+      }
+      
+      // Update prices if provided (always try to update, even if empty to clear values)
+      if (selectedStock && (purchasePrice !== "" || sellingPrice !== "")) {
+        try {
+          await api.post("/api/stock/update-price", {
+            stockId: selectedStock.id,
+            purchasePrice: purchasePrice ? parseFloat(purchasePrice) : null,
+            sellingPrice: sellingPrice ? parseFloat(sellingPrice) : null
+          });
+        } catch (priceError) {
+          console.error("Price update error:", priceError);
+          // Don't fail the whole operation if price update fails
+        }
+      }
+      
       setShowConfirm(false);
       setPendingPayload(null);
       toast.success("✅ Stock updated successfully");
@@ -180,7 +206,8 @@ function StockDashboard() {
       setShowConfirm(false);
       setPendingPayload(null);
       setShowAddRemoveModal(true);
-      setStockMessage(error.response?.data || "❌ Failed to update stock");
+      const errorMessage = error.response?.data || error.message || "❌ Failed to update stock";
+      setStockMessage(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
     }
   };
 
@@ -234,24 +261,15 @@ function StockDashboard() {
       return;
     }
 
-    let formattedGlassType = transferStock.glass?.type || "";
-    if (formattedGlassType && /^\d+$/.test(formattedGlassType.trim())) {
-      formattedGlassType = formattedGlassType.trim() + "MM";
-    }
-
     setShowTransferConfirm(true);
     setShowTransferModal(false);
   };
 
   const confirmTransfer = async () => {
     try {
-      let formattedGlassType = transferStock.glass?.type || "";
-      if (formattedGlassType && /^\d+$/.test(formattedGlassType.trim())) {
-        formattedGlassType = formattedGlassType.trim() + "MM";
-      }
-
       const res = await api.post("/api/stock/transfer", {
-        glassType: formattedGlassType,
+        glassType: transferStock.glass?.type || "",
+        thickness: transferStock.glass?.thickness || 0,
         unit: transferStock.glass?.unit || "MM",
         height: transferStock.height,
         width: transferStock.width,
@@ -296,12 +314,32 @@ function StockDashboard() {
       ? convertToMM(searchWidthValue, searchUnit) 
       : null;
 
-    const filtered = stockWithQuantity.filter(s => {
-      const matchGlass =
-        !filterGlassType ||
-        s.glass?.type?.toLowerCase().includes(filterGlassType.toLowerCase());
+    const filtered = stockWithQuantity.map(s => {
+      // Live search by thickness - instant filtering as user types
+      // Results appear immediately as user types (e.g., typing "5" shows 5mm items instantly)
+      let matchThickness = true;
+      if (filterThickness && filterThickness.trim() !== "") {
+        const searchValue = filterThickness.trim().toLowerCase();
+        const stockThickness = s.glass?.thickness;
+        
+        if (stockThickness) {
+          // Match exact number or contains match for instant results
+          // e.g., typing "5" will immediately show all items with thickness 5mm
+          const stockThicknessStr = String(stockThickness).toLowerCase();
+          matchThickness = stockThicknessStr === searchValue || 
+                          stockThicknessStr.includes(searchValue) ||
+                          stockThicknessStr.startsWith(searchValue);
+        } else {
+          matchThickness = false;
+        }
+      }
 
+      if (!matchThickness) return null; // Return null for proper filtering
+
+      // Normal search: height matches height, width matches width
       let matchHeight = true;
+      let matchWidth = true;
+      
       if (searchHeightMM !== null) {
         const stockHeightValue = parseDimension(s.height);
         if (stockHeightValue !== null) {
@@ -316,7 +354,6 @@ function StockDashboard() {
         }
       }
 
-      let matchWidth = true;
       if (searchWidthMM !== null) {
         const stockWidthValue = parseDimension(s.width);
         if (stockWidthValue !== null) {
@@ -331,10 +368,64 @@ function StockDashboard() {
         }
       }
 
-      return matchGlass && matchHeight && matchWidth;
-    });
+      const normalMatch = matchHeight && matchWidth;
+      let isReverseMatch = false;
+
+      // Reverse search: height matches width, width matches height (only if both height and width are searched)
+      if (normalMatch) {
+        return { ...s, isReverseMatch: false }; // Normal match found
+      }
+
+      // If normal match not found, try reverse search
+      if (searchHeightMM !== null && searchWidthMM !== null) {
+        let reverseMatchHeight = true;
+        let reverseMatchWidth = true;
+
+        // Check if searched height matches stock width
+        const stockWidthValue = parseDimension(s.width);
+        if (stockWidthValue !== null) {
+          const stockWidthMM = convertToMM(stockWidthValue, s.glass?.unit);
+          if (stockWidthMM !== null) {
+            reverseMatchHeight = stockWidthMM >= searchHeightMM;
+          } else {
+            reverseMatchHeight = false;
+          }
+        } else {
+          reverseMatchHeight = false;
+        }
+
+        // Check if searched width matches stock height
+        const stockHeightValue = parseDimension(s.height);
+        if (stockHeightValue !== null) {
+          const stockHeightMM = convertToMM(stockHeightValue, s.glass?.unit);
+          if (stockHeightMM !== null) {
+            reverseMatchWidth = stockHeightMM >= searchWidthMM;
+          } else {
+            reverseMatchWidth = false;
+          }
+        } else {
+          reverseMatchWidth = false;
+        }
+
+        isReverseMatch = reverseMatchHeight && reverseMatchWidth;
+        if (isReverseMatch) {
+          return { ...s, isReverseMatch: true };
+        }
+      }
+
+      if (normalMatch) {
+        return { ...s, isReverseMatch: false };
+      }
+
+      return null; // No match
+    }).filter(s => s !== null);
 
     return filtered.sort((a, b) => {
+      // Prioritize reverse matches over normal matches (show reverse matches at top)
+      if (a.isReverseMatch !== b.isReverseMatch) {
+        return a.isReverseMatch ? -1 : 1; // Reverse matches first
+      }
+      
       const aHeightValue = parseDimension(a.height);
       const bHeightValue = parseDimension(b.height);
       const aWidthValue = parseDimension(a.width);
@@ -350,7 +441,7 @@ function StockDashboard() {
       }
       return aWidthMM - bWidthMM;
     });
-  }, [allStock, filterGlassType, filterHeight, filterWidth, searchUnit]);
+  }, [allStock, filterThickness, filterHeight, filterWidth, searchUnit]);
 
   // Calculate stats
   const totalStock = filteredStock.length;
@@ -406,10 +497,10 @@ function StockDashboard() {
 
           <div style={getFilterGridStyle(isMobile)}>
             <Input
-              placeholder="Glass Type (e.g., 5MM)"
-              value={filterGlassType}
-              onChange={e => setFilterGlassType(e.target.value)}
-              icon="🔷"
+              placeholder="Thickness (e.g., 5, 8, 10)"
+              value={filterThickness}
+              onChange={e => setFilterThickness(e.target.value)}
+              icon="📏"
             />
             <Input
               type="text"
@@ -437,7 +528,7 @@ function StockDashboard() {
             <Button
               variant="secondary"
               onClick={() => {
-                setFilterGlassType("");
+                setFilterThickness("");
                 setFilterHeight("");
                 setFilterWidth("");
                 setSearchUnit("MM");
@@ -480,7 +571,7 @@ function StockDashboard() {
                 <div style={emptyIcon}>📦</div>
                 <p style={emptyText}>No stock found</p>
                 <p style={emptySubtext}>
-                  {filterGlassType || filterHeight || filterWidth 
+                  {filterThickness || filterHeight || filterWidth 
                     ? "Try adjusting your filters" 
                     : "Add stock to get started"}
                 </p>
@@ -490,55 +581,92 @@ function StockDashboard() {
                 <table style={table}>
                   <thead>
                     <tr>
-                      <th>Stand</th>
-                      <th>Glass Type</th>
-                      <th>Thickness</th>
-                      <th>Height</th>
-                      <th>Width</th>
-                      <th>Quantity</th>
-                      <th>Status</th>
-                      <th>Actions</th>
+                      <th style={tableHeaderCell}>Stand</th>
+                      <th style={tableHeaderCell}>Glass Type</th>
+                      <th style={tableHeaderCell}>Thickness</th>
+                      <th style={tableHeaderCell}>Height</th>
+                      <th style={tableHeaderCell}>Width</th>
+                      <th style={tableHeaderCell}>Quantity</th>
+                      <th style={tableHeaderCell}>Status</th>
+                      <th style={tableHeaderCell}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredStock.map((s, i) => {
                       const isLow = s.quantity < s.minQuantity;
+                      const isReverseMatch = s.isReverseMatch || false;
                       return (
                         <tr
                           key={i}
                           className={isLow ? "low-stock" : ""}
-                          style={getTableRowStyle(isLow)}
+                          style={{
+                            ...getTableRowStyle(isLow),
+                            ...(isReverseMatch ? { backgroundColor: "#fef3c7" } : {})
+                          }}
                         >
-                          <td>
+                          <td style={tableCell}>
                             <span style={standBadge}>#{s.standNo}</span>
+                            {isReverseMatch && (
+                              <span style={{
+                                marginLeft: "6px",
+                                fontSize: "10px",
+                                padding: "2px 6px",
+                                backgroundColor: "#f59e0b",
+                                color: "white",
+                                borderRadius: "4px",
+                                fontWeight: "600"
+                              }}>
+                                🔄 REVERSED
+                              </span>
+                            )}
                           </td>
-                          <td style={glassTypeCell}>
+                          <td style={{ ...tableCell, ...glassTypeCell }}>
                             <strong>{s.glass?.type || "N/A"}</strong>
                           </td>
-                          <td>{s.glass?.thickness || "N/A"} mm</td>
-                          <td>
+                          <td style={tableCell}>{s.glass?.thickness ? `${s.glass.thickness} mm` : "N/A"}</td>
+                          <td style={tableCell}>
                             {s.height || "N/A"}{" "}
                             {s.glass?.unit === "FEET" && "ft"}
                             {s.glass?.unit === "INCH" && "in"}
                             {s.glass?.unit === "MM" && "mm"}
+                            {isReverseMatch && (
+                              <span style={{ 
+                                marginLeft: "4px", 
+                                fontSize: "11px", 
+                                color: "#f59e0b",
+                                fontWeight: "600"
+                              }}>
+                                (matches width)
+                              </span>
+                            )}
                           </td>
-                          <td>
+                          <td style={tableCell}>
                             {s.width || "N/A"}{" "}
                             {s.glass?.unit === "FEET" && "ft"}
                             {s.glass?.unit === "INCH" && "in"}
                             {s.glass?.unit === "MM" && "mm"}
+                            {isReverseMatch && (
+                              <span style={{ 
+                                marginLeft: "4px", 
+                                fontSize: "11px", 
+                                color: "#f59e0b",
+                                fontWeight: "600"
+                              }}>
+                                (matches height)
+                              </span>
+                            )}
                           </td>
-                          <td>
+                          <td style={tableCell}>
                             <span style={getQuantityBadgeStyle(isLow)}>
                               {s.quantity}
                             </span>
                           </td>
-                          <td>
+                          <td style={tableCell}>
                             <span style={getStatusBadgeStyle(isLow)}>
                               {isLow ? "🔴 LOW" : "✅ OK"}
                             </span>
                           </td>
-                          <td>
+                          <td style={tableCell}>
                             <div style={actionButtonsContainer}>
                               <Button
                                 variant="primary"
@@ -589,11 +717,11 @@ function StockDashboard() {
                 <div style={infoGrid}>
                   <div style={infoItem}>
                     <span style={infoLabel}>Glass Type:</span>
-                    <span style={infoValue}>{selectedStock.glass?.type}</span>
+                    <span style={infoValue}>{selectedStock.glass?.type || "N/A"}</span>
                   </div>
                   <div style={infoItem}>
                     <span style={infoLabel}>Thickness:</span>
-                    <span style={infoValue}>{selectedStock.glass?.thickness} mm</span>
+                    <span style={infoValue}>{selectedStock.glass?.thickness ? `${selectedStock.glass.thickness} mm` : "N/A"}</span>
                   </div>
                   <div style={infoItem}>
                     <span style={infoLabel}>Size:</span>
@@ -622,6 +750,33 @@ function StockDashboard() {
                 required
                 min="1"
               />
+
+              {/* Purchase Price and Selling Price Section */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #e2e8f0" }}>
+                <h4 style={{ fontSize: "14px", fontWeight: "600", color: "#374151", margin: "0 0 8px 0" }}>💰 Pricing Information</h4>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "16px" }}>
+                  <Input
+                    label="Purchase Price (₹)"
+                    type="number"
+                    placeholder="Enter purchase price"
+                    value={purchasePrice}
+                    onChange={(e) => setPurchasePrice(e.target.value)}
+                    icon="💰"
+                    min="0"
+                    step="0.01"
+                  />
+                  <Input
+                    label="Selling Price (₹)"
+                    type="number"
+                    placeholder="Enter selling price"
+                    value={sellingPrice}
+                    onChange={(e) => setSellingPrice(e.target.value)}
+                    icon="💵"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+              </div>
 
               <div style={buttonGroup}>
                 <Button
@@ -684,11 +839,11 @@ function StockDashboard() {
                 <div style={infoGrid}>
                   <div style={infoItem}>
                     <span style={infoLabel}>Glass Type:</span>
-                    <span style={infoValue}>{transferStock.glass?.type}</span>
+                    <span style={infoValue}>{transferStock.glass?.type || "N/A"}</span>
                   </div>
                   <div style={infoItem}>
                     <span style={infoLabel}>Thickness:</span>
-                    <span style={infoValue}>{transferStock.glass?.thickness} mm</span>
+                    <span style={infoValue}>{transferStock.glass?.thickness ? `${transferStock.glass.thickness} mm` : "N/A"}</span>
                   </div>
                   <div style={infoItem}>
                     <span style={infoLabel}>Size:</span>
@@ -770,7 +925,7 @@ function StockDashboard() {
                 <div style={infoGrid}>
                   <div style={infoItem}>
                     <span style={infoLabel}>Glass Type:</span>
-                    <span style={infoValue}>{transferStock.glass?.type}</span>
+                    <span style={infoValue}>{transferStock.glass?.type || "N/A"}</span>
                   </div>
                   <div style={infoItem}>
                     <span style={infoLabel}>Size:</span>
@@ -864,9 +1019,9 @@ const pageSubtitle = {
 
 const getStatsGridStyle = (isMobile) => ({
   display: "grid",
-  gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
-  gap: "24px",
-  marginBottom: "32px",
+  gridTemplateColumns: isMobile ? "repeat(3, 1fr)" : "repeat(3, 1fr)",
+  gap: isMobile ? "8px" : "24px",
+  marginBottom: isMobile ? "24px" : "32px",
 });
 
 const getFilterCardStyle = (isMobile) => ({
@@ -953,6 +1108,7 @@ const table = {
   minWidth: "900px",
   borderCollapse: "collapse",
   background: "#ffffff",
+  tableLayout: "fixed", // Fixed layout to prevent column shifting
 };
 
 const getTableRowStyle = (isLow) => ({
@@ -984,7 +1140,33 @@ const getQuantityBadgeStyle = (isLow) => ({
   fontSize: "14px",
   background: isLow ? "rgba(239, 68, 68, 0.1)" : "rgba(34, 197, 94, 0.1)",
   color: isLow ? "#dc2626" : "#16a34a",
+  minWidth: "40px",
+  textAlign: "center",
+  boxSizing: "border-box",
 });
+
+const tableHeaderCell = {
+  padding: "16px 12px",
+  textAlign: "left",
+  fontSize: "13px",
+  fontWeight: "600",
+  color: "#475569",
+  backgroundColor: "#f8fafc",
+  borderBottom: "2px solid #e2e8f0",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+
+const tableCell = {
+  padding: "16px 12px",
+  textAlign: "left",
+  verticalAlign: "middle",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  boxSizing: "border-box",
+};
 
 const getStatusBadgeStyle = (isLow) => ({
   display: "inline-block",
@@ -994,6 +1176,9 @@ const getStatusBadgeStyle = (isLow) => ({
   fontSize: "12px",
   background: isLow ? "rgba(239, 68, 68, 0.1)" : "rgba(34, 197, 94, 0.1)",
   color: isLow ? "#dc2626" : "#16a34a",
+  width: "85px", // Fixed width to accommodate both "🔴 LOW" and "✅ OK"
+  textAlign: "center",
+  boxSizing: "border-box",
 });
 
 const actionButtonsContainer = {

@@ -6,20 +6,37 @@ import ConfirmModal from "../components/ConfirmModal";
 import "../styles/design-system.css";
 
 function StockManager() {
-  const [glassTypeStock, setGlassTypeStock] = useState("");
+  const [glassType, setGlassType] = useState(""); // New: Glass type dropdown (Plan, Extra Clear, etc.)
+  const [thickness, setThickness] = useState(""); // Changed: Thickness (was glassTypeStock)
   const [standNo, setStandNo] = useState("");
   const [quantity, setQuantity] = useState("");
   const [stockMessage, setStockMessage] = useState("");
-  const [glassMode, setGlassMode] = useState("SELECT");
+  const [thicknessMode, setThicknessMode] = useState("SELECT"); // Changed: was glassMode
   const [manualThickness, setManualThickness] = useState("");
   const [height, setHeight] = useState("");
   const [width, setWidth] = useState("");
   const [unit, setUnit] = useState("MM");
   const [hsnNo, setHsnNo] = useState("");
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [sellingPrice, setSellingPrice] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingPayload, setPendingPayload] = useState(null);
   const [showUndo, setShowUndo] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  // Glass type options
+  const glassTypeOptions = [
+    "Plan",
+    "Extra Clear",
+    "Grey Tinted",
+    "Brown Tinted",
+    "One Way",
+    "Star",
+    "Karakachi",
+    "Bajari",
+    "Diomand",
+    "Mirror"
+  ];
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -35,28 +52,37 @@ function StockManager() {
       return;
     }
 
-    if (glassMode === "SELECT" && !glassTypeStock) {
+    if (!glassType) {
       setStockMessage("❌ Please select glass type");
       return;
     }
 
-    if (glassMode === "MANUAL" && !manualThickness) {
+    if (thicknessMode === "SELECT" && !thickness) {
+      setStockMessage("❌ Please select thickness");
+      return;
+    }
+
+    if (thicknessMode === "MANUAL" && !manualThickness) {
       setStockMessage("❌ Please enter manual thickness");
       return;
     }
+
+    const thicknessValue = thicknessMode === "SELECT" 
+      ? Number(thickness.replace("MM", "")) 
+      : Number(manualThickness);
 
     const payload = {
       standNo: Number(standNo),
       quantity: Number(quantity),
       action,
-      glassType: glassMode === "SELECT" ? glassTypeStock : `${manualThickness}MM`,
-      thickness: glassMode === "SELECT" 
-        ? Number(glassTypeStock.replace("MM", "")) 
-        : Number(manualThickness),
+      glassType: glassType, // New: actual glass type (Plan, Extra Clear, etc.)
+      thickness: thicknessValue, // Thickness value
       height,
       width,
       unit,
-      hsnNo: hsnNo || null
+      hsnNo: hsnNo || null,
+      purchasePrice: purchasePrice || null,
+      sellingPrice: sellingPrice || null
     };
 
     setPendingPayload(payload);
@@ -75,7 +101,8 @@ function StockManager() {
       setHeight("");
       setWidth("");
       setManualThickness("");
-      setGlassTypeStock("");
+      setThickness("");
+      setGlassType("");
       setHsnNo("");
     } catch (error) {
       const errorData = error.response?.data;
@@ -131,6 +158,34 @@ function StockManager() {
               <div style={sectionIcon}>🔷</div>
               <div>
                 <h3 style={sectionTitle}>Glass Type</h3>
+                <p style={sectionSubtitle}>Select the type of glass</p>
+              </div>
+            </div>
+
+            <div style={getFormGridStyle(isMobile)}>
+              <div style={formGroup}>
+                <Select
+                  label="Glass Type"
+                  value={glassType}
+                  onChange={e => setGlassType(e.target.value)}
+                  icon="🔷"
+                  required
+                >
+                  <option value="">Select glass type</option>
+                  {glassTypeOptions.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Thickness Section */}
+          <div style={section}>
+            <div style={sectionHeader}>
+              <div style={sectionIcon}>📏</div>
+              <div>
+                <h3 style={sectionTitle}>Thickness</h3>
                 <p style={sectionSubtitle}>Select or enter glass thickness</p>
               </div>
             </div>
@@ -139,25 +194,25 @@ function StockManager() {
               <div style={formGroup}>
                 <Select
                   label="Selection Mode"
-                  value={glassMode} 
-                  onChange={e => setGlassMode(e.target.value)}
-                  icon="🔷"
+                  value={thicknessMode} 
+                  onChange={e => setThicknessMode(e.target.value)}
+                  icon="📏"
                 >
                   <option value="SELECT">Select from list</option>
                   <option value="MANUAL">Manual entry</option>
                 </Select>
               </div>
 
-              {glassMode === "SELECT" ? (
+              {thicknessMode === "SELECT" ? (
                 <div style={formGroup}>
                   <Select
-                    label="Glass Type"
-                    value={glassTypeStock}
-                    onChange={e => setGlassTypeStock(e.target.value)}
-                    icon="🔷"
+                    label="Thickness"
+                    value={thickness}
+                    onChange={e => setThickness(e.target.value)}
+                    icon="📏"
                     required
                   >
-                    <option value="">Select glass type</option>
+                    <option value="">Select thickness</option>
                     <option value="5MM">5 MM</option>
                     <option value="8MM">8 MM</option>
                     <option value="10MM">10 MM</option>
@@ -264,6 +319,44 @@ function StockManager() {
                   onChange={e => setQuantity(e.target.value)}
                   icon="🔢"
                   required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Pricing Information Section */}
+          <div style={section}>
+            <div style={sectionHeader}>
+              <div style={sectionIcon}>💰</div>
+              <div>
+                <h3 style={sectionTitle}>Pricing Information</h3>
+                <p style={sectionSubtitle}>Purchase and selling prices</p>
+              </div>
+            </div>
+
+            <div style={getFormGridStyle(isMobile)}>
+              <div style={formGroup}>
+                <Input
+                  label="Purchase Price (₹)"
+                  type="number"
+                  placeholder="Enter purchase price"
+                  value={purchasePrice}
+                  onChange={e => setPurchasePrice(e.target.value)}
+                  icon="💰"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+              <div style={formGroup}>
+                <Input
+                  label="Selling Price (₹)"
+                  type="number"
+                  placeholder="Enter selling price"
+                  value={sellingPrice}
+                  onChange={e => setSellingPrice(e.target.value)}
+                  icon="💵"
+                  min="0"
+                  step="0.01"
                 />
               </div>
             </div>

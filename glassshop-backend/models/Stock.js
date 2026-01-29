@@ -54,6 +54,16 @@ module.exports = (sequelize) => {
       allowNull: true,
       field: 'hsn_no'
     },
+    purchasePrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      field: 'purchase_price'
+    },
+    sellingPrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      field: 'selling_price'
+    },
     updatedAt: {
       type: DataTypes.DATE,
       allowNull: true,

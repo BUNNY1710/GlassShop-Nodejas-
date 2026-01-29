@@ -57,6 +57,159 @@ const convertToFeet = (value, unit) => {
 };
 
 /**
+ * Helper function to convert number to words (Indian numbering system)
+ */
+const numberToWords = (num) => {
+  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  
+  const convertHundreds = (n) => {
+    if (n === 0) return '';
+    if (n < 20) return ones[n];
+    if (n < 100) {
+      const ten = Math.floor(n / 10);
+      const one = n % 10;
+      return tens[ten] + (one > 0 ? ' ' + ones[one] : '');
+    }
+    const hundred = Math.floor(n / 100);
+    const remainder = n % 100;
+    return ones[hundred] + ' Hundred' + (remainder > 0 ? ' ' + convertHundreds(remainder) : '');
+  };
+  
+  if (num === 0) return 'Zero';
+  
+  const numStr = num.toFixed(2);
+  const parts = numStr.split('.');
+  let rupees = parseInt(parts[0]);
+  const paise = parseInt(parts[1] || '0');
+  
+  let result = '';
+  
+  if (rupees >= 10000000) {
+    const crores = Math.floor(rupees / 10000000);
+    result += convertHundreds(crores) + ' Crore ';
+    rupees %= 10000000;
+  }
+  
+  if (rupees >= 100000) {
+    const lakhs = Math.floor(rupees / 100000);
+    result += convertHundreds(lakhs) + ' Lakh ';
+    rupees %= 100000;
+  }
+  
+  if (rupees >= 1000) {
+    const thousands = Math.floor(rupees / 1000);
+    result += convertHundreds(thousands) + ' Thousand ';
+    rupees %= 1000;
+  }
+  
+  if (rupees > 0) {
+    result += convertHundreds(rupees);
+  }
+  
+  result = result.trim() || 'Zero';
+  result += ' Rupees';
+  
+  if (paise > 0) {
+    result += ' and ' + convertHundreds(paise) + ' Paisa';
+  }
+  
+  return result + ' only';
+};
+
+/**
+ * Helper function to format date
+ */
+const formatDate = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+};
+
+/**
+ * Helper function to build comprehensive item description for PDF
+ */
+const buildItemDescription = (item) => {
+  const parts = [];
+  
+  // Glass type and thickness - format like "Plan 12MM Plain Toughened"
+  // glassType is now the actual glass type (Plan, Extra Clear, etc.)
+  // thickness is separate
+  const glassType = item.glassType || '';
+  let glassTypeStr = '';
+  
+  if (glassType && item.thickness) {
+    // Extract thickness number if it includes unit (e.g., "5MM" -> "5")
+    let thicknessValue = item.thickness;
+    if (typeof thicknessValue === 'string') {
+      thicknessValue = thicknessValue.replace(/MM|mm/g, '').trim();
+    }
+    glassTypeStr = `${glassType} ${thicknessValue}MM`;
+  } else if (glassType) {
+    glassTypeStr = glassType;
+  } else if (item.thickness) {
+    let thicknessValue = item.thickness;
+    if (typeof thicknessValue === 'string') {
+      thicknessValue = thicknessValue.replace(/MM|mm/g, '').trim();
+    }
+    glassTypeStr = `${thicknessValue}MM`;
+  }
+  
+  if (glassTypeStr) {
+    parts.push(`${glassTypeStr} Plain Toughened`);
+  }
+  
+  // Dimensions - format like "4'X8'-1" or "36*54-1"
+  const heightUnit = item.heightUnit === 'INCH' ? '"' : item.heightUnit === 'MM' ? 'mm' : "'";
+  const widthUnit = item.widthUnit === 'INCH' ? '"' : item.widthUnit === 'MM' ? 'mm' : "'";
+  
+  // Format dimensions based on unit - make it concise
+  let dimensions = '';
+  if (item.heightUnit === 'FEET' && item.widthUnit === 'FEET') {
+    dimensions = `${item.height}'X${item.width}'`;
+  } else if (item.heightUnit === 'INCH' && item.widthUnit === 'INCH') {
+    dimensions = `${item.height}*${item.width}`;
+  } else {
+    dimensions = `${item.height}${heightUnit}x${item.width}${widthUnit}`;
+  }
+  parts.push(`Size-${dimensions}`);
+  
+  // Design - only if exists
+  if (item.design) {
+    parts.push(`Design:${item.design}`);
+  }
+  
+  // Polish details - make it more concise
+  const polishData = parsePolishData(item.description);
+  if (polishData && polishData.polishSelection) {
+    const polishDetails = [];
+    const polishMap = { 'P': 'P', 'H': 'H', 'B': 'B' };
+    if (polishData.polishSelection[0]?.checked && polishData.polishSelection[0]?.type) {
+      polishDetails.push(`H1:${polishMap[polishData.polishSelection[0].type] || polishData.polishSelection[0].type}`);
+    }
+    if (polishData.polishSelection[1]?.checked && polishData.polishSelection[1]?.type) {
+      polishDetails.push(`W1:${polishMap[polishData.polishSelection[1].type] || polishData.polishSelection[1].type}`);
+    }
+    if (polishData.polishSelection[2]?.checked && polishData.polishSelection[2]?.type) {
+      polishDetails.push(`H2:${polishMap[polishData.polishSelection[2].type] || polishData.polishSelection[2].type}`);
+    }
+    if (polishData.polishSelection[3]?.checked && polishData.polishSelection[3]?.type) {
+      polishDetails.push(`W2:${polishMap[polishData.polishSelection[3].type] || polishData.polishSelection[3].type}`);
+    }
+    if (polishDetails.length > 0) {
+      parts.push(`P:${polishDetails.join(',')}`);
+    }
+  }
+  
+  // Return concise description
+  return parts.join(' ');
+};
+
+/**
  * Helper function to get Running Ft from item
  * Formula: 
  * 1. Group sides by polish type (P, H, B)
@@ -153,7 +306,7 @@ const getRunningFt = (item) => {
 };
 
 /**
- * Generate PDF for Quotation/Cutting-Pad
+ * Generate PDF for Quotation - Matching Reference Format
  */
 const generateQuotationPdf = async (quotationId, userId) => {
   const quotation = await Quotation.findByPk(quotationId, {
@@ -186,71 +339,91 @@ const generateQuotationPdf = async (quotationId, userId) => {
     throw new Error('Unauthorized access to quotation');
   }
 
-  const doc = new PDFDocument({ margin: 50 });
+  const doc = new PDFDocument({ margin: 40, size: [595, 842] });
   const chunks = [];
 
   doc.on('data', chunk => chunks.push(chunk));
   doc.on('end', () => {});
 
-  // Title
-  doc.fontSize(20).font('Helvetica-Bold').text('QUOTATION / CUTTING-PAD', { align: 'center' });
-  doc.moveDown(2);
+  let currentY = 50;
+
+  // Title - Centered
+  doc.fontSize(20).font('Helvetica-Bold').text('QUOTATION', { align: 'center' });
+  currentY = 80;
 
   // Shop Details
-  doc.fontSize(12).font('Helvetica-Bold').text('From:');
-  doc.fontSize(10).font('Helvetica');
-  if (quotation.shop && quotation.shop.shopName) {
-    doc.text(quotation.shop.shopName);
+  if (quotation.shop) {
+    doc.fontSize(12).font('Helvetica-Bold').text(quotation.shop.shopName || '', 40, currentY);
+    currentY += 15;
+    if (quotation.shop.address) {
+      doc.fontSize(10).font('Helvetica').text(quotation.shop.address, 40, currentY);
+      currentY += 12;
+    }
+    if (quotation.shop.phone) {
+      doc.fontSize(10).font('Helvetica').text(`Phone no.: ${quotation.shop.phone}`, 40, currentY);
+      currentY += 12;
+    }
+    if (quotation.shop.email) {
+      doc.fontSize(10).font('Helvetica').text(`Email: ${quotation.shop.email}`, 40, currentY);
+      currentY += 12;
+    }
   }
-  if (quotation.shop && quotation.shop.ownerName) {
-    doc.text(quotation.shop.ownerName);
-  }
-  if (quotation.shop && quotation.shop.email) {
-    doc.text(quotation.shop.email);
-  }
-  doc.moveDown();
+  currentY += 10;
 
-  // Quotation Details
-  doc.fontSize(12).font('Helvetica-Bold').text('Quotation Number: ' + quotation.quotationNumber);
-  doc.fontSize(10).font('Helvetica');
-  doc.text('Date: ' + formatDate(quotation.quotationDate));
-  if (quotation.validUntil) {
-    doc.text('Valid Until: ' + formatDate(quotation.validUntil));
-  }
-  doc.moveDown();
+  // Document Details Box (bordered)
+  const detailsBoxY = currentY;
+  doc.rect(40, detailsBoxY, 515, 60).stroke();
+  doc.fontSize(10).font('Helvetica-Bold').text('Quotation No.:', 50, detailsBoxY + 10);
+  doc.fontSize(10).font('Helvetica').text(quotation.quotationNumber || '', 150, detailsBoxY + 10);
+  doc.fontSize(10).font('Helvetica-Bold').text('Date:', 50, detailsBoxY + 25);
+  doc.fontSize(10).font('Helvetica').text(formatDate(quotation.quotationDate), 150, detailsBoxY + 25);
+  doc.fontSize(10).font('Helvetica-Bold').text('Place of Supply:', 50, detailsBoxY + 40);
+  doc.fontSize(10).font('Helvetica').text(quotation.customerState || 'N/A', 150, detailsBoxY + 40);
+  currentY = detailsBoxY + 70;
 
-  // Customer Details
-  doc.fontSize(12).font('Helvetica-Bold').text('To:');
-  doc.fontSize(10).font('Helvetica');
-  doc.text(quotation.customerName || '');
+  // Customer Section
+  doc.fontSize(12).font('Helvetica-Bold').text('Quotation For:', 40, currentY);
+  currentY += 15;
+  doc.fontSize(10).font('Helvetica').text(quotation.customerName || '', 40, currentY);
+  currentY += 12;
   if (quotation.customerMobile) {
-    doc.text('Mobile: ' + quotation.customerMobile);
+    doc.fontSize(10).font('Helvetica').text(`Contact No.: ${quotation.customerMobile}`, 40, currentY);
+    currentY += 12;
   }
   if (quotation.customerAddress) {
-    doc.text(quotation.customerAddress);
+    doc.fontSize(10).font('Helvetica').text(quotation.customerAddress, 40, currentY, { width: 250 });
+    currentY += 20;
   }
-  if (quotation.customerGstin) {
-    doc.text('GSTIN: ' + quotation.customerGstin);
-  }
-  doc.moveDown();
+  currentY += 10;
 
-  // Items Table Header
-  doc.fontSize(10).font('Helvetica-Bold');
-  doc.text('Items:', { underline: true });
-  doc.moveDown(0.5);
+  // Items Table Header - Adjusted column positions to fit within page
+  const tableTop = currentY;
+  doc.rect(40, tableTop, 515, 20)
+     .fillColor('#374151')
+     .fill()
+     .fillColor('white');
+  
+  doc.fontSize(8).font('Helvetica-Bold').fillColor('white');
+  doc.text('#', 40, tableTop + 6);
+  doc.text('Item Name', 60, tableTop + 6);
+  doc.text('HSN/SAC', 200, tableTop + 6);
+  doc.text('Qty', 260, tableTop + 6);
+  doc.text('Unit', 290, tableTop + 6);
+  doc.text('Price', 330, tableTop + 6);
+  doc.text('GST', 380, tableTop + 6);
+  doc.text('Amount', 450, tableTop + 6);
+  
+  doc.fillColor('black');
+  currentY = tableTop + 25;
 
-  // Table Headers
-  const tableTop = doc.y;
-  doc.fontSize(9);
-  doc.text('Sr.', 50, tableTop);
-  doc.text('Glass Type', 80, tableTop);
-  doc.text('Dimensions', 180, tableTop);
-  doc.text('Qty', 280, tableTop);
-  doc.text('Rate/Sqft', 320, tableTop);
-  doc.text('Area', 400, tableTop);
-  doc.text('Amount', 460, tableTop);
-
-  let currentY = tableTop + 20;
+  // Calculate totals
+  let totalRunningFt = 0;
+  let totalQuantity = 0;
+  let totalGST = 0;
+  let totalAmount = 0;
+  let polishRunningFt = 0;
+  let halfRoundRunningFt = 0;
+  let bevelingRunningFt = 0;
 
   // Items
   if (quotation.items && quotation.items.length > 0) {
@@ -258,49 +431,278 @@ const generateQuotationPdf = async (quotationId, userId) => {
       if (currentY > 700) {
         doc.addPage();
         currentY = 50;
+        // Redraw headers on new page
+        doc.rect(40, currentY, 515, 20)
+           .fillColor('#374151')
+           .fill()
+           .fillColor('white');
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('white');
+        doc.text('#', 45, currentY + 6);
+        doc.text('Item Name', 60, currentY + 6);
+        doc.text('HSN/SAC', 200, currentY + 6);
+        doc.text('Qty', 260, currentY + 6);
+        doc.text('Unit', 290, currentY + 6);
+        doc.text('Price', 330, currentY + 6);
+        doc.text('GST', 380, currentY + 6);
+        doc.text('Amount', 450, currentY + 6);
+        doc.fillColor('black');
+        currentY += 25;
       }
 
-      doc.fontSize(9).font('Helvetica');
-      doc.text((index + 1).toString(), 50, currentY);
-      doc.text(formatGlassType(item.glassType || ''), 80, currentY);
-      doc.text(`${item.height} x ${item.width}`, 180, currentY);
-      doc.text(item.quantity.toString(), 280, currentY);
-      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), 320, currentY);
-      doc.text(parseFloat(item.area || 0).toFixed(2) + ' sqft', 400, currentY);
-      doc.text('₹' + parseFloat(item.subtotal || 0).toFixed(2), 460, currentY);
-      currentY += 15;
+      const itemRunningFt = getRunningFt(item);
+      totalRunningFt += itemRunningFt;
+      const itemSubtotal = parseFloat(item.subtotal || 0);
+      const itemAmount = itemSubtotal + itemRunningFt;
+      const itemGSTAmount = quotation.billingType === 'GST' ? (itemAmount * (quotation.gstPercentage || 0) / 100) : 0;
+      totalGST += itemGSTAmount;
+      totalAmount += itemAmount;
+      totalQuantity += parseFloat(item.quantity || 0);
+
+      // Parse polish data
+      const polishData = parsePolishData(item.description);
+      
+      // Calculate running ft breakdown
+      if (polishData && polishData.polishSelection && polishData.selectedHeightTableValue && polishData.selectedWidthTableValue) {
+        const heightUnit = item.heightUnit || 'FEET';
+        const widthUnit = item.widthUnit || 'FEET';
+        const heightInFeet = convertToFeet(parseFloat(polishData.selectedHeightTableValue) || 0, heightUnit);
+        const widthInFeet = convertToFeet(parseFloat(polishData.selectedWidthTableValue) || 0, widthUnit);
+        const quantity = parseFloat(item.quantity) || 1;
+
+        const polishGroups = {
+          'P': { sides: [], rate: polishData.polishRates?.P || 15 },
+          'H': { sides: [], rate: polishData.polishRates?.H || 75 },
+          'B': { sides: [], rate: polishData.polishRates?.B || 75 }
+        };
+
+        if (polishData.polishSelection && polishData.polishSelection.length >= 4) {
+          if (polishData.polishSelection[0].checked && polishData.polishSelection[0].type) {
+            const type = polishData.polishSelection[0].type;
+            if (polishGroups[type]) polishGroups[type].sides.push(heightInFeet);
+          }
+          if (polishData.polishSelection[1].checked && polishData.polishSelection[1].type) {
+            const type = polishData.polishSelection[1].type;
+            if (polishGroups[type]) polishGroups[type].sides.push(widthInFeet);
+          }
+          if (polishData.polishSelection[2].checked && polishData.polishSelection[2].type) {
+            const type = polishData.polishSelection[2].type;
+            if (polishGroups[type]) polishGroups[type].sides.push(heightInFeet);
+          }
+          if (polishData.polishSelection[3].checked && polishData.polishSelection[3].type) {
+            const type = polishData.polishSelection[3].type;
+            if (polishGroups[type]) polishGroups[type].sides.push(widthInFeet);
+          }
+        }
+
+        Object.keys(polishGroups).forEach(type => {
+          const group = polishGroups[type];
+          if (group.sides.length > 0) {
+            const totalLengthInFeet = group.sides.reduce((sum, side) => sum + side, 0);
+            const runningFtForType = totalLengthInFeet * group.rate * quantity;
+            if (type === 'P') polishRunningFt += runningFtForType;
+            else if (type === 'H') halfRoundRunningFt += runningFtForType;
+            else if (type === 'B') bevelingRunningFt += runningFtForType;
+          }
+        });
+      }
+
+      // Build item description - make it more concise
+      const itemDescription = buildItemDescription(item);
+      
+      // Determine unit (Sqf for area-based, Nos for others)
+      const unit = 'Sqf'; // Default to square feet
+      
+      // Set font once for all columns
+      doc.fontSize(8).font('Helvetica').fillColor('black');
+      
+      // Calculate item name height first
+      const itemNameWidth = 135;
+      const wrappedText = doc.heightOfString(itemDescription, { width: itemNameWidth, align: 'left' });
+      const itemNameHeight = wrappedText > 12 ? wrappedText : 12;
+      const rowHeight = Math.max(12, itemNameHeight + 2);
+      
+      // Calculate precise Y position
+      const baseY = currentY + 8;
+      
+      // Define explicit column boundaries to prevent ANY text overflow
+      // Each column has a fixed X position and maximum width
+      const columns = {
+        num: { x: 40, w: 15 },
+        itemName: { x: 60, w: 135 },
+        hsn: { x: 200, w: 55 },
+        qty: { x: 260, w: 25 },
+        unit: { x: 290, w: 35 },
+        price: { x: 330, w: 45 },
+        gst: { x: 380, w: 65 },
+        amount: { x: 450, w: 100 }
+      };
+      
+      // FINAL FIX: Render item number in completely isolated graphics state
+      // Save state, render item number, restore - this ensures complete isolation
+      doc.save();
+      doc.fontSize(8).font('Helvetica').fillColor('black');
+      const itemNumText = String(index + 1);
+      // Render with explicit coordinates and no options
+      doc.text(itemNumText, columns.num.x, baseY);
+      doc.restore();
+      
+      // Render item description (only column that needs width for wrapping)
+      doc.text(itemDescription, columns.itemName.x, baseY, { width: columns.itemName.w, align: 'left' });
+      
+      // Render all other columns - each in its own save/restore block for isolation
+      doc.save();
+      doc.text(item.hsnCode || '-', columns.hsn.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text(String(item.quantity), columns.qty.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text(unit, columns.unit.x, baseY);
+      doc.restore();
+      
+      // Price columns - each in completely isolated save/restore blocks
+      // This ensures the item number cannot interfere with price rendering
+      doc.save();
+      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), columns.price.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text('₹' + itemGSTAmount.toFixed(2), columns.gst.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text('₹' + itemAmount.toFixed(2), columns.amount.x, baseY);
+      doc.restore();
+      
+      // Move to next row
+      currentY += rowHeight;
     });
   }
 
-  doc.moveDown(2);
+  // Total Row
+  currentY += 5;
+  doc.rect(40, currentY, 515, 20)
+     .fillColor('#f3f4f6')
+     .fill()
+     .fillColor('black');
+  
+  doc.fontSize(8).font('Helvetica-Bold');
+  const totalTextY = currentY + 14; // Match item row baseline
+  doc.text('Total', 60, totalTextY);
+  doc.text(totalQuantity.toFixed(1), 260, totalTextY);
+  doc.text('₹' + totalGST.toFixed(2), 380, totalTextY);
+  doc.text('₹' + totalAmount.toFixed(2), 450, totalTextY);
+  currentY += 30;
 
-  // Summary
-  doc.fontSize(10).font('Helvetica-Bold').text('Summary:', { underline: true });
+  // Amount in Words
+  let calculatedGrandTotal = parseFloat(quotation.subtotal || 0);
+  calculatedGrandTotal += totalRunningFt;
+  calculatedGrandTotal += parseFloat(quotation.installationCharge || 0);
+  calculatedGrandTotal += parseFloat(quotation.transportCharge || 0);
+  calculatedGrandTotal -= parseFloat(quotation.discount || 0);
+  calculatedGrandTotal += parseFloat(quotation.gstAmount || 0);
+
+  currentY += 10;
+  doc.fontSize(10).font('Helvetica-Bold').text('Quotation Order Amount In Words:', 40, currentY);
+  currentY += 12;
+  doc.fontSize(10).font('Helvetica').text(numberToWords(calculatedGrandTotal), 40, currentY);
+  currentY += 20;
+
+  // Amounts Summary
   doc.fontSize(10).font('Helvetica');
-  doc.moveDown(0.5);
-  doc.text('Subtotal: ₹' + parseFloat(quotation.subtotal || 0).toFixed(2), { align: 'right' });
-  
-  if (quotation.installationCharge && quotation.installationCharge > 0) {
-    doc.text('Installation Charge: ₹' + parseFloat(quotation.installationCharge).toFixed(2), { align: 'right' });
-  }
-  
-  if (quotation.transportCharge && quotation.transportCharge > 0) {
-    doc.text('Transport Charge: ₹' + parseFloat(quotation.transportCharge).toFixed(2), { align: 'right' });
-  }
-  
-  if (quotation.discount && quotation.discount > 0) {
-    const discountLabel = quotation.discountType === 'PERCENTAGE' && quotation.discountValue
-      ? `Discount (${quotation.discountValue}%): ₹${parseFloat(quotation.discount).toFixed(2)}`
-      : `Discount: ₹${parseFloat(quotation.discount).toFixed(2)}`;
-    doc.text(discountLabel, { align: 'right' });
-  }
+  const subtotalAmount = parseFloat(quotation.subtotal || 0) + totalRunningFt + 
+                         parseFloat(quotation.installationCharge || 0) + 
+                         parseFloat(quotation.transportCharge || 0) - 
+                         parseFloat(quotation.discount || 0);
+  doc.text(`Sub Total: ₹${subtotalAmount.toFixed(2)}`, 350, currentY, { align: 'right' });
+  currentY += 15;
+  doc.text(`Total: ₹${calculatedGrandTotal.toFixed(2)}`, 350, currentY, { align: 'right' });
+  currentY += 25;
 
+  // Tax Breakdown Table (if GST)
   if (quotation.billingType === 'GST' && quotation.gstAmount && quotation.gstAmount > 0) {
-    doc.text('GST (' + (quotation.gstPercentage || 0) + '%): ₹' + parseFloat(quotation.gstAmount).toFixed(2), { align: 'right' });
+    const taxTableY = currentY;
+    doc.rect(40, taxTableY, 515, 60).stroke();
+    
+    // Header
+    doc.rect(40, taxTableY, 515, 20)
+       .fillColor('#374151')
+       .fill()
+       .fillColor('white');
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('white');
+    doc.text('Tax type', 50, taxTableY + 6);
+    doc.text('Taxable amount', 200, taxTableY + 6);
+    doc.text('Rate', 380, taxTableY + 6);
+    doc.text('Tax amount', 450, taxTableY + 6);
+    
+    doc.fillColor('black');
+    const taxTableContentY = taxTableY + 25;
+    
+    if (quotation.cgst && quotation.sgst) {
+      const taxableAmount = subtotalAmount;
+      doc.fontSize(9).font('Helvetica');
+      doc.text('SGST', 50, taxTableContentY);
+      doc.text('₹' + taxableAmount.toFixed(2), 200, taxTableContentY);
+      doc.text(`${(quotation.gstPercentage || 0) / 2}%`, 380, taxTableContentY);
+      doc.text('₹' + parseFloat(quotation.sgst || 0).toFixed(2), 450, taxTableContentY);
+      
+      doc.text('CGST', 50, taxTableContentY + 15);
+      doc.text('₹' + taxableAmount.toFixed(2), 200, taxTableContentY + 15);
+      doc.text(`${(quotation.gstPercentage || 0) / 2}%`, 380, taxTableContentY + 15);
+      doc.text('₹' + parseFloat(quotation.cgst || 0).toFixed(2), 450, taxTableContentY + 15);
+    } else if (quotation.igst) {
+      const taxableAmount = subtotalAmount;
+      doc.fontSize(9).font('Helvetica');
+      doc.text('IGST', 50, taxTableContentY);
+      doc.text('₹' + taxableAmount.toFixed(2), 200, taxTableContentY);
+      doc.text(`${quotation.gstPercentage || 0}%`, 380, taxTableContentY);
+      doc.text('₹' + parseFloat(quotation.igst || 0).toFixed(2), 450, taxTableContentY);
+    }
+    
+    currentY = taxTableY + 70;
   }
 
-  doc.fontSize(12).font('Helvetica-Bold');
-  doc.text('Grand Total: ₹' + parseFloat(quotation.grandTotal || 0).toFixed(2), { align: 'right' });
+  // Terms and Conditions
+  currentY += 10;
+  doc.fontSize(10).font('Helvetica-Bold').text('Terms and conditions:', 40, currentY);
+  currentY += 15;
+  doc.fontSize(9).font('Helvetica');
+  const terms = [
+    '*18% GST Extra.',
+    '*85% Advance after approval of quotation.',
+    '*Work will be get started after receiving of advance.',
+    '*Immediate or within 8 days balance payment should be released as per discussion if not 24% per annum interest will be charged on balance amount.',
+    '*For any extra work extra charges will applied.',
+    '*Side should be free from all obstacles.',
+    '*Electricity, ladder, stool, scaffolding, water etc will be provided by client side.',
+    '*Chargeable size will consider in 12" or 6" or subject to optimisation of material.',
+    '*Extra charges for old material work.',
+    '*No retention amount, debit charges, or return/exchange policy.',
+    '*Accommodation and transportation charges for labor are extra.',
+    '*Commitment to best services, customer satisfaction, and improvement.',
+    '*Thank you for doing business with us. Visit again!'
+  ];
+  
+  terms.forEach(term => {
+    if (currentY > 750) {
+      doc.addPage();
+      currentY = 50;
+    }
+    // Calculate actual height of wrapped text
+    const textHeight = doc.heightOfString(term, { width: 515 });
+    doc.text(term, 40, currentY, { width: 515 });
+    // Move to next line with proper spacing (text height + 3px gap)
+    currentY += textHeight + 3;
+  });
+
+  // Signature
+  currentY += 20;
+  doc.fontSize(10).font('Helvetica');
+  doc.text('For: ' + (quotation.shop?.shopName || ''), 40, currentY);
+  currentY += 30;
+  doc.text('Authorized Signatory', 450, currentY);
 
   doc.end();
 
@@ -527,18 +929,6 @@ const generateCuttingPadPrintPdf = async (quotationId, userId) => {
 };
 
 /**
- * Helper function to format dates
- */
-const formatDate = (date) => {
-  if (!date) return '';
-  const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}-${month}-${year}`;
-};
-
-/**
  * Generate PDF for Invoice (Full with shop details)
  */
 const generateInvoicePdf = async (invoiceId, userId) => {
@@ -578,169 +968,310 @@ const generateInvoicePdf = async (invoiceId, userId) => {
   doc.on('data', chunk => chunks.push(chunk));
   doc.on('end', () => {});
 
-  // Header with shop name and email
-  if (invoice.shop && invoice.shop.shopName) {
-    doc.fontSize(14).font('Helvetica-Bold').text(invoice.shop.shopName, { align: 'center' });
-  }
-  if (invoice.shop && invoice.shop.email) {
-    doc.fontSize(10).font('Helvetica').text(`Email: ${invoice.shop.email}`, { align: 'center' });
-  }
-  doc.moveDown(1);
+  let currentY = 50;
 
-  // Title box with gray background
-  const titleY = doc.y;
+  // Title - Centered
   const title = invoice.billingType === 'GST' ? 'TAX INVOICE' : 'BILL / CASH MEMO';
-  doc.rect(40, titleY, 515, 30)
-     .fillColor('#e5e7eb')
-     .fill()
-     .fillColor('black');
-  doc.fontSize(18).font('Helvetica-Bold').fillColor('black')
-     .text(title, 40, titleY + 8, { align: 'center', width: 515 });
-  doc.y = titleY + 35;
+  doc.fontSize(20).font('Helvetica-Bold').text(title, { align: 'center' });
+  currentY = 80;
 
-  // Details section with bordered box
-  const detailsY = doc.y;
-  doc.rect(40, detailsY, 515, 80)
-     .stroke();
-  
-  // Left column - Invoice Details
-  doc.fontSize(10).font('Helvetica-Bold').text('Invoice Details', 50, detailsY + 10);
-  doc.fontSize(9).font('Helvetica');
-  doc.text(`Invoice No: ${invoice.invoiceNumber}`, 50, detailsY + 25);
-  doc.text(`Date: ${formatDate(invoice.invoiceDate)}`, 50, detailsY + 38);
-  doc.text(`Type: ${invoice.invoiceType || 'FINAL'}`, 50, detailsY + 51);
-  
-  // Right column - Customer Details
-  doc.fontSize(10).font('Helvetica-Bold').text('Customer Details', 300, detailsY + 10);
-  doc.fontSize(9).font('Helvetica');
-  doc.text(`Customer: ${invoice.customerName || ''}`, 300, detailsY + 25);
+  // Shop Details
+  if (invoice.shop) {
+    doc.fontSize(12).font('Helvetica-Bold').text(invoice.shop.shopName || '', 40, currentY);
+    currentY += 15;
+    if (invoice.shop.address) {
+      doc.fontSize(10).font('Helvetica').text(invoice.shop.address, 40, currentY);
+      currentY += 12;
+    }
+    if (invoice.shop.phone) {
+      doc.fontSize(10).font('Helvetica').text(`Phone no.: ${invoice.shop.phone}`, 40, currentY);
+      currentY += 12;
+    }
+    if (invoice.shop.email) {
+      doc.fontSize(10).font('Helvetica').text(`Email: ${invoice.shop.email}`, 40, currentY);
+      currentY += 12;
+    }
+  }
+  currentY += 10;
+
+  // Document Details Box (bordered)
+  const detailsBoxY = currentY;
+  doc.rect(40, detailsBoxY, 515, 60).stroke();
+  doc.fontSize(10).font('Helvetica-Bold').text('Invoice No.:', 50, detailsBoxY + 10);
+  doc.fontSize(10).font('Helvetica').text(invoice.invoiceNumber || '', 150, detailsBoxY + 10);
+  doc.fontSize(10).font('Helvetica-Bold').text('Date:', 50, detailsBoxY + 25);
+  doc.fontSize(10).font('Helvetica').text(formatDate(invoice.invoiceDate), 150, detailsBoxY + 25);
+  doc.fontSize(10).font('Helvetica-Bold').text('Place of Supply:', 50, detailsBoxY + 40);
+  doc.fontSize(10).font('Helvetica').text(invoice.customerState || 'N/A', 150, detailsBoxY + 40);
+  currentY = detailsBoxY + 70;
+
+  // Customer Section
+  doc.fontSize(12).font('Helvetica-Bold').text('Invoice For:', 40, currentY);
+  currentY += 15;
+  doc.fontSize(10).font('Helvetica').text(invoice.customerName || '', 40, currentY);
+  currentY += 12;
   if (invoice.customerMobile) {
-    doc.text(`Mobile: ${invoice.customerMobile}`, 300, detailsY + 38);
+    doc.fontSize(10).font('Helvetica').text(`Contact No.: ${invoice.customerMobile}`, 40, currentY);
+    currentY += 12;
   }
   if (invoice.customerAddress) {
-    doc.text(invoice.customerAddress, 300, detailsY + 51, { width: 240 });
+    doc.fontSize(10).font('Helvetica').text(invoice.customerAddress, 40, currentY, { width: 250 });
+    currentY += 20;
   }
+  currentY += 10;
 
-  doc.y = detailsY + 90;
-
-  // Items Table Header with dark background
-  const tableTop = doc.y;
+  // Items Table Header - Adjusted column positions to fit within page
+  const tableTop = currentY;
   doc.rect(40, tableTop, 515, 20)
      .fillColor('#374151')
      .fill()
      .fillColor('white');
   
-  doc.fontSize(9).font('Helvetica-Bold').fillColor('white');
-  doc.text('Sr.', 50, tableTop + 6);
-  doc.text('Item', 80, tableTop + 6);
-  doc.text('Size', 200, tableTop + 6);
-  doc.text('Qty', 320, tableTop + 6);
-  doc.text('Rate', 360, tableTop + 6);
-  doc.text('Running Ft', 420, tableTop + 6);
-  doc.text('Amount', 500, tableTop + 6);
+  doc.fontSize(8).font('Helvetica-Bold').fillColor('white');
+  doc.text('#', 40, tableTop + 6);
+  doc.text('Item Name', 60, tableTop + 6);
+  doc.text('HSN/SAC', 200, tableTop + 6);
+  doc.text('Qty', 260, tableTop + 6);
+  doc.text('Unit', 290, tableTop + 6);
+  doc.text('Price', 330, tableTop + 6);
+  doc.text('GST', 380, tableTop + 6);
+  doc.text('Amount', 450, tableTop + 6);
   
   doc.fillColor('black');
-  let currentY = tableTop + 25;
+  currentY = tableTop + 25;
 
-  // Items with alternating row colors
+  // Calculate totals
+  let totalRunningFt = 0;
+  let totalQuantity = 0;
+  let totalGST = 0;
+  let totalAmount = 0;
+
+  // Items
   if (invoice.items && invoice.items.length > 0) {
     invoice.items.forEach((item, index) => {
-      if (currentY > 750) {
+      if (currentY > 700) {
         doc.addPage();
         currentY = 50;
-      }
-
-      // Alternating row background
-      if (index % 2 === 0) {
-        doc.rect(40, currentY - 3, 515, 18)
-           .fillColor('#f9fafb')
+        // Redraw headers
+        doc.rect(40, currentY, 515, 20)
+           .fillColor('#374151')
            .fill()
-           .fillColor('black');
+           .fillColor('white');
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('white');
+        doc.text('#', 45, currentY + 6);
+        doc.text('Item Name', 60, currentY + 6);
+        doc.text('HSN/SAC', 200, currentY + 6);
+        doc.text('Qty', 260, currentY + 6);
+        doc.text('Unit', 290, currentY + 6);
+        doc.text('Price', 330, currentY + 6);
+        doc.text('GST', 380, currentY + 6);
+        doc.text('Amount', 450, currentY + 6);
+        doc.fillColor('black');
+        currentY += 25;
       }
 
-      doc.fontSize(9).font('Helvetica');
-      doc.text((index + 1).toString(), 50, currentY);
-      doc.text(formatGlassType(item.glassType || ''), 80, currentY, { width: 110 });
-      doc.text(`${item.height} x ${item.width} ft`, 200, currentY, { width: 110 });
-      doc.text(item.quantity.toString(), 320, currentY);
-      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), 360, currentY);
-      doc.text('₹' + getRunningFt(item).toFixed(2), 420, currentY);
-      doc.text('₹' + parseFloat(item.subtotal || 0).toFixed(2), 500, currentY);
-      currentY += 20; // Increased spacing
+      const itemRunningFt = getRunningFt(item);
+      totalRunningFt += itemRunningFt;
+      const itemSubtotal = parseFloat(item.subtotal || 0);
+      const itemAmount = itemSubtotal + itemRunningFt;
+      const itemGSTAmount = invoice.billingType === 'GST' ? (itemAmount * (invoice.gstPercentage || 0) / 100) : 0;
+      totalGST += itemGSTAmount;
+      totalAmount += itemAmount;
+      totalQuantity += parseFloat(item.quantity || 0);
+
+      // Build item description
+      const itemDescription = buildItemDescription(item);
+      const unit = 'Sqf';
+      
+      // Set font once for all columns
+      doc.fontSize(8).font('Helvetica').fillColor('black');
+      
+      // Calculate item name height first
+      const itemNameWidth = 135;
+      const wrappedText = doc.heightOfString(itemDescription, { width: itemNameWidth, align: 'left' });
+      const itemNameHeight = wrappedText > 12 ? wrappedText : 12;
+      const rowHeight = Math.max(12, itemNameHeight + 2);
+      
+      // Calculate precise Y position
+      const baseY = currentY + 8;
+      
+      // Define explicit column boundaries to prevent ANY text overflow
+      // Each column has a fixed X position and maximum width
+      const columns = {
+        num: { x: 40, w: 15 },
+        itemName: { x: 60, w: 135 },
+        hsn: { x: 200, w: 55 },
+        qty: { x: 260, w: 25 },
+        unit: { x: 290, w: 35 },
+        price: { x: 330, w: 45 },
+        gst: { x: 380, w: 65 },
+        amount: { x: 450, w: 100 }
+      };
+      
+      // FINAL FIX: Render item number in completely isolated graphics state
+      // Save state, render item number, restore - this ensures complete isolation
+      doc.save();
+      doc.fontSize(8).font('Helvetica').fillColor('black');
+      const itemNumText = String(index + 1);
+      // Render with explicit coordinates and no options
+      doc.text(itemNumText, columns.num.x, baseY);
+      doc.restore();
+      
+      // Render item description (only column that needs width for wrapping)
+      doc.text(itemDescription, columns.itemName.x, baseY, { width: columns.itemName.w, align: 'left' });
+      
+      // Render all other columns - each in its own save/restore block for isolation
+      doc.save();
+      doc.text(item.hsnCode || '-', columns.hsn.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text(String(item.quantity), columns.qty.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text(unit, columns.unit.x, baseY);
+      doc.restore();
+      
+      // Price columns - each in completely isolated save/restore blocks
+      // This ensures the item number cannot interfere with price rendering
+      doc.save();
+      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), columns.price.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text('₹' + itemGSTAmount.toFixed(2), columns.gst.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text('₹' + itemAmount.toFixed(2), columns.amount.x, baseY);
+      doc.restore();
+      
+      // Move to next row
+      currentY += rowHeight;
     });
   }
 
-  doc.y = currentY + 10;
-
-  // Totals section
-  doc.fontSize(10).font('Helvetica-Bold').text('Summary:', 40, doc.y);
-  doc.y += 15;
-  
-  const totalsStartY = doc.y;
-  doc.fontSize(9).font('Helvetica');
-  
-  // Calculate total Running Ft from all items
-  let totalRunningFt = 0;
-  if (invoice.items && invoice.items.length > 0) {
-    totalRunningFt = invoice.items.reduce((sum, item) => {
-      return sum + getRunningFt(item);
-    }, 0);
-  }
-  
-  if (totalRunningFt > 0) {
-    doc.text('Total Running Ft:', 400, totalsStartY, { width: 100, align: 'right' });
-    doc.text('₹' + totalRunningFt.toFixed(2), 510, totalsStartY);
-    totalsY = totalsStartY + 15;
-  } else {
-    totalsY = totalsStartY;
-  }
-  
-  doc.text('Subtotal:', 400, totalsY, { width: 100, align: 'right' });
-  doc.text('₹' + parseFloat(invoice.subtotal || 0).toFixed(2), 510, totalsY);
-  totalsY += 15;
-  
-  if (invoice.installationCharge && invoice.installationCharge > 0) {
-    doc.text('Installation:', 400, totalsY, { width: 100, align: 'right' });
-    doc.text('₹' + parseFloat(invoice.installationCharge).toFixed(2), 510, totalsY);
-    totalsY += 15;
-  }
-  
-  if (invoice.transportCharge && invoice.transportCharge > 0) {
-    doc.text('Transport:', 400, totalsY, { width: 100, align: 'right' });
-    doc.text('₹' + parseFloat(invoice.transportCharge).toFixed(2), 510, totalsY);
-    totalsY += 15;
-  }
-  
-  if (invoice.discount && invoice.discount > 0) {
-    doc.text('Discount:', 400, totalsY, { width: 100, align: 'right' });
-    doc.text('₹' + parseFloat(invoice.discount).toFixed(2), 510, totalsY);
-    totalsY += 15;
-  }
-
-  if (invoice.billingType === 'GST' && invoice.gstAmount && invoice.gstAmount > 0) {
-    doc.text(`GST (${invoice.gstPercentage || 0}%):`, 400, totalsY, { width: 100, align: 'right' });
-    doc.text('₹' + parseFloat(invoice.gstAmount).toFixed(2), 510, totalsY);
-    totalsY += 15;
-  }
-
-  totalsY += 5;
-  doc.fontSize(11).font('Helvetica-Bold');
-  doc.text('Grand Total:', 400, totalsY, { width: 100, align: 'right' });
-  doc.text('Rs. ' + parseFloat(invoice.grandTotal || 0).toFixed(2), 510, totalsY);
-  doc.y = totalsY + 25;
-
-  // Payment Status box
-  const statusY = doc.y;
-  doc.rect(40, statusY, 515, 50)
+  // Total Row
+  currentY += 5;
+  doc.rect(40, currentY, 515, 20)
      .fillColor('#f3f4f6')
      .fill()
-     .fillColor('black')
-     .stroke();
+     .fillColor('black');
   
+  doc.fontSize(8).font('Helvetica-Bold');
+  const totalTextY = currentY + 14; // Match item row baseline
+  doc.text('Total', 60, totalTextY);
+  doc.text(totalQuantity.toFixed(1), 260, totalTextY);
+  doc.text('₹' + totalGST.toFixed(2), 380, totalTextY);
+  doc.text('₹' + totalAmount.toFixed(2), 450, totalTextY);
+  currentY += 30;
+
+  // Amount in Words
+  let calculatedGrandTotal = parseFloat(invoice.subtotal || 0) + totalRunningFt + 
+                             parseFloat(invoice.installationCharge || 0) + 
+                             parseFloat(invoice.transportCharge || 0) - 
+                             parseFloat(invoice.discount || 0) + 
+                             parseFloat(invoice.gstAmount || 0);
+
+  doc.fontSize(10).font('Helvetica-Bold').text('Invoice Order Amount In Words:', 40, currentY);
+  currentY += 12;
+  doc.fontSize(10).font('Helvetica').text(numberToWords(calculatedGrandTotal), 40, currentY);
+  currentY += 20;
+
+  // Amounts Summary
+  doc.fontSize(10).font('Helvetica');
+  const subtotalAmount = parseFloat(invoice.subtotal || 0) + totalRunningFt + 
+                         parseFloat(invoice.installationCharge || 0) + 
+                         parseFloat(invoice.transportCharge || 0) - 
+                         parseFloat(invoice.discount || 0);
+  doc.text(`Sub Total: ₹${subtotalAmount.toFixed(2)}`, 350, currentY, { align: 'right' });
+  currentY += 15;
+  doc.text(`Total: ₹${calculatedGrandTotal.toFixed(2)}`, 350, currentY, { align: 'right' });
+  currentY += 25;
+
+  // Tax Breakdown Table (if GST)
+  if (invoice.billingType === 'GST' && invoice.gstAmount && invoice.gstAmount > 0) {
+    const taxTableY = currentY;
+    doc.rect(40, taxTableY, 515, 60).stroke();
+    
+    // Header
+    doc.rect(40, taxTableY, 515, 20)
+       .fillColor('#374151')
+       .fill()
+       .fillColor('white');
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('white');
+    doc.text('Tax type', 50, taxTableY + 6);
+    doc.text('Taxable amount', 200, taxTableY + 6);
+    doc.text('Rate', 380, taxTableY + 6);
+    doc.text('Tax amount', 450, taxTableY + 6);
+    
+    doc.fillColor('black');
+    const taxTableContentY = taxTableY + 25;
+    
+    if (invoice.cgst && invoice.sgst) {
+      const taxableAmount = subtotalAmount;
+      doc.fontSize(9).font('Helvetica');
+      doc.text('SGST', 50, taxTableContentY);
+      doc.text('₹' + taxableAmount.toFixed(2), 200, taxTableContentY);
+      doc.text(`${(invoice.gstPercentage || 0) / 2}%`, 380, taxTableContentY);
+      doc.text('₹' + parseFloat(invoice.sgst || 0).toFixed(2), 450, taxTableContentY);
+      
+      doc.text('CGST', 50, taxTableContentY + 15);
+      doc.text('₹' + taxableAmount.toFixed(2), 200, taxTableContentY + 15);
+      doc.text(`${(invoice.gstPercentage || 0) / 2}%`, 380, taxTableContentY + 15);
+      doc.text('₹' + parseFloat(invoice.cgst || 0).toFixed(2), 450, taxTableContentY + 15);
+    } else if (invoice.igst) {
+      const taxableAmount = subtotalAmount;
+      doc.fontSize(9).font('Helvetica');
+      doc.text('IGST', 50, taxTableContentY);
+      doc.text('₹' + taxableAmount.toFixed(2), 200, taxTableContentY);
+      doc.text(`${invoice.gstPercentage || 0}%`, 380, taxTableContentY);
+      doc.text('₹' + parseFloat(invoice.igst || 0).toFixed(2), 450, taxTableContentY);
+    }
+    
+    currentY = taxTableY + 70;
+  }
+
+  // Terms and Conditions
+  currentY += 10;
+  doc.fontSize(10).font('Helvetica-Bold').text('Terms and conditions:', 40, currentY);
+  currentY += 15;
   doc.fontSize(9).font('Helvetica');
-  doc.text(`Payment Status: ${invoice.paymentStatus || 'DUE'}`, 50, statusY + 10);
-  doc.text(`Paid: Rs. ${parseFloat(invoice.paidAmount || 0).toFixed(2)}`, 50, statusY + 25);
-  doc.text(`Due: Rs. ${parseFloat(invoice.dueAmount || 0).toFixed(2)}`, 50, statusY + 40);
+  const terms = [
+    '*18% GST Extra.',
+    '*85% Advance after approval of quotation.',
+    '*Work will be get started after receiving of advance.',
+    '*Immediate or within 8 days balance payment should be released as per discussion if not 24% per annum interest will be charged on balance amount.',
+    '*For any extra work extra charges will applied.',
+    '*Side should be free from all obstacles.',
+    '*Electricity, ladder, stool, scaffolding, water etc will be provided by client side.',
+    '*Chargeable size will consider in 12" or 6" or subject to optimisation of material.',
+    '*Extra charges for old material work.',
+    '*No retention amount, debit charges, or return/exchange policy.',
+    '*Accommodation and transportation charges for labor are extra.',
+    '*Commitment to best services, customer satisfaction, and improvement.',
+    '*Thank you for doing business with us. Visit again!'
+  ];
+  
+  terms.forEach(term => {
+    if (currentY > 750) {
+      doc.addPage();
+      currentY = 50;
+    }
+    // Calculate actual height of wrapped text
+    const textHeight = doc.heightOfString(term, { width: 515 });
+    doc.text(term, 40, currentY, { width: 515 });
+    // Move to next line with proper spacing (text height + 3px gap)
+    currentY += textHeight + 3;
+  });
+
+  // Signature
+  currentY += 20;
+  doc.fontSize(10).font('Helvetica');
+  doc.text('For: ' + (invoice.shop?.shopName || ''), 40, currentY);
+  currentY += 30;
+  doc.text('Authorized Signatory', 450, currentY);
 
   doc.end();
 
@@ -754,7 +1285,7 @@ const generateInvoicePdf = async (invoiceId, userId) => {
 };
 
 /**
- * Generate PDF for Basic Invoice (without shop details)
+ * Generate PDF for Estimate (without shop details)
  */
 const generateBasicInvoicePdf = async (invoiceId, userId) => {
   const invoice = await Invoice.findByPk(invoiceId, {
@@ -793,161 +1324,290 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
   doc.on('data', chunk => chunks.push(chunk));
   doc.on('end', () => {});
 
-  // Top border line
-  doc.moveTo(40, 40).lineTo(555, 40).stroke();
-  doc.moveDown(1);
+  let currentY = 50;
 
-  // Title box with gray background - ESTIMATE BILL
-  const titleY = doc.y;
-  doc.rect(40, titleY, 515, 30)
-     .fillColor('#e5e7eb')
-     .fill()
-     .fillColor('black');
-  doc.fontSize(18).font('Helvetica-Bold').fillColor('black')
-     .text('ESTIMATE BILL', 40, titleY + 8, { align: 'center', width: 515 });
-  doc.y = titleY + 35;
+  // Title - Centered (NO SHOP DETAILS)
+  doc.fontSize(20).font('Helvetica-Bold').text('ESTIMATE', { align: 'center' });
+  currentY = 80;
 
-  // Details section with bordered box
-  const detailsY = doc.y;
-  doc.rect(40, detailsY, 515, 80)
-     .stroke();
-  
-  // Left column - Invoice Details
-  doc.fontSize(10).font('Helvetica-Bold').text('Invoice Details', 50, detailsY + 10);
-  doc.fontSize(9).font('Helvetica');
-  doc.text(`Invoice No: ${invoice.invoiceNumber}`, 50, detailsY + 25);
-  doc.text(`Date: ${formatDate(invoice.invoiceDate)}`, 50, detailsY + 38);
-  doc.text(`Type: ${invoice.invoiceType || 'FINAL'}`, 50, detailsY + 51);
-  
-  // Right column - Customer Details
-  doc.fontSize(10).font('Helvetica-Bold').text('Customer Details', 300, detailsY + 10);
-  doc.fontSize(9).font('Helvetica');
-  doc.text(`Customer: ${invoice.customerName || ''}`, 300, detailsY + 25);
+  // Document Details Box (bordered) - NO SHOP DETAILS
+  const detailsBoxY = currentY;
+  doc.rect(40, detailsBoxY, 515, 60).stroke();
+  doc.fontSize(10).font('Helvetica-Bold').text('Estimate No.:', 50, detailsBoxY + 10);
+  doc.fontSize(10).font('Helvetica').text(invoice.invoiceNumber || '', 150, detailsBoxY + 10);
+  doc.fontSize(10).font('Helvetica-Bold').text('Date:', 50, detailsBoxY + 25);
+  doc.fontSize(10).font('Helvetica').text(formatDate(invoice.invoiceDate), 150, detailsBoxY + 25);
+  doc.fontSize(10).font('Helvetica-Bold').text('Place of Supply:', 50, detailsBoxY + 40);
+  doc.fontSize(10).font('Helvetica').text(invoice.customerState || 'N/A', 150, detailsBoxY + 40);
+  currentY = detailsBoxY + 70;
+
+  // Customer Section
+  doc.fontSize(12).font('Helvetica-Bold').text('Estimate For:', 40, currentY);
+  currentY += 15;
+  doc.fontSize(10).font('Helvetica').text(invoice.customerName || '', 40, currentY);
+  currentY += 12;
   if (invoice.customerMobile) {
-    doc.text(`Mobile: ${invoice.customerMobile}`, 300, detailsY + 38);
+    doc.fontSize(10).font('Helvetica').text(`Contact No.: ${invoice.customerMobile}`, 40, currentY);
+    currentY += 12;
   }
   if (invoice.customerAddress) {
-    doc.text(invoice.customerAddress, 300, detailsY + 51, { width: 240 });
+    doc.fontSize(10).font('Helvetica').text(invoice.customerAddress, 40, currentY, { width: 250 });
+    currentY += 20;
   }
+  currentY += 10;
 
-  doc.y = detailsY + 90;
-
-  // Items Table Header with dark background
-  const tableTop = doc.y;
+  // Items Table Header - Adjusted column positions to fit within page
+  const tableTop = currentY;
   doc.rect(40, tableTop, 515, 20)
      .fillColor('#374151')
      .fill()
      .fillColor('white');
   
-  doc.fontSize(9).font('Helvetica-Bold').fillColor('white');
-  doc.text('Sr.', 50, tableTop + 6);
-  doc.text('Item', 80, tableTop + 6);
-  doc.text('Size', 200, tableTop + 6);
-  doc.text('Qty', 320, tableTop + 6);
-  doc.text('Rate', 360, tableTop + 6);
-  doc.text('Running Ft', 420, tableTop + 6);
-  doc.text('Amount', 500, tableTop + 6);
+  doc.fontSize(8).font('Helvetica-Bold').fillColor('white');
+  doc.text('#', 40, tableTop + 6);
+  doc.text('Item Name', 60, tableTop + 6);
+  doc.text('HSN/SAC', 200, tableTop + 6);
+  doc.text('Qty', 260, tableTop + 6);
+  doc.text('Unit', 290, tableTop + 6);
+  doc.text('Price', 330, tableTop + 6);
+  doc.text('GST', 380, tableTop + 6);
+  doc.text('Amount', 450, tableTop + 6);
   
   doc.fillColor('black');
-  let currentY = tableTop + 25;
+  currentY = tableTop + 25;
 
-  // Items with alternating row colors
+  // Calculate totals
+  let totalRunningFt = 0;
+  let totalQuantity = 0;
+  let totalGST = 0;
+  let totalAmount = 0;
+
+  // Items
   if (invoice.items && invoice.items.length > 0) {
     invoice.items.forEach((item, index) => {
-      if (currentY > 750) {
+      if (currentY > 700) {
         doc.addPage();
         currentY = 50;
-      }
-
-      // Alternating row background
-      if (index % 2 === 0) {
-        doc.rect(40, currentY - 3, 515, 18)
-           .fillColor('#f9fafb')
+        // Redraw headers
+        doc.rect(40, currentY, 515, 20)
+           .fillColor('#374151')
            .fill()
-           .fillColor('black');
+           .fillColor('white');
+        doc.fontSize(8).font('Helvetica-Bold').fillColor('white');
+        doc.text('#', 45, currentY + 6);
+        doc.text('Item Name', 60, currentY + 6);
+        doc.text('HSN/SAC', 200, currentY + 6);
+        doc.text('Qty', 260, currentY + 6);
+        doc.text('Unit', 290, currentY + 6);
+        doc.text('Price', 330, currentY + 6);
+        doc.text('GST', 380, currentY + 6);
+        doc.text('Amount', 450, currentY + 6);
+        doc.fillColor('black');
+        currentY += 25;
       }
 
-      doc.fontSize(9).font('Helvetica');
-      doc.text((index + 1).toString(), 50, currentY);
-      doc.text(formatGlassType(item.glassType || ''), 80, currentY, { width: 110 });
-      doc.text(`${item.height} x ${item.width} ft`, 200, currentY, { width: 110 });
-      doc.text(item.quantity.toString(), 320, currentY);
-      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), 360, currentY);
-      doc.text('₹' + getRunningFt(item).toFixed(2), 420, currentY);
-      doc.text('₹' + parseFloat(item.subtotal || 0).toFixed(2), 500, currentY);
-      currentY += 20; // Increased spacing to prevent overlap
+      const itemRunningFt = getRunningFt(item);
+      totalRunningFt += itemRunningFt;
+      const itemSubtotal = parseFloat(item.subtotal || 0);
+      const itemAmount = itemSubtotal + itemRunningFt;
+      const itemGSTAmount = invoice.billingType === 'GST' ? (itemAmount * (invoice.gstPercentage || 0) / 100) : 0;
+      totalGST += itemGSTAmount;
+      totalAmount += itemAmount;
+      totalQuantity += parseFloat(item.quantity || 0);
+
+      // Build item description
+      const itemDescription = buildItemDescription(item);
+      const unit = 'Sqf';
+      
+      // Set font once for all columns
+      doc.fontSize(8).font('Helvetica').fillColor('black');
+      
+      // Calculate item name height first
+      const itemNameWidth = 135;
+      const wrappedText = doc.heightOfString(itemDescription, { width: itemNameWidth, align: 'left' });
+      const itemNameHeight = wrappedText > 12 ? wrappedText : 12;
+      const rowHeight = Math.max(12, itemNameHeight + 2);
+      
+      // Calculate precise Y position
+      const baseY = currentY + 8;
+      
+      // Define explicit column boundaries to prevent ANY text overflow
+      // Each column has a fixed X position and maximum width
+      const columns = {
+        num: { x: 40, w: 15 },
+        itemName: { x: 60, w: 135 },
+        hsn: { x: 200, w: 55 },
+        qty: { x: 260, w: 25 },
+        unit: { x: 290, w: 35 },
+        price: { x: 330, w: 45 },
+        gst: { x: 380, w: 65 },
+        amount: { x: 450, w: 100 }
+      };
+      
+      // FINAL FIX: Render item number in completely isolated graphics state
+      // Save state, render item number, restore - this ensures complete isolation
+      doc.save();
+      doc.fontSize(8).font('Helvetica').fillColor('black');
+      const itemNumText = String(index + 1);
+      // Render with explicit coordinates and no options
+      doc.text(itemNumText, columns.num.x, baseY);
+      doc.restore();
+      
+      // Render item description (only column that needs width for wrapping)
+      doc.text(itemDescription, columns.itemName.x, baseY, { width: columns.itemName.w, align: 'left' });
+      
+      // Render all other columns - each in its own save/restore block for isolation
+      doc.save();
+      doc.text(item.hsnCode || '-', columns.hsn.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text(String(item.quantity), columns.qty.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text(unit, columns.unit.x, baseY);
+      doc.restore();
+      
+      // Price columns - each in completely isolated save/restore blocks
+      // This ensures the item number cannot interfere with price rendering
+      doc.save();
+      doc.text('₹' + parseFloat(item.ratePerSqft || 0).toFixed(2), columns.price.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text('₹' + itemGSTAmount.toFixed(2), columns.gst.x, baseY);
+      doc.restore();
+      
+      doc.save();
+      doc.text('₹' + itemAmount.toFixed(2), columns.amount.x, baseY);
+      doc.restore();
+      
+      // Move to next row
+      currentY += rowHeight;
     });
   }
 
-  doc.y = currentY + 10;
-
-  // Totals section
-  doc.fontSize(10).font('Helvetica-Bold').text('Summary:', 40, doc.y);
-  doc.y += 15;
-  
-  const totalsStartY = doc.y;
-  doc.fontSize(9).font('Helvetica');
-  
-  // Calculate total Running Ft from all items
-  let totalRunningFt = 0;
-  if (invoice.items && invoice.items.length > 0) {
-    totalRunningFt = invoice.items.reduce((sum, item) => {
-      return sum + getRunningFt(item);
-    }, 0);
-  }
-  
-  if (totalRunningFt > 0) {
-    doc.text('Total Running Ft:', 400, totalsStartY, { width: 100, align: 'right' });
-    doc.text('₹' + totalRunningFt.toFixed(2), 510, totalsStartY);
-    totalsY = totalsStartY + 15;
-  } else {
-    totalsY = totalsStartY;
-  }
-  
-  doc.text('Subtotal:', 400, totalsY, { width: 100, align: 'right' });
-  doc.text('₹' + parseFloat(invoice.subtotal || 0).toFixed(2), 510, totalsY);
-  totalsY += 15;
-  
-  if (invoice.installationCharge && invoice.installationCharge > 0) {
-    doc.text('Installation:', 400, totalsY, { width: 100, align: 'right' });
-    doc.text('₹' + parseFloat(invoice.installationCharge).toFixed(2), 510, totalsY);
-    totalsY += 15;
-  }
-  
-  if (invoice.transportCharge && invoice.transportCharge > 0) {
-    doc.text('Transport:', 400, totalsY, { width: 100, align: 'right' });
-    doc.text('₹' + parseFloat(invoice.transportCharge).toFixed(2), 510, totalsY);
-    totalsY += 15;
-  }
-  
-  if (invoice.discount && invoice.discount > 0) {
-    doc.text('Discount:', 400, totalsY, { width: 100, align: 'right' });
-    doc.text('₹' + parseFloat(invoice.discount).toFixed(2), 510, totalsY);
-    totalsY += 15;
-  }
-
-  // NO GST for Estimate Bill
-  totalsY += 5;
-  doc.fontSize(11).font('Helvetica-Bold');
-  doc.text('Grand Total:', 400, totalsY, { width: 100, align: 'right' });
-  doc.text('Rs. ' + parseFloat(invoice.grandTotal || 0).toFixed(2), 510, totalsY);
-  doc.y = totalsY + 25;
-
-  // Payment Status box
-  const statusY = doc.y;
-  doc.rect(40, statusY, 515, 50)
+  // Total Row
+  currentY += 5;
+  doc.rect(40, currentY, 515, 20)
      .fillColor('#f3f4f6')
      .fill()
-     .fillColor('black')
-     .stroke();
+     .fillColor('black');
   
-  doc.fontSize(9).font('Helvetica');
-  doc.text(`Payment Status: ${invoice.paymentStatus || 'DUE'}`, 50, statusY + 10);
-  doc.text(`Paid: Rs. ${parseFloat(invoice.paidAmount || 0).toFixed(2)}`, 50, statusY + 25);
-  doc.text(`Due: Rs. ${parseFloat(invoice.dueAmount || 0).toFixed(2)}`, 50, statusY + 40);
+  doc.fontSize(8).font('Helvetica-Bold');
+  const totalTextY = currentY + 14; // Match item row baseline
+  doc.text('Total', 60, totalTextY);
+  doc.text(totalQuantity.toFixed(1), 260, totalTextY);
+  doc.text('₹' + totalGST.toFixed(2), 380, totalTextY);
+  doc.text('₹' + totalAmount.toFixed(2), 450, totalTextY);
+  currentY += 30;
 
-  // Bottom border line
-  doc.moveTo(40, doc.y + 60).lineTo(555, doc.y + 60).stroke();
+  // Amount in Words
+  let calculatedGrandTotal = parseFloat(invoice.subtotal || 0) + totalRunningFt + 
+                             parseFloat(invoice.installationCharge || 0) + 
+                             parseFloat(invoice.transportCharge || 0) - 
+                             parseFloat(invoice.discount || 0) + 
+                             parseFloat(invoice.gstAmount || 0);
+
+  doc.fontSize(10).font('Helvetica-Bold').text('Estimate Order Amount In Words:', 40, currentY);
+  currentY += 12;
+  doc.fontSize(10).font('Helvetica').text(numberToWords(calculatedGrandTotal), 40, currentY);
+  currentY += 20;
+
+  // Amounts Summary
+  doc.fontSize(10).font('Helvetica');
+  const subtotalAmount = parseFloat(invoice.subtotal || 0) + totalRunningFt + 
+                         parseFloat(invoice.installationCharge || 0) + 
+                         parseFloat(invoice.transportCharge || 0) - 
+                         parseFloat(invoice.discount || 0);
+  doc.text(`Sub Total: ₹${subtotalAmount.toFixed(2)}`, 350, currentY, { align: 'right' });
+  currentY += 15;
+  doc.text(`Total: ₹${calculatedGrandTotal.toFixed(2)}`, 350, currentY, { align: 'right' });
+  currentY += 25;
+
+  // Tax Breakdown Table (if GST)
+  if (invoice.billingType === 'GST' && invoice.gstAmount && invoice.gstAmount > 0) {
+    const taxTableY = currentY;
+    doc.rect(40, taxTableY, 515, 60).stroke();
+    
+    // Header
+    doc.rect(40, taxTableY, 515, 20)
+       .fillColor('#374151')
+       .fill()
+       .fillColor('white');
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('white');
+    doc.text('Tax type', 50, taxTableY + 6);
+    doc.text('Taxable amount', 200, taxTableY + 6);
+    doc.text('Rate', 380, taxTableY + 6);
+    doc.text('Tax amount', 450, taxTableY + 6);
+    
+    doc.fillColor('black');
+    const taxTableContentY = taxTableY + 25;
+    
+    if (invoice.cgst && invoice.sgst) {
+      const taxableAmount = subtotalAmount;
+      doc.fontSize(9).font('Helvetica');
+      doc.text('SGST', 50, taxTableContentY);
+      doc.text('₹' + taxableAmount.toFixed(2), 200, taxTableContentY);
+      doc.text(`${(invoice.gstPercentage || 0) / 2}%`, 380, taxTableContentY);
+      doc.text('₹' + parseFloat(invoice.sgst || 0).toFixed(2), 450, taxTableContentY);
+      
+      doc.text('CGST', 50, taxTableContentY + 15);
+      doc.text('₹' + taxableAmount.toFixed(2), 200, taxTableContentY + 15);
+      doc.text(`${(invoice.gstPercentage || 0) / 2}%`, 380, taxTableContentY + 15);
+      doc.text('₹' + parseFloat(invoice.cgst || 0).toFixed(2), 450, taxTableContentY + 15);
+    } else if (invoice.igst) {
+      const taxableAmount = subtotalAmount;
+      doc.fontSize(9).font('Helvetica');
+      doc.text('IGST', 50, taxTableContentY);
+      doc.text('₹' + taxableAmount.toFixed(2), 200, taxTableContentY);
+      doc.text(`${invoice.gstPercentage || 0}%`, 380, taxTableContentY);
+      doc.text('₹' + parseFloat(invoice.igst || 0).toFixed(2), 450, taxTableContentY);
+    }
+    
+    currentY = taxTableY + 70;
+  }
+
+  // Terms and Conditions
+  currentY += 10;
+  doc.fontSize(10).font('Helvetica-Bold').text('Terms and conditions:', 40, currentY);
+  currentY += 15;
+  doc.fontSize(9).font('Helvetica');
+  const terms = [
+    '*18% GST Extra.',
+    '*85% Advance after approval of quotation.',
+    '*Work will be get started after receiving of advance.',
+    '*Immediate or within 8 days balance payment should be released as per discussion if not 24% per annum interest will be charged on balance amount.',
+    '*For any extra work extra charges will applied.',
+    '*Side should be free from all obstacles.',
+    '*Electricity, ladder, stool, scaffolding, water etc will be provided by client side.',
+    '*Chargeable size will consider in 12" or 6" or subject to optimisation of material.',
+    '*Extra charges for old material work.',
+    '*No retention amount, debit charges, or return/exchange policy.',
+    '*Accommodation and transportation charges for labor are extra.',
+    '*Commitment to best services, customer satisfaction, and improvement.',
+    '*Thank you for doing business with us. Visit again!'
+  ];
+  
+  terms.forEach(term => {
+    if (currentY > 750) {
+      doc.addPage();
+      currentY = 50;
+    }
+    // Calculate actual height of wrapped text
+    const textHeight = doc.heightOfString(term, { width: 515 });
+    doc.text(term, 40, currentY, { width: 515 });
+    // Move to next line with proper spacing (text height + 3px gap)
+    currentY += textHeight + 3;
+  });
+
+  // Signature (NO SHOP NAME)
+  currentY += 20;
+  doc.fontSize(10).font('Helvetica');
+  doc.text('For: [Company Name]', 40, currentY);
+  currentY += 30;
+  doc.text('Authorized Signatory', 450, currentY);
 
   doc.end();
 

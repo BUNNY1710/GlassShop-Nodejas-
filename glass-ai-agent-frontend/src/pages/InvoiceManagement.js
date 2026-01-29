@@ -1626,6 +1626,7 @@ function InvoiceManagement() {
                     <thead>
                       <tr style={{ backgroundColor: "#f3f4f6" }}>
                         <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Glass Type</th>
+                        <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Thickness</th>
                         <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Size</th>
                         <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Qty</th>
                         <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Rate</th>
@@ -1641,7 +1642,8 @@ function InvoiceManagement() {
                             backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9fafb",
                           }}
                         >
-                          <td style={{ padding: "12px" }}>{item.glassType}</td>
+                          <td style={{ padding: "12px" }}>{item.glassType || "N/A"}</td>
+                          <td style={{ padding: "12px" }}>{item.thickness || "N/A"}</td>
                           <td style={{ padding: "12px" }}>
                             {item.height} x {item.width} ft
                           </td>

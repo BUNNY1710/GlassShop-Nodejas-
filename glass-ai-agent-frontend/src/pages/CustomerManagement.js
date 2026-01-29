@@ -32,6 +32,54 @@ function CustomerManagement() {
     // Removed manual resize handler - useResponsive hook handles it
   }, []);
 
+  // Live search with debouncing
+  useEffect(() => {
+    // Clear any existing timeout
+    const timeoutId = setTimeout(async () => {
+      if (searchQuery.trim() === "") {
+        // If search is empty, load all customers
+        try {
+          setLoading(true);
+          setMessage("");
+          const response = await getCustomers();
+          setCustomers(response.data);
+        } catch (error) {
+          setMessage("❌ Failed to load customers");
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Perform search
+        try {
+          setLoading(true);
+          setMessage("");
+          const response = await searchCustomers(searchQuery.trim());
+          setCustomers(response.data);
+          if (response.data.length === 0) {
+            setMessage("No customers found matching your search");
+          } else {
+            setMessage("");
+          }
+        } catch (error) {
+          console.error("Search error:", error);
+          setMessage("❌ Failed to search customers");
+          // On error, reload all customers
+          try {
+            const response = await getCustomers();
+            setCustomers(response.data);
+          } catch (loadError) {
+            console.error("Load error:", loadError);
+          }
+        } finally {
+          setLoading(false);
+        }
+      }
+    }, 500); // 500ms debounce delay
+
+    // Cleanup timeout on unmount or when searchQuery changes
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
   const loadCustomers = async () => {
     try {
       setLoading(true);
@@ -47,14 +95,24 @@ function CustomerManagement() {
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       loadCustomers();
+      setMessage("");
       return;
     }
     try {
       setLoading(true);
+      setMessage(""); // Clear any previous messages
       const response = await searchCustomers(searchQuery);
       setCustomers(response.data);
+      if (response.data.length === 0) {
+        setMessage("No customers found matching your search");
+      } else {
+        setMessage(""); // Clear message if results found
+      }
     } catch (error) {
+      console.error("Search error:", error);
       setMessage("❌ Failed to search customers");
+      // On error, reload all customers
+      loadCustomers();
     } finally {
       setLoading(false);
     }

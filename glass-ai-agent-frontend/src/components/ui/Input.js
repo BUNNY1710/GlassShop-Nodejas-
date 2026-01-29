@@ -47,10 +47,42 @@ const Input = ({
     pointerEvents: 'none',
   };
 
+  // Calculate padding values to avoid shorthand/non-shorthand conflict
+  const getPaddingValues = () => {
+    const paddingValue = size === 'sm' 
+      ? (isMobile ? '12px 16px' : '10px 14px')
+      : size === 'lg' 
+        ? (isMobile ? '18px 20px' : '16px 20px')
+        : (isMobile ? '14px 18px' : '12px 16px');
+    
+    const [paddingTopBottom, paddingLeftRight] = paddingValue.split(' ');
+    
+    if (icon && iconPosition === 'left') {
+      return {
+        paddingTop: paddingTopBottom,
+        paddingBottom: paddingTopBottom,
+        paddingLeft: '44px',
+        paddingRight: paddingLeftRight,
+      };
+    } else if (icon && iconPosition === 'right') {
+      return {
+        paddingTop: paddingTopBottom,
+        paddingBottom: paddingTopBottom,
+        paddingLeft: paddingLeftRight,
+        paddingRight: '44px',
+      };
+    } else {
+      return {
+        padding: paddingValue,
+      };
+    }
+  };
+
   const inputWithIconStyle = {
     ...baseStyle,
-    ...(icon && iconPosition === 'left' ? { paddingLeft: '44px' } : {}),
-    ...(icon && iconPosition === 'right' ? { paddingRight: '44px' } : {}),
+    // Remove padding shorthand to avoid conflict
+    padding: undefined,
+    ...getPaddingValues(),
   };
 
   return (

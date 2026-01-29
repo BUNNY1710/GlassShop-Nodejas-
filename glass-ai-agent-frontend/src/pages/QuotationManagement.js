@@ -14,6 +14,7 @@ import {
   printCuttingPad,
 } from "../api/quotationApi";
 import { useResponsive } from "../hooks/useResponsive";
+import { getUserRole } from "../utils/auth";
 import "../styles/design-system.css";
 
 function QuotationManagement() {
@@ -25,7 +26,8 @@ function QuotationManagement() {
   const [showForm, setShowForm] = useState(false);
   const [selectedQuotation, setSelectedQuotation] = useState(null);
   const { isMobile, isTablet } = useResponsive(); // Use responsive hook
-  const [showStockDropdown, setShowStockDropdown] = useState({});
+  const [showStockDropdown, setShowStockDropdown] = useState({}); // { [index]: true/false }
+  const [stockDropdownType, setStockDropdownType] = useState({}); // { [index]: 'glassType' | 'thickness' }
   const [confirmAction, setConfirmAction] = useState(null); // { type: 'CONFIRM'|'REJECT'|'DELETE', quotationId: number, quotationNumber: string }
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -58,14 +60,16 @@ function QuotationManagement() {
     discountValue: 0,
     items: [
       {
-        glassType: "",
-        thickness: "",
+        glassType: "", // Glass type: Plan, Extra Clear, etc.
+        thickness: "", // Thickness value
         height: "",
         width: "",
         heightUnit: "INCH",
         widthUnit: "INCH",
         quantity: 1,
         ratePerSqft: "",
+        sellingPrice: "", // Selling price from stock (per SqFt)
+        purchasePrice: "", // Purchase price from stock (for profit calculation, admin only)
         design: "",
         hsnCode: "",
         description: "",
@@ -87,6 +91,8 @@ function QuotationManagement() {
         polish: "", // Hand-Polish or CNC Polish (per item)
         heightOriginal: "", // Store original fraction string
         widthOriginal: "", // Store original fraction string
+        heightMM: "", // Store original MM value when sizeInMM is true
+        widthMM: "", // Store original MM value when sizeInMM is true
       },
     ],
   });
@@ -161,6 +167,8 @@ function QuotationManagement() {
           polish: "",
           heightOriginal: "",
           widthOriginal: "",
+          heightMM: "", // Store original MM value when sizeInMM is true
+          widthMM: "", // Store original MM value when sizeInMM is true
         },
       ],
     });
@@ -267,15 +275,15 @@ function QuotationManagement() {
   };
 
   /**
-   * Generate table values based on table number
-   * Table 1: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-   * Table 2: [2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]
-   * Table 6: [6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72]
+   * Generate table values based on table number (unlimited)
+   * Table 6: [6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84, ...]
+   * Generates up to 1000 multiples for unlimited table support
    */
   const generateTableValues = (tableNumber) => {
     const num = parseInt(tableNumber) || 6;
     const values = [];
-    for (let i = 1; i <= 12; i++) {
+    // Generate up to 1000 multiples for unlimited table support
+    for (let i = 1; i <= 1000; i++) {
       values.push(num * i);
     }
     return values;
@@ -305,17 +313,23 @@ function QuotationManagement() {
     const newItems = [...formData.items];
     const item = newItems[index];
     
-    // Handle sizeInMM toggle - switch units
+    // Handle sizeInMM toggle - convert MM to inches in background
     if (field === "sizeInMM") {
       item.sizeInMM = value;
-      if (value) {
-        // Switch to MM mode
-        item.heightUnit = "MM";
-        item.widthUnit = "MM";
-      } else {
-        // Switch to INCH mode
-        item.heightUnit = "INCH";
-        item.widthUnit = "INCH";
+      // Always use INCH for calculations, even when inputting in MM
+      item.heightUnit = "INCH";
+      item.widthUnit = "INCH";
+      
+      // If toggling off MM mode, convert existing MM values back to inches
+      if (!value && item.heightMM) {
+        const mmValue = parseFloat(item.heightMM) || 0;
+        item.height = (mmValue / 25.4).toFixed(4);
+        item.heightMM = "";
+      }
+      if (!value && item.widthMM) {
+        const mmValue = parseFloat(item.widthMM) || 0;
+        item.width = (mmValue / 25.4).toFixed(4);
+        item.widthMM = "";
       }
     } else {
       item[field] = value;
@@ -323,17 +337,43 @@ function QuotationManagement() {
 
     // Handle height/width input - parse fraction and auto-select table value
     if (field === "height" || field === "width") {
-      // Store original input string (for fraction display in PDFs)
-      if (field === "height") {
-        item.heightOriginal = value;
-      } else if (field === "width") {
-        item.widthOriginal = value;
+      let decimalValue;
+      
+      // If sizeInMM is checked, convert MM to inches
+      if (item.sizeInMM) {
+        // Store original MM value
+        if (field === "height") {
+          item.heightMM = value;
+        } else if (field === "width") {
+          item.widthMM = value;
+        }
+        
+        // Convert MM to inches (1 inch = 25.4 mm)
+        const mmValue = parseFloat(value) || 0;
+        decimalValue = mmValue / 25.4;
+        
+        // Store converted inch value (as string with precision)
+        const inchValue = decimalValue.toFixed(4);
+        if (field === "height") {
+          item.height = inchValue;
+          item.heightOriginal = inchValue; // Store for display
+        } else if (field === "width") {
+          item.width = inchValue;
+          item.widthOriginal = inchValue; // Store for display
+        }
+      } else {
+        // Normal inch input mode
+        if (field === "height") {
+          item.heightOriginal = value;
+        } else if (field === "width") {
+          item.widthOriginal = value;
+        }
+        
+        // Parse fraction input
+        decimalValue = parseFraction(value);
       }
       
-      // Parse fraction input
-      const decimalValue = parseFraction(value);
-      
-      // Auto-select table value
+      // Auto-select table value (always use inch values for table selection)
       if (field === "height" && decimalValue > 0) {
         const tableValue = findNextTableValue(decimalValue, item.heightTableNumber || 6);
         item.selectedHeightTableValue = tableValue;
@@ -391,7 +431,8 @@ function QuotationManagement() {
       const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
       const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
       const areaInFeet = heightInFeet * widthInFeet;
-      const rate = parseFloat(item.ratePerSqft) || 0;
+      // Use sellingPrice if available, otherwise fall back to ratePerSqft
+      const rate = parseFloat(item.sellingPrice || item.ratePerSqft) || 0;
       const qty = parseInt(item.quantity) || 0;
       item.subtotal = areaInFeet * rate * qty;
       
@@ -399,7 +440,7 @@ function QuotationManagement() {
       calculateRunningFt(item);
     }
 
-    if (field === "ratePerSqft" || field === "quantity") {
+    if (field === "ratePerSqft" || field === "sellingPrice" || field === "quantity") {
       // Recalculate subtotal when rate or quantity changes - use table values
       const heightValue = parseFraction(item.height || 0);
       const widthValue = parseFraction(item.width || 0);
@@ -412,7 +453,8 @@ function QuotationManagement() {
       const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
       const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
       const areaInFeet = heightInFeet * widthInFeet;
-      const rate = parseFloat(item.ratePerSqft) || 0;
+      // Use sellingPrice if available, otherwise fall back to ratePerSqft
+      const rate = parseFloat(item.sellingPrice || item.ratePerSqft) || 0;
       const qty = parseInt(item.quantity) || 0;
       item.subtotal = areaInFeet * rate * qty;
       
@@ -571,6 +613,165 @@ function QuotationManagement() {
     // Multiply by quantity (NO Rate per SqFt multiplication)
     const quantity = parseInt(item.quantity) || 1;
     item.runningFt = totalRunningFt * quantity;
+  };
+
+  /**
+   * Parse POLISH_DATA JSON stored inside item.description (if present)
+   */
+  const parsePolishDataFromDescription = (description) => {
+    if (!description || typeof description !== "string") return null;
+    const marker = "POLISH_DATA:";
+    const idx = description.indexOf(marker);
+    if (idx === -1) return null;
+    const jsonPart = description.substring(idx + marker.length).trim();
+    try {
+      return JSON.parse(jsonPart);
+    } catch (e) {
+      console.warn("Failed to parse POLISH_DATA from description", e);
+      return null;
+    }
+  };
+
+  /**
+   * Compute Running Ft summary (total + breakdown by polish type)
+   * for a given quotation object coming from the backend.
+   */
+  const getRunningFtSummaryFromQuotation = (quotation) => {
+    const summary = {
+      total: 0,
+      polish: 0, // P
+      halfRound: 0, // H
+      beveling: 0, // B
+    };
+
+    if (!quotation || !quotation.items || !Array.isArray(quotation.items)) {
+      return summary;
+    }
+
+    quotation.items.forEach((item) => {
+      // Try to get full polish data from description first (what we stored when creating)
+      const polishData = parsePolishDataFromDescription(item.description) || {};
+
+      const selectedHeightTableValue =
+        parseFloat(
+          polishData.selectedHeightTableValue ?? item.selectedHeightTableValue
+        ) || 0;
+      const selectedWidthTableValue =
+        parseFloat(
+          polishData.selectedWidthTableValue ?? item.selectedWidthTableValue
+        ) || 0;
+
+      if (!selectedHeightTableValue || !selectedWidthTableValue) {
+        // No table values → we can't compute Running Ft breakdown for this item
+        return;
+      }
+
+      const heightUnit = item.heightUnit || polishData.heightUnit || "FEET";
+      const widthUnit = item.widthUnit || polishData.widthUnit || "FEET";
+
+      const heightInFeet = convertToFeet(selectedHeightTableValue, heightUnit);
+      const widthInFeet = convertToFeet(selectedWidthTableValue, widthUnit);
+
+      const polishSelection =
+        polishData.polishSelection || item.polishSelection || [];
+      const polishRates = {
+        P: (polishData.polishRates && polishData.polishRates.P) || 15,
+        H: (polishData.polishRates && polishData.polishRates.H) || 75,
+        B: (polishData.polishRates && polishData.polishRates.B) || 75,
+      };
+
+      if (!polishSelection || polishSelection.length < 4) {
+        return;
+      }
+
+      const quantity =
+        parseInt(item.quantity ?? polishData.quantity ?? 1, 10) || 1;
+
+      const groups = {
+        P: { sides: [], rate: polishRates.P },
+        H: { sides: [], rate: polishRates.H },
+        B: { sides: [], rate: polishRates.B },
+      };
+
+      // Use the same logic as calculateRunningFt to group sides by polish type
+      // Height 1 (index 0)
+      if (polishSelection[0].checked && polishSelection[0].type) {
+        const type = polishSelection[0].type;
+        if (groups[type]) {
+          groups[type].sides.push(heightInFeet);
+        }
+      }
+
+      // Width 1 (index 1)
+      if (polishSelection[1].checked && polishSelection[1].type) {
+        const type = polishSelection[1].type;
+        if (groups[type]) {
+          groups[type].sides.push(widthInFeet);
+        }
+      }
+
+      // Height 2 (index 2)
+      if (polishSelection[2].checked && polishSelection[2].type) {
+        const type = polishSelection[2].type;
+        if (groups[type]) {
+          groups[type].sides.push(heightInFeet);
+        }
+      }
+
+      // Width 2 (index 3)
+      if (polishSelection[3].checked && polishSelection[3].type) {
+        const type = polishSelection[3].type;
+        if (groups[type]) {
+          groups[type].sides.push(widthInFeet);
+        }
+      }
+
+      let itemTotal = 0;
+
+      const accumulate = (type, amount) => {
+        if (!amount || amount <= 0) return;
+        itemTotal += amount;
+        if (type === "P") {
+          summary.polish += amount;
+        } else if (type === "H") {
+          summary.halfRound += amount;
+        } else if (type === "B") {
+          summary.beveling += amount;
+        }
+      };
+
+      Object.keys(groups).forEach((type) => {
+        const group = groups[type];
+        if (group.sides.length > 0) {
+          const totalLengthInFeet = group.sides.reduce(
+            (sum, side) => sum + side,
+            0
+          );
+          const amount = totalLengthInFeet * (group.rate || 0) * quantity;
+          accumulate(type, amount);
+        }
+      });
+
+      summary.total += itemTotal;
+    });
+
+    return summary;
+  };
+
+  /**
+   * Get Running Ft for a single quotation item (safe for old data)
+   */
+  const getRunningFtForItem = (item) => {
+    if (!item) return 0;
+
+    // Prefer value stored in POLISH_DATA (most accurate for new quotations)
+    const polishData = parsePolishDataFromDescription(item.description);
+    if (polishData && polishData.runningFt !== undefined) {
+      return parseFloat(polishData.runningFt) || 0;
+    }
+
+    // Fallback to direct field on item (if backend sends it)
+    return parseFloat(item.runningFt) || 0;
   };
 
   /**
@@ -733,7 +934,9 @@ function QuotationManagement() {
         const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
         const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
         const areaInFeet = heightInFeet * widthInFeet;
-        const itemSubtotal = areaInFeet * parseFloat(item.ratePerSqft || 0) * parseInt(item.quantity || 1);
+        // Use sellingPrice if available, otherwise fall back to ratePerSqft
+        const rate = parseFloat(item.sellingPrice || item.ratePerSqft || 0);
+        const itemSubtotal = areaInFeet * rate * parseInt(item.quantity || 1);
         totalSubtotal += itemSubtotal;
       });
 
@@ -779,7 +982,9 @@ function QuotationManagement() {
           const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
           const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
           const areaInFeet = heightInFeet * widthInFeet;
-          const subtotal = areaInFeet * parseFloat(item.ratePerSqft || 0) * parseInt(item.quantity || 1);
+          // Use sellingPrice if available, otherwise fall back to ratePerSqft
+          const rate = parseFloat(item.sellingPrice || item.ratePerSqft || 0);
+          const subtotal = areaInFeet * rate * parseInt(item.quantity || 1);
 
           // Calculate Running Ft: Use table values, group by polish type, sum sides, convert to ft, multiply by polish rate, sum all, then multiply by quantity
           let runningFt = 0;
@@ -876,7 +1081,7 @@ function QuotationManagement() {
             height: heightValue,
             width: widthValue,
             quantity: parseInt(item.quantity),
-            ratePerSqft: parseFloat(item.ratePerSqft),
+            ratePerSqft: parseFloat(item.sellingPrice || item.ratePerSqft),
             area: areaInFeet, // Store area in feet for backend (since rate is per SqFt)
             subtotal: subtotal,
             runningFt: runningFt, // Store Running Ft
@@ -1080,13 +1285,88 @@ function QuotationManagement() {
 
   const handleGlassTypeSelect = (index, glassType, stockItem) => {
     const newItems = [...formData.items];
-    newItems[index].glassType = glassType;
-    if (stockItem?.glass?.thickness) {
-      newItems[index].thickness = `${stockItem.glass.thickness}${stockItem.glass.unit || "MM"}`;
+    newItems[index].glassType = glassType; // Set glass type (Plan, Extra Clear, etc.)
+    // DO NOT auto-fill thickness - user should select it separately
+    // Set default selling price per SqFt from stock if available
+    if (stockItem?.sellingPrice) {
+      // sellingPrice from stock is per SqFt, convert to number and set it directly
+      const sellingPricePerSqFt = parseFloat(stockItem.sellingPrice) || 0;
+      newItems[index].sellingPrice = sellingPricePerSqFt;
+      // Also update ratePerSqft for backward compatibility
+      newItems[index].ratePerSqft = sellingPricePerSqFt;
+      
+      // Recalculate subtotal if dimensions are already set
+      const heightValue = parseFraction(newItems[index].height || 0);
+      const widthValue = parseFraction(newItems[index].width || 0);
+      if (heightValue > 0 && widthValue > 0) {
+        const heightTableValue = newItems[index].selectedHeightTableValue ? parseFloat(newItems[index].selectedHeightTableValue) : heightValue;
+        const widthTableValue = newItems[index].selectedWidthTableValue ? parseFloat(newItems[index].selectedWidthTableValue) : widthValue;
+        const heightInFeet = convertToFeet(heightTableValue, newItems[index].heightUnit || "FEET");
+        const widthInFeet = convertToFeet(widthTableValue, newItems[index].widthUnit || "FEET");
+        const areaInFeet = heightInFeet * widthInFeet;
+        const qty = parseInt(newItems[index].quantity) || 1;
+        newItems[index].subtotal = areaInFeet * sellingPricePerSqFt * qty;
+      }
+    }
+    // Store purchase price for profit calculation (not shown to user, only for admin profit display)
+    if (stockItem?.purchasePrice) {
+      newItems[index].purchasePrice = stockItem.purchasePrice;
     }
     setFormData({ ...formData, items: newItems });
     setShowStockDropdown({ ...showStockDropdown, [index]: false });
+    setStockDropdownType({ ...stockDropdownType, [index]: null });
   };
+
+  // Separate handler for thickness selection (doesn't change glass type)
+  const handleThicknessSelect = (index, stockItem) => {
+    const newItems = [...formData.items];
+    // Only set thickness, don't change glass type
+    if (stockItem?.glass?.thickness) {
+      newItems[index].thickness = `${stockItem.glass.thickness}${stockItem.glass.unit || "MM"}`;
+    }
+    // Set default selling price per SqFt from stock if available
+    if (stockItem?.sellingPrice) {
+      // sellingPrice from stock is per SqFt, convert to number and set it directly
+      const sellingPricePerSqFt = parseFloat(stockItem.sellingPrice) || 0;
+      newItems[index].sellingPrice = sellingPricePerSqFt;
+      // Also update ratePerSqft for backward compatibility
+      newItems[index].ratePerSqft = sellingPricePerSqFt;
+      
+      // Recalculate subtotal if dimensions are already set
+      const heightValue = parseFraction(newItems[index].height || 0);
+      const widthValue = parseFraction(newItems[index].width || 0);
+      if (heightValue > 0 && widthValue > 0) {
+        const heightTableValue = newItems[index].selectedHeightTableValue ? parseFloat(newItems[index].selectedHeightTableValue) : heightValue;
+        const widthTableValue = newItems[index].selectedWidthTableValue ? parseFloat(newItems[index].selectedWidthTableValue) : widthValue;
+        const heightInFeet = convertToFeet(heightTableValue, newItems[index].heightUnit || "FEET");
+        const widthInFeet = convertToFeet(widthTableValue, newItems[index].widthUnit || "FEET");
+        const areaInFeet = heightInFeet * widthInFeet;
+        const qty = parseInt(newItems[index].quantity) || 1;
+        newItems[index].subtotal = areaInFeet * sellingPricePerSqFt * qty;
+      }
+    }
+    // Store purchase price for profit calculation
+    if (stockItem?.purchasePrice) {
+      newItems[index].purchasePrice = stockItem.purchasePrice;
+    }
+    setFormData({ ...formData, items: newItems });
+    setShowStockDropdown({ ...showStockDropdown, [index]: false });
+    setStockDropdownType({ ...stockDropdownType, [index]: null });
+  };
+
+  // Glass type options
+  const glassTypeOptions = [
+    "Plan",
+    "Extra Clear",
+    "Grey Tinted",
+    "Brown Tinted",
+    "One Way",
+    "Star",
+    "Karakachi",
+    "Bajari",
+    "Diomand",
+    "Mirror"
+  ];
 
   return (
     <PageWrapper backgroundImage={dashboardBg}>
@@ -1973,15 +2253,42 @@ function QuotationManagement() {
                       marginBottom: isMobile ? "16px" : "20px",
                       width: "100%",
                     }}>
-                      <div style={{ position: "relative" }}>
+                      {/* Glass Type Dropdown */}
+                      <div style={{ marginBottom: "16px" }}>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
                           Glass Type * <span style={{ color: "#ef4444" }}>●</span>
+                        </label>
+                        <select
+                          required
+                          value={item.glassType}
+                          onChange={(e) => handleItemChange(index, "glassType", e.target.value)}
+                          style={{
+                            width: "100%",
+                            padding: isMobile ? "14px 12px" : "12px",
+                            borderRadius: "8px",
+                            border: "1px solid #d1d5db",
+                            fontSize: "16px",
+                            minHeight: "44px",
+                            boxSizing: "border-box",
+                          }}
+                        >
+                          <option value="">Select glass type</option>
+                          {glassTypeOptions.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Thickness Input */}
+                      <div style={{ position: "relative" }}>
+                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                          Thickness * <span style={{ color: "#ef4444" }}>●</span>
                         </label>
                         <div style={{ position: "relative" }}>
                           <input
                             type="text"
                             required
-                            value={item.glassType}
+                            value={item.thickness}
                             onChange={(e) => {
                               let inputVal = e.target.value;
                               // If user types just a number, automatically append "MM"
@@ -1994,22 +2301,21 @@ function QuotationManagement() {
                               if (numberMmMatch) {
                                 inputVal = numberMmMatch[1] + "MM";
                               }
-                              handleItemChange(index, "glassType", inputVal);
+                              handleItemChange(index, "thickness", inputVal);
                             }}
                             onBlur={(e) => {
                               let inputVal = e.target.value.trim();
                               // On blur, ensure "MM" suffix if it's just a number
                               if (inputVal && /^\d+$/.test(inputVal)) {
                                 inputVal = inputVal + "MM";
-                                handleItemChange(index, "glassType", inputVal);
+                                handleItemChange(index, "thickness", inputVal);
                               }
                               // Convert lowercase "mm" to "MM"
                               if (inputVal && /^\d+\s*mm$/i.test(inputVal)) {
                                 const number = inputVal.match(/^(\d+)/i)[1];
-                                handleItemChange(index, "glassType", number + "MM");
+                                handleItemChange(index, "thickness", number + "MM");
                               }
                             }}
-                            onFocus={() => setShowStockDropdown({ ...showStockDropdown, [index]: true })}
                             placeholder="e.g., 5MM or 5 (auto-converts to 5MM)"
                             style={{
                               width: "100%",
@@ -2024,6 +2330,7 @@ function QuotationManagement() {
                             onFocus={(e) => {
                               e.target.style.borderColor = "#6366f1";
                               setShowStockDropdown({ ...showStockDropdown, [index]: true });
+                              setStockDropdownType({ ...stockDropdownType, [index]: "thickness" });
                             }}
                             onBlur={(e) => {
                               setTimeout(() => {
@@ -2041,7 +2348,13 @@ function QuotationManagement() {
                               fontSize: "18px",
                               cursor: "pointer",
                             }}
-                            onClick={() => setShowStockDropdown({ ...showStockDropdown, [index]: !showStockDropdown[index] })}
+                            onClick={() => {
+                              const isOpen = showStockDropdown[index];
+                              setShowStockDropdown({ ...showStockDropdown, [index]: !isOpen });
+                              if (!isOpen) {
+                                setStockDropdownType({ ...stockDropdownType, [index]: "thickness" });
+                              }
+                            }}
                           >
                             📦
                           </span>
@@ -2091,7 +2404,17 @@ function QuotationManagement() {
                                       }}
                                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
                                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
-                                      onClick={() => handleGlassTypeSelect(index, glassType, stockItem)}
+                                      onClick={() => {
+                                        // Check which field triggered the dropdown
+                                        const dropdownType = stockDropdownType[index];
+                                        if (dropdownType === "thickness") {
+                                          // Thickness field dropdown - only set thickness, preserve glass type
+                                          handleThicknessSelect(index, stockItem);
+                                        } else {
+                                          // Glass type field dropdown - set glass type
+                                          handleGlassTypeSelect(index, glassType, stockItem);
+                                        }
+                                      }}
                                     >
                                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                                         <div style={{ flex: 1 }}>
@@ -2109,6 +2432,7 @@ function QuotationManagement() {
                                             <span>📏 Size: {size}</span>
                                             <span>📍 Stand: {stockItem.standNo}</span>
                                             <span>📦 Qty: {stockItem.quantity}</span>
+                                            {stockItem.sellingPrice && <span>💵 Price: ₹{parseFloat(stockItem.sellingPrice).toFixed(2)}</span>}
                                             {stockItem.hsnNo && <span>🏷️ HSN: {stockItem.hsnNo}</span>}
                                           </div>
                                         </div>
@@ -2121,27 +2445,6 @@ function QuotationManagement() {
                           </div>
                         )}
                         <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "12px" }}>📦 Click to select from available stock</p>
-                      </div>
-                      <div>
-                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
-                          Thickness (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          value={item.thickness}
-                          onChange={(e) => handleItemChange(index, "thickness", e.target.value)}
-                          placeholder="e.g., 5MM, 8MM"
-                          style={{
-                            width: "100%",
-                            padding: "12px",
-                            borderRadius: "8px",
-                            border: "1px solid #d1d5db",
-                            fontSize: "14px",
-                            transition: "all 0.2s",
-                          }}
-                          onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                          onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                        />
                       </div>
                       {/* Size Input with MM/INCH Toggle */}
                       <div style={{ gridColumn: isMobile ? "1" : "1 / -1", marginBottom: "10px" }}>
@@ -2172,7 +2475,7 @@ function QuotationManagement() {
                           <input
                             type="text"
                             required
-                            value={item.height || ""}
+                            value={item.sizeInMM ? (item.heightMM || "") : (item.height || "")}
                             onChange={(e) => handleItemChange(index, "height", e.target.value)}
                             placeholder={item.sizeInMM ? "e.g., 3000 (mm)" : "e.g., 9 or 9 1/2 (inch)"}
                             style={{
@@ -2206,12 +2509,17 @@ function QuotationManagement() {
                               boxSizing: "border-box",
                               minHeight: "44px", // Touch target
                             }}>
-                            {item.sizeInMM ? "MM" : "INCH"}
+                            INCH
                           </div>
                         </div>
                         <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>
-                          {item.sizeInMM ? "📏 Height in millimeters" : "📏 Height in inches (supports fractions: 9 1/2, 9-1/2)"}
+                          {item.sizeInMM ? "📏 Input in millimeters (converted to inches automatically)" : "📏 Height in inches (supports fractions: 9 1/2, 9-1/2)"}
                         </p>
+                        {item.sizeInMM && item.height && (
+                          <p style={{ marginTop: "3px", color: "#6366f1", fontSize: "11px", fontWeight: "500" }}>
+                            ✓ Converted: {item.heightMM} mm = {parseFloat(item.height).toFixed(2)} inches
+                          </p>
+                        )}
                       </div>
                       <div style={{
                         width: "100%",
@@ -2229,7 +2537,7 @@ function QuotationManagement() {
                           <input
                             type="text"
                             required
-                            value={item.width || ""}
+                            value={item.sizeInMM ? (item.widthMM || "") : (item.width || "")}
                             onChange={(e) => handleItemChange(index, "width", e.target.value)}
                             placeholder={item.sizeInMM ? "e.g., 2000 (mm)" : "e.g., 6 or 6 1/2 (inch)"}
                             style={{
@@ -2263,12 +2571,17 @@ function QuotationManagement() {
                               boxSizing: "border-box",
                               minHeight: "44px", // Touch target
                             }}>
-                            {item.sizeInMM ? "MM" : "INCH"}
+                            INCH
                           </div>
                         </div>
                         <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>
-                          {item.sizeInMM ? "📏 Width in millimeters" : "📏 Width in inches (supports fractions: 6 1/2, 6-1/2)"}
+                          {item.sizeInMM ? "📏 Input in millimeters (converted to inches automatically)" : "📏 Width in inches (supports fractions: 6 1/2, 6-1/2)"}
                         </p>
+                        {item.sizeInMM && item.width && (
+                          <p style={{ marginTop: "3px", color: "#6366f1", fontSize: "11px", fontWeight: "500" }}>
+                            ✓ Converted: {item.widthMM} mm = {parseFloat(item.width).toFixed(2)} inches
+                          </p>
+                        )}
                       </div>
                       {/* Table Selection Section */}
                       <div style={{ gridColumn: isMobile ? "1" : "1 / -1", marginTop: "20px", marginBottom: "20px" }}>
@@ -2300,9 +2613,9 @@ function QuotationManagement() {
                                     setFormData({ ...formData, items: newItems });
                                     return;
                                   }
-                                  // Only allow digits, max 2 digits
+                                  // Allow digits, max 3 digits for larger table numbers
                                   const digitsOnly = inputVal.replace(/[^0-9]/g, '');
-                                  if (digitsOnly.length <= 2 && digitsOnly !== "") {
+                                  if (digitsOnly.length <= 3 && digitsOnly !== "") {
                                     const newItems = [...formData.items];
                                     newItems[index].heightTableNumber = digitsOnly;
                                     // Recalculate table value if we have height
@@ -2326,14 +2639,13 @@ function QuotationManagement() {
                                   const num = parseInt(inputVal);
                                   if (isNaN(num) || num < 1) {
                                     handleItemChange(index, "heightTableNumber", 1);
-                                  } else if (num > 12) {
-                                    handleItemChange(index, "heightTableNumber", 12);
                                   } else {
+                                    // Allow unlimited table numbers
                                     handleItemChange(index, "heightTableNumber", num);
                                   }
                                 }}
                                 style={{
-                                  width: "60px",
+                                  width: isMobile ? "70px" : "60px",
                                   padding: "8px",
                                   borderRadius: "6px",
                                   border: "1px solid #d1d5db",
@@ -2342,58 +2654,12 @@ function QuotationManagement() {
                                 }}
                               />
                             </div>
-                            <div style={{ 
-                              display: "flex", 
-                              flexWrap: "wrap", 
-                              gap: isMobile ? "6px" : "8px", // Smaller gap on mobile
-                            }}>
-                              {generateTableValues(item.heightTableNumber || 6).map((val) => (
-                                <button
-                                  key={val}
-                                  type="button"
-                                  onClick={() => {
-                                    const newItems = [...formData.items];
-                                    newItems[index].selectedHeightTableValue = val;
-                                    updatePolishSelectionNumbers(newItems[index]);
-                                    setFormData({ ...formData, items: newItems });
-                                  }}
-                                  style={{
-                                    padding: isMobile ? "10px 14px" : "8px 12px", // Larger touch target on mobile
-                                    borderRadius: "6px",
-                                    border: "2px solid",
-                                    borderColor: item.selectedHeightTableValue === val ? "#6366f1" : "#d1d5db",
-                                    backgroundColor: item.selectedHeightTableValue === val ? "#eef2ff" : "white",
-                                    color: item.selectedHeightTableValue === val ? "#6366f1" : "#374151",
-                                    fontWeight: item.selectedHeightTableValue === val ? "600" : "400",
-                                    cursor: "pointer",
-                                    fontSize: isMobile ? "14px" : "13px", // Larger font on mobile
-                                    transition: "all 0.2s",
-                                    minHeight: isMobile ? "44px" : "auto", // Touch target
-                                    minWidth: isMobile ? "44px" : "auto",
-                                    flex: isMobile ? "1 1 calc(33.333% - 4px)" : "none", // Responsive button sizing
-                                    maxWidth: isMobile ? "calc(33.333% - 4px)" : "none",
-                                  }}
-                                  onMouseOver={(e) => {
-                                    if (item.selectedHeightTableValue !== val) {
-                                      e.target.style.borderColor = "#6366f1";
-                                      e.target.style.backgroundColor = "#f3f4f6";
-                                    }
-                                  }}
-                                  onMouseOut={(e) => {
-                                    if (item.selectedHeightTableValue !== val) {
-                                      e.target.style.borderColor = "#d1d5db";
-                                      e.target.style.backgroundColor = "white";
-                                    }
-                                  }}
-                                >
-                                  {val}
-                                </button>
-                              ))}
-                            </div>
                             {item.selectedHeightTableValue && (
-                              <p style={{ marginTop: "10px", fontSize: "12px", color: "#6366f1", fontWeight: "500" }}>
-                                Selected: {item.selectedHeightTableValue}
-                              </p>
+                              <div style={{ marginTop: "10px", padding: "10px", backgroundColor: "#eef2ff", borderRadius: "6px", border: "1px solid #6366f1" }}>
+                                <p style={{ fontSize: "14px", color: "#6366f1", fontWeight: "600", margin: 0 }}>
+                                  Selected: {item.selectedHeightTableValue}
+                                </p>
+                              </div>
                             )}
                           </div>
 
@@ -2423,9 +2689,9 @@ function QuotationManagement() {
                                     setFormData({ ...formData, items: newItems });
                                     return;
                                   }
-                                  // Only allow digits, max 2 digits
+                                  // Allow digits, max 3 digits for larger table numbers
                                   const digitsOnly = inputVal.replace(/[^0-9]/g, '');
-                                  if (digitsOnly.length <= 2 && digitsOnly !== "") {
+                                  if (digitsOnly.length <= 3 && digitsOnly !== "") {
                                     const newItems = [...formData.items];
                                     newItems[index].widthTableNumber = digitsOnly;
                                     // Recalculate table value if we have width
@@ -2449,14 +2715,13 @@ function QuotationManagement() {
                                   const num = parseInt(inputVal);
                                   if (isNaN(num) || num < 1) {
                                     handleItemChange(index, "widthTableNumber", 1);
-                                  } else if (num > 12) {
-                                    handleItemChange(index, "widthTableNumber", 12);
                                   } else {
+                                    // Allow unlimited table numbers
                                     handleItemChange(index, "widthTableNumber", num);
                                   }
                                 }}
                                 style={{
-                                  width: "60px",
+                                  width: isMobile ? "70px" : "60px",
                                   padding: "8px",
                                   borderRadius: "6px",
                                   border: "1px solid #d1d5db",
@@ -2465,58 +2730,12 @@ function QuotationManagement() {
                                 }}
                               />
                             </div>
-                            <div style={{ 
-                              display: "flex", 
-                              flexWrap: "wrap", 
-                              gap: isMobile ? "6px" : "8px", // Smaller gap on mobile
-                            }}>
-                              {generateTableValues(item.widthTableNumber || 6).map((val) => (
-                                <button
-                                  key={val}
-                                  type="button"
-                                  onClick={() => {
-                                    const newItems = [...formData.items];
-                                    newItems[index].selectedWidthTableValue = val;
-                                    updatePolishSelectionNumbers(newItems[index]);
-                                    setFormData({ ...formData, items: newItems });
-                                  }}
-                                  style={{
-                                    padding: isMobile ? "10px 14px" : "8px 12px", // Larger touch target on mobile
-                                    borderRadius: "6px",
-                                    border: "2px solid",
-                                    borderColor: item.selectedWidthTableValue === val ? "#6366f1" : "#d1d5db",
-                                    backgroundColor: item.selectedWidthTableValue === val ? "#eef2ff" : "white",
-                                    color: item.selectedWidthTableValue === val ? "#6366f1" : "#374151",
-                                    fontWeight: item.selectedWidthTableValue === val ? "600" : "400",
-                                    cursor: "pointer",
-                                    fontSize: isMobile ? "14px" : "13px", // Larger font on mobile
-                                    transition: "all 0.2s",
-                                    minHeight: isMobile ? "44px" : "auto", // Touch target
-                                    minWidth: isMobile ? "44px" : "auto",
-                                    flex: isMobile ? "1 1 calc(33.333% - 4px)" : "none", // Responsive button sizing
-                                    maxWidth: isMobile ? "calc(33.333% - 4px)" : "none",
-                                  }}
-                                  onMouseOver={(e) => {
-                                    if (item.selectedWidthTableValue !== val) {
-                                      e.target.style.borderColor = "#6366f1";
-                                      e.target.style.backgroundColor = "#f3f4f6";
-                                    }
-                                  }}
-                                  onMouseOut={(e) => {
-                                    if (item.selectedWidthTableValue !== val) {
-                                      e.target.style.borderColor = "#d1d5db";
-                                      e.target.style.backgroundColor = "white";
-                                    }
-                                  }}
-                                >
-                                  {val}
-                                </button>
-                              ))}
-                            </div>
                             {item.selectedWidthTableValue && (
-                              <p style={{ marginTop: "10px", fontSize: "12px", color: "#6366f1", fontWeight: "500" }}>
-                                Selected: {item.selectedWidthTableValue}
-                              </p>
+                              <div style={{ marginTop: "10px", padding: "10px", backgroundColor: "#eef2ff", borderRadius: "6px", border: "1px solid #6366f1" }}>
+                                <p style={{ fontSize: "14px", color: "#6366f1", fontWeight: "600", margin: 0 }}>
+                                  Selected: {item.selectedWidthTableValue}
+                                </p>
+                              </div>
                             )}
                           </div>
                         </div>
@@ -2918,15 +3137,20 @@ function QuotationManagement() {
                       </div>
                       <div style={{ gridColumn: isMobile ? "1" : "2 / 3", marginTop: "20px" }}>
                         <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
-                          Rate per SqFt (₹) * <span style={{ color: "#ef4444" }}>●</span>
+                          Selling Price (₹) * <span style={{ color: "#ef4444" }}>●</span>
                         </label>
                         <input
                           type="number"
                           required
                           min="0"
                           step="0.01"
-                          value={item.ratePerSqft}
-                          onChange={(e) => handleItemChange(index, "ratePerSqft", e.target.value)}
+                          value={item.sellingPrice || item.ratePerSqft || ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            handleItemChange(index, "sellingPrice", value);
+                            // Also update ratePerSqft for backward compatibility
+                            handleItemChange(index, "ratePerSqft", value);
+                          }}
                           placeholder="e.g., 50.00"
                           style={{
                             width: "100%",
@@ -2941,7 +3165,23 @@ function QuotationManagement() {
                           onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                           onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
                         />
-                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>💰 Price per square foot</p>
+                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: "11px" }}>
+                          💰 Selling price per square foot (modifiable)
+                          {(() => {
+                            // Show calculated default price as helper text
+                            const height = parseFloat(item.height) || 0;
+                            const width = parseFloat(item.width) || 0;
+                            const quantity = parseFloat(item.quantity) || 1;
+                            const sellingPrice = parseFloat(item.sellingPrice || item.ratePerSqft) || 0;
+                            if (height > 0 && width > 0 && sellingPrice > 0) {
+                              const areaInSqFt = (height * width) / 144;
+                              const totalArea = areaInSqFt * quantity;
+                              const totalPrice = sellingPrice * totalArea;
+                              return ` | Default Total: ₹${totalPrice.toFixed(2)} (${totalArea.toFixed(2)} SqFt × ₹${sellingPrice.toFixed(2)})`;
+                            }
+                            return "";
+                          })()}
+                        </p>
                       </div>
 
                       <div style={{
@@ -3014,7 +3254,8 @@ function QuotationManagement() {
                               
                               // Calculate subtotal: area × rate × quantity
                               const areaInFeet = heightInFeet * widthInFeet;
-                              const rate = parseFloat(item.ratePerSqft) || 0;
+                              // Use sellingPrice if available, otherwise fall back to ratePerSqft
+                              const rate = parseFloat(item.sellingPrice || item.ratePerSqft) || 0;
                               const qty = parseInt(item.quantity) || 0;
                               return (areaInFeet * rate * qty).toFixed(2);
                             })()
@@ -3469,7 +3710,7 @@ function QuotationManagement() {
                     <button
                       onClick={async () => {
                         try {
-                          const response = await printCuttingPad(selectedQuotation.id);
+                          const response = await downloadQuotationPdf(selectedQuotation.id);
                           const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
                           const printWindow = window.open(url, '_blank');
                           if (printWindow) {
@@ -3478,13 +3719,13 @@ function QuotationManagement() {
                             };
                           }
                         } catch (error) {
-                          console.error("Failed to print cutting-pad", error);
-                          alert("Failed to print cutting-pad PDF");
+                          console.error("Failed to print quotation", error);
+                          alert("Failed to print quotation PDF");
                         }
                       }}
                       style={{
                         padding: "8px 16px",
-                        backgroundColor: "#10b981",
+                        backgroundColor: "#8b5cf6",
                         color: "white",
                         border: "none",
                         borderRadius: "8px",
@@ -3496,10 +3737,10 @@ function QuotationManagement() {
                         gap: "6px",
                         transition: "all 0.2s",
                       }}
-                      onMouseOver={(e) => (e.target.style.backgroundColor = "#059669")}
-                      onMouseOut={(e) => (e.target.style.backgroundColor = "#10b981")}
+                      onMouseOver={(e) => (e.target.style.backgroundColor = "#7c3aed")}
+                      onMouseOut={(e) => (e.target.style.backgroundColor = "#8b5cf6")}
                     >
-                      🖨️ Print Cutting-Pad
+                      🖨️ Print Quotation
                     </button>
                     <button
                       onClick={async () => {
@@ -3535,7 +3776,42 @@ function QuotationManagement() {
                       onMouseOver={(e) => (e.target.style.backgroundColor = "#2563eb")}
                       onMouseOut={(e) => (e.target.style.backgroundColor = "#3b82f6")}
                     >
-                      📥 Download PDF
+                      📥 Download Quotation
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const response = await printCuttingPad(selectedQuotation.id);
+                          const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+                          const printWindow = window.open(url, '_blank');
+                          if (printWindow) {
+                            printWindow.onload = () => {
+                              printWindow.print();
+                            };
+                          }
+                        } catch (error) {
+                          console.error("Failed to print cutting-pad", error);
+                          alert("Failed to print cutting-pad PDF");
+                        }
+                      }}
+                      style={{
+                        padding: "8px 16px",
+                        backgroundColor: "#10b981",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseOver={(e) => (e.target.style.backgroundColor = "#059669")}
+                      onMouseOut={(e) => (e.target.style.backgroundColor = "#10b981")}
+                    >
+                      🖨️ Print Cutting-Pad
                     </button>
                     <button
                       onClick={() => setSelectedQuotation(null)}
@@ -3593,6 +3869,31 @@ function QuotationManagement() {
                     <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px" }}>Subtotal</div>
                     <div style={{ fontSize: "20px", color: "#78350f", fontWeight: "700" }}>₹{(parseFloat(selectedQuotation.subtotal) || 0).toFixed(2)}</div>
                   </div>
+                  {(() => {
+                    const runningSummary = getRunningFtSummaryFromQuotation(selectedQuotation);
+                    if (!runningSummary || runningSummary.total <= 0) return null;
+                    return (
+                      <div>
+                        <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px" }}>Running Ft</div>
+                        <div style={{ fontSize: "20px", color: "#78350f", fontWeight: "700" }}>₹{runningSummary.total.toFixed(2)}</div>
+                        {(runningSummary.polish > 0 ||
+                          runningSummary.halfRound > 0 ||
+                          runningSummary.beveling > 0) && (
+                          <div style={{ marginTop: "6px", fontSize: "12px", color: "#92400e" }}>
+                            {runningSummary.polish > 0 && (
+                              <div>Polish: ₹{runningSummary.polish.toFixed(2)}</div>
+                            )}
+                            {runningSummary.halfRound > 0 && (
+                              <div>Half Round: ₹{runningSummary.halfRound.toFixed(2)}</div>
+                            )}
+                            {runningSummary.beveling > 0 && (
+                              <div>Beveling: ₹{runningSummary.beveling.toFixed(2)}</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {selectedQuotation.installationCharge > 0 && (
                     <div>
                       <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px" }}>Installation Charge</div>
@@ -3639,6 +3940,66 @@ function QuotationManagement() {
                       )}
                     </>
                   )}
+                  {(() => {
+                    // Calculate profit for admin only
+                    const userRole = getUserRole();
+                    if (userRole !== "ROLE_ADMIN") return null;
+                    
+                    let totalPurchaseCost = 0;
+                    let totalSellingPrice = 0;
+                    
+                    selectedQuotation.items?.forEach((item) => {
+                      const purchasePrice = parseFloat(item.purchasePrice) || 0;
+                      const sellingPrice = parseFloat(item.sellingPrice || item.ratePerSqft) || 0;
+                      const height = parseFloat(item.height) || 0;
+                      const width = parseFloat(item.width) || 0;
+                      const quantity = parseFloat(item.quantity) || 0;
+                      
+                      // Calculate area in square feet
+                      const areaInSqFt = (height * width) / 144; // Convert square inches to square feet
+                      const itemArea = areaInSqFt * quantity;
+                      
+                      // Purchase cost = purchase price per SqFt * area
+                      totalPurchaseCost += purchasePrice * itemArea;
+                      
+                      // Selling price = selling price per SqFt * area
+                      totalSellingPrice += sellingPrice * itemArea;
+                    });
+                    
+                    const profit = totalSellingPrice - totalPurchaseCost;
+                    const profitMargin = totalSellingPrice > 0 ? (profit / totalSellingPrice) * 100 : 0;
+                    
+                    if (totalPurchaseCost === 0 && totalSellingPrice === 0) return null;
+                    
+                    return (
+                      <div style={{ 
+                        gridColumn: isMobile ? "1" : "1 / -1", 
+                        marginTop: "15px", 
+                        paddingTop: "15px", 
+                        borderTop: "2px solid #fbbf24" 
+                      }}>
+                        <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px", fontWeight: "600" }}>
+                          💰 Profit (Admin Only)
+                        </div>
+                        <div style={{ 
+                          fontSize: "20px", 
+                          color: profit >= 0 ? "#059669" : "#dc2626", 
+                          fontWeight: "700" 
+                        }}>
+                          ₹{profit.toFixed(2)}
+                        </div>
+                        <div style={{ 
+                          marginTop: "6px", 
+                          fontSize: "12px", 
+                          color: "#92400e" 
+                        }}>
+                          Purchase Cost: ₹{totalPurchaseCost.toFixed(2)} | 
+                          Selling Price: ₹{totalSellingPrice.toFixed(2)} | 
+                          Margin: {profitMargin.toFixed(2)}%
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div style={{ gridColumn: isMobile ? "1" : "1 / -1", paddingTop: "15px", borderTop: "2px solid #fbbf24" }}>
                     <div style={{ fontSize: "14px", color: "#92400e", marginBottom: "8px", fontWeight: "500" }}>Grand Total</div>
                     <div style={{ fontSize: "28px", color: "#78350f", fontWeight: "800" }}>₹{(parseFloat(selectedQuotation.grandTotal) || 0).toFixed(2)}</div>
@@ -3655,11 +4016,13 @@ function QuotationManagement() {
                       <tr style={{ backgroundColor: "#f3f4f6" }}>
                         <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600", color: "#374151" }}>#</th>
                         <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600", color: "#374151" }}>Glass Type</th>
+                        <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600", color: "#374151" }}>Thickness</th>
                         <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600", color: "#374151" }}>Size</th>
                         <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600", color: "#374151" }}>Design</th>
                         <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600", color: "#374151" }}>Qty</th>
-                        <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600", color: "#374151" }}>Rate</th>
+                        <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600", color: "#374151" }}>Selling Price</th>
                         <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600", color: "#374151" }}>Subtotal</th>
+                        <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600", color: "#374151" }}>Running Ft</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3675,7 +4038,8 @@ function QuotationManagement() {
                           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = idx % 2 === 0 ? "#ffffff" : "#f9fafb")}
                         >
                           <td style={{ padding: "12px", fontWeight: "600", color: "#6366f1" }}>{idx + 1}</td>
-                          <td style={{ padding: "12px", fontWeight: "500" }}>{item.glassType}</td>
+                          <td style={{ padding: "12px", fontWeight: "500" }}>{item.glassType || "N/A"}</td>
+                          <td style={{ padding: "12px" }}>{item.thickness || "N/A"}</td>
                           <td style={{ padding: "12px" }}>
                             {item.height} {item.heightUnit || "FEET"} × {item.width} {item.widthUnit || "FEET"}
                           </td>
@@ -3691,8 +4055,14 @@ function QuotationManagement() {
                               : "-"}
                           </td>
                           <td style={{ padding: "12px" }}>{item.quantity}</td>
-                          <td style={{ padding: "12px" }}>₹{(parseFloat(item.ratePerSqft) || 0).toFixed(2)}</td>
+                          <td style={{ padding: "12px" }}>₹{(parseFloat(item.sellingPrice || item.ratePerSqft) || 0).toFixed(2)}</td>
                           <td style={{ padding: "12px", fontWeight: "600", color: "#1f2937" }}>₹{(parseFloat(item.subtotal) || 0).toFixed(2)}</td>
+                          <td style={{ padding: "12px", fontWeight: "600", color: "#6366f1" }}>
+                            {(() => {
+                              const running = getRunningFtForItem(item);
+                              return running > 0 ? `₹${running.toFixed(2)}` : "-";
+                            })()}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

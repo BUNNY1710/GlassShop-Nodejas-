@@ -1,24 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
 import { Button, Input, Card } from "../components/ui";
+import { useResponsive } from "../hooks/useResponsive";
 import "../styles/design-system.css";
 
 function Login() {
   const navigate = useNavigate();
+  const { isMobile } = useResponsive();
   const [form, setForm] = useState({
     username: "",
     password: ""
   });
   const [error, setError] = useState("");
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -64,14 +59,14 @@ function Login() {
   };
 
   return (
-    <div style={authContainer}>
+    <div style={getAuthContainerStyle(isMobile)}>
       {/* Animated Background Elements */}
-      <div style={bgCircle1}></div>
-      <div style={bgCircle2}></div>
-      <div style={bgCircle3}></div>
+      <div style={getBgCircle1Style(isMobile)}></div>
+      <div style={getBgCircle2Style(isMobile)}></div>
+      <div style={getBgCircle3Style(isMobile)}></div>
       
       {/* Main Content */}
-      <div style={contentWrapper}>
+      <div style={getContentWrapperStyle(isMobile)}>
         {/* Left Side - Branding (Desktop Only) */}
         {!isMobile && (
           <div style={brandingSection}>
@@ -100,22 +95,22 @@ function Login() {
         )}
 
         {/* Right Side - Login Form */}
-        <div style={formSection}>
-          <Card style={loginCard} glass>
+        <div style={getFormSectionStyle(isMobile)}>
+          <Card style={getLoginCardStyle(isMobile)} glass>
             {/* Mobile Logo */}
             {isMobile && (
-              <div style={mobileLogoSection}>
-                <div style={mobileLogo}>🧱</div>
-                <h1 style={mobileTitle}>Glass Shop</h1>
+              <div style={getMobileLogoSectionStyle(isMobile)}>
+                <div style={getMobileLogoStyle(isMobile)}>🧱</div>
+                <h1 style={getMobileTitleStyle(isMobile)}>Glass Shop</h1>
               </div>
             )}
 
-            <div style={formHeader}>
-              <h2 style={formTitle}>Welcome Back</h2>
-              <p style={formSubtitle}>Sign in to continue to your dashboard</p>
+            <div style={getFormHeaderStyle(isMobile)}>
+              <h2 style={getFormTitleStyle(isMobile)}>Welcome Back</h2>
+              <p style={getFormSubtitleStyle(isMobile)}>Sign in to continue to your dashboard</p>
             </div>
 
-            <form onSubmit={handleLogin} style={form}>
+            <form onSubmit={handleLogin} style={getFormStyle(isMobile)}>
               <Input
                 name="username"
                 label="Username"
@@ -159,8 +154,8 @@ function Login() {
               </Button>
             </form>
 
-            <div style={footerSection}>
-              <p style={footerText}>
+            <div style={getFooterSectionStyle(isMobile)}>
+              <p style={getFooterTextStyle(isMobile)}>
                 Don't have an account?{" "}
                 <span 
                   style={footerLink} 
@@ -181,61 +176,63 @@ export default Login;
 
 /* ================= STYLES ================= */
 
-const authContainer = {
+const getAuthContainerStyle = (isMobile) => ({
   minHeight: "100vh",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  padding: "20px",
+  padding: isMobile ? "16px" : "20px",
   position: "relative",
   overflow: "hidden",
-};
+  boxSizing: "border-box",
+});
 
-const bgCircle1 = {
+const getBgCircle1Style = (isMobile) => ({
   position: "absolute",
   top: "-10%",
   right: "-10%",
-  width: "600px",
-  height: "600px",
+  width: isMobile ? "300px" : "600px",
+  height: isMobile ? "300px" : "600px",
   borderRadius: "50%",
   background: "radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%)",
   animation: "pulse 8s ease-in-out infinite",
-};
+});
 
-const bgCircle2 = {
+const getBgCircle2Style = (isMobile) => ({
   position: "absolute",
   bottom: "-15%",
   left: "-15%",
-  width: "500px",
-  height: "500px",
+  width: isMobile ? "250px" : "500px",
+  height: isMobile ? "250px" : "500px",
   borderRadius: "50%",
   background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)",
   animation: "pulse 10s ease-in-out infinite",
-};
+});
 
-const bgCircle3 = {
+const getBgCircle3Style = (isMobile) => ({
   position: "absolute",
   top: "50%",
   left: "50%",
   transform: "translate(-50%, -50%)",
-  width: "400px",
-  height: "400px",
+  width: isMobile ? "200px" : "400px",
+  height: isMobile ? "200px" : "400px",
   borderRadius: "50%",
   background: "radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%)",
   animation: "pulse 12s ease-in-out infinite",
-};
+});
 
-const contentWrapper = {
+const getContentWrapperStyle = (isMobile) => ({
   display: "flex",
   width: "100%",
   maxWidth: "1200px",
-  gap: "40px",
+  gap: isMobile ? "0" : "40px",
   alignItems: "center",
   position: "relative",
   zIndex: 1,
   flexWrap: "wrap",
-};
+  justifyContent: "center",
+});
 
 const brandingSection = {
   flex: 1,
@@ -297,68 +294,71 @@ const featureIcon = {
   flexShrink: 0,
 };
 
-const formSection = {
+const getFormSectionStyle = (isMobile) => ({
   flex: 1,
-  minWidth: "400px",
+  minWidth: isMobile ? "100%" : "400px",
+  maxWidth: isMobile ? "100%" : "480px",
+  width: "100%",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-};
+});
 
-const loginCard = {
+const getLoginCardStyle = (isMobile) => ({
   width: "100%",
   maxWidth: "480px",
-  padding: "48px",
+  padding: isMobile ? "24px 20px" : "48px",
   animation: "fadeIn 0.5s ease-out",
-};
+  boxSizing: "border-box",
+});
 
-const mobileLogoSection = {
+const getMobileLogoSectionStyle = (isMobile) => ({
   textAlign: "center",
-  marginBottom: "32px",
-  paddingBottom: "32px",
+  marginBottom: isMobile ? "24px" : "32px",
+  paddingBottom: isMobile ? "24px" : "32px",
   borderBottom: "1px solid #e2e8f0",
-};
+});
 
-const mobileLogo = {
-  fontSize: "64px",
+const getMobileLogoStyle = (isMobile) => ({
+  fontSize: isMobile ? "48px" : "64px",
   marginBottom: "16px",
   display: "block",
-};
+});
 
-const mobileTitle = {
-  fontSize: "32px",
+const getMobileTitleStyle = (isMobile) => ({
+  fontSize: isMobile ? "24px" : "32px",
   fontWeight: "800",
   margin: "0",
   background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
   WebkitBackgroundClip: "text",
   WebkitTextFillColor: "transparent",
   backgroundClip: "text",
-};
+});
 
-const formHeader = {
-  marginBottom: "32px",
+const getFormHeaderStyle = (isMobile) => ({
+  marginBottom: isMobile ? "24px" : "32px",
   textAlign: "center",
-};
+});
 
-const formTitle = {
-  fontSize: "32px",
+const getFormTitleStyle = (isMobile) => ({
+  fontSize: isMobile ? "24px" : "32px",
   fontWeight: "700",
   color: "#0f172a",
   margin: "0 0 8px 0",
-};
+});
 
-const formSubtitle = {
-  fontSize: "16px",
+const getFormSubtitleStyle = (isMobile) => ({
+  fontSize: isMobile ? "14px" : "16px",
   color: "#64748b",
   margin: "0",
   fontWeight: "400",
-};
+});
 
-const form = {
+const getFormStyle = (isMobile) => ({
   display: "flex",
   flexDirection: "column",
-  gap: "24px",
-};
+  gap: isMobile ? "20px" : "24px",
+});
 
 const errorCard = {
   padding: "16px",
@@ -378,19 +378,19 @@ const errorIcon = {
   flexShrink: 0,
 };
 
-const footerSection = {
-  marginTop: "32px",
-  paddingTop: "24px",
+const getFooterSectionStyle = (isMobile) => ({
+  marginTop: isMobile ? "24px" : "32px",
+  paddingTop: isMobile ? "20px" : "24px",
   borderTop: "1px solid #e2e8f0",
   textAlign: "center",
-};
+});
 
-const footerText = {
+const getFooterTextStyle = (isMobile) => ({
   margin: "0",
-  fontSize: "14px",
+  fontSize: isMobile ? "13px" : "14px",
   color: "#64748b",
   fontWeight: "400",
-};
+});
 
 const footerLink = {
   color: "#667eea",

@@ -108,6 +108,53 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Search customers - MUST be before /:id route
+router.get('/search', async (req, res) => {
+  try {
+    console.log('🔍 [SEARCH] Search route hit, query:', req.query);
+    const { query } = req.query;
+    
+    if (!query || query.trim() === '') {
+      return res.status(400).json({ error: 'Search query is required' });
+    }
+    
+    const searchTerm = query.trim();
+    console.log('🔍 [SEARCH] Searching for:', searchTerm);
+    
+    const user = await User.findOne({
+      where: { userName: req.user.username },
+      include: [{ model: Shop, as: 'shop' }]
+    });
+
+    if (!user || !user.shopId) {
+      console.error('❌ [SEARCH] User not found or no shopId');
+      return res.status(404).json({ error: 'User not found or not linked to a shop' });
+    }
+
+    console.log('🔍 [SEARCH] User found, shopId:', user.shopId);
+
+    // Use Op.iLike for case-insensitive search (PostgreSQL supports this)
+    const customers = await Customer.findAll({
+      where: {
+        shopId: user.shopId,
+        [Op.or]: [
+          { name: { [Op.iLike]: `%${searchTerm}%` } },
+          { mobile: { [Op.iLike]: `%${searchTerm}%` } },
+          { email: { [Op.iLike]: `%${searchTerm}%` } }
+        ]
+      },
+      order: [['createdAt', 'DESC']]
+    });
+
+    console.log('✅ [SEARCH] Found', customers.length, 'customers');
+    res.json(customers);
+  } catch (error) {
+    console.error('❌ [SEARCH] Search customers error:', error);
+    console.error('❌ [SEARCH] Error stack:', error.stack);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
 // Get customer by ID
 router.get('/:id', async (req, res) => {
   try {
@@ -172,36 +219,6 @@ router.put('/:id', async (req, res) => {
     res.json(customer);
   } catch (error) {
     res.status(400).json({ error: error.message });
-  }
-});
-
-// Search customers
-router.get('/search', async (req, res) => {
-  try {
-    const { query } = req.query;
-    const user = await User.findOne({
-      where: { userName: req.user.username },
-      include: [{ model: Shop, as: 'shop' }]
-    });
-
-    if (!user || !user.shopId) {
-      return res.status(404).json({ error: 'User not found or not linked to a shop' });
-    }
-
-    const customers = await Customer.findAll({
-      where: {
-        shopId: user.shopId,
-        [Op.or]: [
-          { name: { [Op.iLike]: `%${query}%` } },
-          { mobile: { [Op.iLike]: `%${query}%` } },
-          { email: { [Op.iLike]: `%${query}%` } }
-        ]
-      }
-    });
-
-    res.json(customers);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
 });
 

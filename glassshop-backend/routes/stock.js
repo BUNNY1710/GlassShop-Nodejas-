@@ -32,7 +32,8 @@ router.get('/all', async (req, res) => {
 
     const stocks = await Stock.findAll({
       where: { shopId: user.shopId },
-      include: [{ model: Glass, as: 'glass' }]
+      include: [{ model: Glass, as: 'glass' }],
+      attributes: { include: ['purchasePrice', 'sellingPrice'] } // Ensure price fields are included
     });
 
     res.json(stocks);
@@ -79,7 +80,7 @@ router.get('/recent', async (req, res) => {
 // Update stock (add/remove)
 router.post('/update', async (req, res) => {
   try {
-    const { glassType, unit, standNo, quantity, action, height, width } = req.body;
+    const { glassType, thickness, unit, standNo, quantity, action, height, width, purchasePrice, sellingPrice } = req.body;
 
     const user = await User.findOne({
       where: { userName: req.user.username },
@@ -90,22 +91,31 @@ router.post('/update', async (req, res) => {
       return res.status(404).json('❌ User not found or not linked to a shop');
     }
 
-    // Parse thickness from glass type (e.g., "5MM" -> 5)
-    const thickness = parseInt(glassType.replace('MM', '').replace('mm', '').trim());
+    // Validate inputs
+    if (!glassType) {
+      return res.status(400).json('❌ Glass type is required');
+    }
+
+    const thicknessValue = parseInt(thickness);
+    if (isNaN(thicknessValue) || thicknessValue <= 0) {
+      return res.status(400).json('❌ Valid thickness is required');
+    }
 
     // Find or create glass
+    // glassType is now the actual glass type (Plan, Extra Clear, etc.)
+    // thickness is passed separately
     let glass = await Glass.findOne({
       where: {
-        type: glassType.toUpperCase(),
-        thickness: thickness,
+        type: glassType,
+        thickness: thicknessValue,
         unit: unit || 'MM'
       }
     });
 
     if (!glass) {
       glass = await Glass.create({
-        type: glassType.toUpperCase(),
-        thickness: thickness,
+        type: glassType,
+        thickness: thicknessValue,
         unit: unit || 'MM'
       });
     }
@@ -129,8 +139,18 @@ router.post('/update', async (req, res) => {
         quantity: 0,
         minQuantity: 5, // Must be > 0 per database constraint (default is 5)
         height: height,
-        width: width
+        width: width,
+        purchasePrice: purchasePrice ? parseFloat(purchasePrice) : null,
+        sellingPrice: sellingPrice ? parseFloat(sellingPrice) : null
       });
+    } else {
+      // Update prices if provided
+      if (purchasePrice !== null && purchasePrice !== undefined) {
+        stock.purchasePrice = parseFloat(purchasePrice);
+      }
+      if (sellingPrice !== null && sellingPrice !== undefined) {
+        stock.sellingPrice = parseFloat(sellingPrice);
+      }
     }
 
     // Update quantity based on action
@@ -179,7 +199,7 @@ router.post('/update', async (req, res) => {
 // Transfer stock
 router.post('/transfer', async (req, res) => {
   try {
-    const { glassType, unit, fromStand, toStand, quantity, height, width } = req.body;
+    const { glassType, thickness, unit, fromStand, toStand, quantity, height, width } = req.body;
 
     const user = await User.findOne({
       where: { userName: req.user.username },
@@ -190,12 +210,15 @@ router.post('/transfer', async (req, res) => {
       return res.status(404).json('❌ User not found or not linked to a shop');
     }
 
-    const thickness = parseInt(glassType.replace('MM', '').replace('mm', '').trim());
+    const thicknessValue = parseInt(thickness);
+    if (isNaN(thicknessValue) || thicknessValue <= 0) {
+      return res.status(400).json('❌ Valid thickness is required');
+    }
 
     let glass = await Glass.findOne({
       where: {
-        type: glassType.toUpperCase(),
-        thickness: thickness,
+        type: glassType,
+        thickness: thicknessValue,
         unit: unit || 'MM'
       }
     });
@@ -272,6 +295,47 @@ router.post('/transfer', async (req, res) => {
     // Return error as string to match frontend expectation
     const errorMessage = error.response?.data?.error || error.message || 'Transfer failed';
     res.status(500).json(`❌ ${errorMessage}`);
+  }
+});
+
+// Update stock price
+router.post('/update-price', async (req, res) => {
+  try {
+    const { stockId, purchasePrice, sellingPrice } = req.body;
+
+    const user = await User.findOne({
+      where: { userName: req.user.username },
+      include: [{ model: Shop, as: 'shop' }]
+    });
+
+    if (!user || !user.shopId) {
+      return res.status(404).json('❌ User not found or not linked to a shop');
+    }
+
+    const stock = await Stock.findOne({
+      where: {
+        id: stockId,
+        shopId: user.shopId
+      }
+    });
+
+    if (!stock) {
+      return res.status(404).json('❌ Stock not found');
+    }
+
+    if (purchasePrice !== null && purchasePrice !== undefined) {
+      stock.purchasePrice = purchasePrice;
+    }
+    if (sellingPrice !== null && sellingPrice !== undefined) {
+      stock.sellingPrice = sellingPrice;
+    }
+
+    await stock.save();
+
+    res.json('✅ Price updated successfully');
+  } catch (error) {
+    console.error('Error updating stock price:', error);
+    res.status(500).json(`❌ ${error.message || 'Failed to update price'}`);
   }
 });
 

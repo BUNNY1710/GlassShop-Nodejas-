@@ -353,7 +353,8 @@ router.get('/:id/download', async (req, res) => {
       return res.status(404).json({ error: error.message });
     }
     console.error('Error generating quotation PDF:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: error.message || 'Failed to generate PDF' });
   }
 });
 

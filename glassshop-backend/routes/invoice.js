@@ -371,6 +371,7 @@ router.get('/:id/print-invoice', async (req, res) => {
     res.send(pdfBuffer);
   } catch (error) {
     console.error('Error generating invoice PDF for print:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ error: error.message || 'Failed to generate invoice PDF' });
   }
 });
@@ -383,6 +384,7 @@ router.get('/:id/print-basic-invoice', async (req, res) => {
     res.send(pdfBuffer);
   } catch (error) {
     console.error('Error generating basic invoice PDF for print:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ error: error.message || 'Failed to generate basic invoice PDF' });
   }
 });
