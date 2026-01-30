@@ -1321,13 +1321,25 @@ function QuotationManagement() {
     setStockDropdownType({ ...stockDropdownType, [index]: null });
   };
 
-  // Separate handler for thickness selection (doesn't change glass type)
+  // Separate handler for thickness selection (doesn't change glass type, height, or width)
   const handleThicknessSelect = (index, stockItem) => {
     const newItems = [...formData.items];
-    // Only set thickness, don't change glass type
+    
+    // CRITICAL: Preserve existing height and width - DO NOT change them
+    const existingHeight = newItems[index].height || "";
+    const existingWidth = newItems[index].width || "";
+    const existingHeightUnit = newItems[index].heightUnit || "INCH";
+    const existingWidthUnit = newItems[index].widthUnit || "INCH";
+    const existingHeightTableValue = newItems[index].selectedHeightTableValue;
+    const existingWidthTableValue = newItems[index].selectedWidthTableValue;
+    const existingHeightTableNumber = newItems[index].heightTableNumber;
+    const existingWidthTableNumber = newItems[index].widthTableNumber;
+    
+    // ONLY set thickness - do NOT change glass type, height, or width
     if (stockItem?.glass?.thickness) {
       newItems[index].thickness = `${stockItem.glass.thickness}${stockItem.glass.unit || "MM"}`;
     }
+    
     // Set default selling price per SqFt from stock if available
     if (stockItem?.sellingPrice) {
       // sellingPrice from stock is per SqFt, convert to number and set it directly
@@ -1336,7 +1348,7 @@ function QuotationManagement() {
       // Also update ratePerSqft for backward compatibility
       newItems[index].ratePerSqft = sellingPricePerSqFt;
       
-      // Recalculate subtotal if dimensions are already set
+      // Recalculate subtotal if dimensions are already set (but don't change the dimensions themselves)
       const heightValue = parseFraction(newItems[index].height || 0);
       const widthValue = parseFraction(newItems[index].width || 0);
       if (heightValue > 0 && widthValue > 0) {
@@ -1349,10 +1361,22 @@ function QuotationManagement() {
         newItems[index].subtotal = areaInFeet * sellingPricePerSqFt * qty;
       }
     }
+    
     // Store purchase price for profit calculation
     if (stockItem?.purchasePrice) {
       newItems[index].purchasePrice = stockItem.purchasePrice;
     }
+    
+    // CRITICAL: Restore height and width to their original values - DO NOT use stockItem height/width
+    newItems[index].height = existingHeight;
+    newItems[index].width = existingWidth;
+    newItems[index].heightUnit = existingHeightUnit;
+    newItems[index].widthUnit = existingWidthUnit;
+    newItems[index].selectedHeightTableValue = existingHeightTableValue;
+    newItems[index].selectedWidthTableValue = existingWidthTableValue;
+    newItems[index].heightTableNumber = existingHeightTableNumber;
+    newItems[index].widthTableNumber = existingWidthTableNumber;
+    
     setFormData({ ...formData, items: newItems });
     setShowStockDropdown({ ...showStockDropdown, [index]: false });
     setStockDropdownType({ ...stockDropdownType, [index]: null });
@@ -2430,11 +2454,14 @@ function QuotationManagement() {
                                       }}
                                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
                                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "white")}
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
                                         // Check which field triggered the dropdown
                                         const dropdownType = stockDropdownType[index];
+                                        // Explicitly check for thickness - if not thickness, default to glassType
                                         if (dropdownType === "thickness") {
-                                          // Thickness field dropdown - only set thickness, preserve glass type
+                                          // Thickness field dropdown - ONLY set thickness, do NOT change glass type, height, or width
                                           handleThicknessSelect(index, stockItem);
                                         } else {
                                           // Glass type field dropdown - set glass type

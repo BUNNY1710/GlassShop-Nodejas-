@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import PageWrapper from "../components/PageWrapper";
 import { StatCard, Card, Button } from "../components/ui";
 import api from "../api/api";
@@ -10,11 +11,14 @@ function Dashboard() {
   const navigate = useNavigate();
   const role = sessionStorage.getItem("role");
   const [auditLogs, setAuditLogs] = useState([]);
+  const [stockData, setStockData] = useState([]);
   const [stats, setStats] = useState({
     totalStock: 0,
     totalTransfers: 0,
     totalStaff: 0,
     totalLogs: 0,
+    lowStock: 0,
+    totalQuantity: 0,
   });
   const [loading, setLoading] = useState(true);
   const [billingMenuOpen, setBillingMenuOpen] = useState(false);
@@ -93,6 +97,16 @@ function Dashboard() {
           : [];
         const totalStock = stockWithQuantity.length;
         
+        // Calculate stock statistics
+        const lowStockItems = stockWithQuantity.filter(item => 
+          item.quantity < (item.minQuantity || 10)
+        );
+        const lowStock = lowStockItems.length;
+        
+        const totalQuantity = stockWithQuantity.reduce((sum, item) => 
+          sum + (parseInt(item.quantity) || 0), 0
+        );
+        
         const totalStaff = role === "ROLE_ADMIN" && Array.isArray(staffData) ? staffData.length : 0;
         
         let totalTransfers = 0;
@@ -114,11 +128,14 @@ function Dashboard() {
         
         const totalLogs = role === "ROLE_ADMIN" && Array.isArray(auditData) ? auditData.length : 0;
 
+        setStockData(stockWithQuantity);
         setStats({
           totalStock,
           totalTransfers,
           totalStaff,
           totalLogs,
+          lowStock,
+          totalQuantity,
         });
       } catch (error) {
         console.error("Error loading dashboard data:", error);
@@ -178,10 +195,24 @@ function Dashboard() {
                 loading={loading}
               />
               <StatCard
+                icon="⚠️"
+                label="Low Stock"
+                value={stats.lowStock}
+                color={stats.lowStock > 0 ? "#ef4444" : "#22c55e"}
+                loading={loading}
+              />
+              <StatCard
+                icon="🔢"
+                label="Total Quantity"
+                value={stats.totalQuantity}
+                color="#3b82f6"
+                loading={loading}
+              />
+              <StatCard
                 icon="🔄"
                 label="Stock Transfers"
                 value={stats.totalTransfers}
-                color="#3b82f6"
+                color="#8b5cf6"
                 loading={loading}
               />
               <StatCard
@@ -200,15 +231,174 @@ function Dashboard() {
               />
             </>
           ) : (
-            <StatCard
-              icon="📦"
-              label="Total Stock Items"
-              value={stats.totalStock}
-              color="#6366f1"
-              loading={loading}
-            />
+            <>
+              <StatCard
+                icon="📦"
+                label="Total Stock Items"
+                value={stats.totalStock}
+                color="#6366f1"
+                loading={loading}
+              />
+              <StatCard
+                icon="⚠️"
+                label="Low Stock"
+                value={stats.lowStock}
+                color={stats.lowStock > 0 ? "#ef4444" : "#22c55e"}
+                loading={loading}
+              />
+              <StatCard
+                icon="🔢"
+                label="Total Quantity"
+                value={stats.totalQuantity}
+                color="#3b82f6"
+                loading={loading}
+              />
+            </>
           )}
         </div>
+
+        {/* Stock Overview Section */}
+        <Card style={{ marginTop: isMobile ? "24px" : "32px" }}>
+          <div style={activityHeader}>
+            <div>
+              <h3 style={activityTitle}>📊 Stock Overview</h3>
+              <p style={activitySubtitle}>Current inventory status and low stock alerts</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/view-stock")}
+            >
+              View All →
+            </Button>
+          </div>
+
+          {loading ? (
+            <div style={loadingState}>
+              <div style={skeletonItem}></div>
+              <div style={skeletonItem}></div>
+            </div>
+          ) : stockData.length === 0 ? (
+            <div style={emptyState}>
+              <div style={emptyIcon}>📦</div>
+              <p style={emptyText}>No stock available</p>
+              <p style={emptySubtext}>Add stock to get started</p>
+            </div>
+          ) : (
+            <>
+              {/* Stock Overview - Simple Visual */}
+              <div style={stockOverviewContainer}>
+                {/* Stock by Glass Type - Pie Chart */}
+                <div style={chartSection}>
+                  <h4 style={chartTitle}>📊 Stock by Glass Type</h4>
+                  {(() => {
+                    const typeData = Object.entries(
+                      stockData.reduce((acc, item) => {
+                        const type = item.glass?.type || "Unknown";
+                        if (!acc[type]) {
+                          acc[type] = { count: 0, quantity: 0 };
+                        }
+                        acc[type].count += 1;
+                        acc[type].quantity += parseInt(item.quantity) || 0;
+                        return acc;
+                      }, {})
+                    )
+                      .sort((a, b) => b[1].quantity - a[1].quantity)
+                      .slice(0, 8)
+                      .map(([type, data]) => ({
+                        name: type,
+                        value: data.quantity,
+                        count: data.count
+                      }));
+                    
+                    const colors = ["#6366f1", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
+                    
+                    const CustomTooltip = ({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div style={{
+                            backgroundColor: "white",
+                            padding: "12px",
+                            borderRadius: "8px",
+                            border: "1px solid #e2e8f0",
+                            boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
+                          }}>
+                            <p style={{ margin: 0, fontWeight: "600", color: "#0f172a" }}>
+                              {payload[0].name}
+                            </p>
+                            <p style={{ margin: "4px 0 0 0", fontSize: "14px", color: "#64748b" }}>
+                              Quantity: {payload[0].value.toLocaleString()}
+                            </p>
+                            <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#94a3b8" }}>
+                              Items: {payload[0].payload.count}
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    };
+                    
+                    return (
+                      <div style={pieChartWrapper}>
+                        <ResponsiveContainer width="100%" height={300}>
+                          <PieChart>
+                            <Pie
+                              data={typeData}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                              outerRadius={isMobile ? 80 : 100}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              {typeData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip content={<CustomTooltip />} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Low Stock Items - Simple List */}
+                {stats.lowStock > 0 && (
+                  <div style={lowStockSection}>
+                    <h4 style={lowStockTitle}>⚠️ Low Stock Items ({stats.lowStock})</h4>
+                    <div style={lowStockList}>
+                      {stockData
+                        .filter(item => item.quantity < (item.minQuantity || 10))
+                        .slice(0, 5)
+                        .map((item, i) => (
+                          <div key={i} style={lowStockItem}>
+                            <div style={lowStockItemContent}>
+                              <div style={lowStockItemName}>
+                                {item.glass?.type || "N/A"} - {item.glass?.thickness || "N/A"}{item.glass?.unit || "MM"}
+                              </div>
+                              <div style={lowStockItemDetails}>
+                                Stand #{item.standNo} • {item.height} × {item.width} {item.glass?.unit || "MM"}
+                              </div>
+                            </div>
+                            <div style={lowStockQuantity}>
+                              {item.quantity} / {item.minQuantity || 10}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                    {stats.lowStock > 5 && (
+                      <p style={lowStockMore}>
+                        +{stats.lowStock - 5} more. <a href="/view-stock" style={{color: "#6366f1", textDecoration: "none"}}>View all →</a>
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </Card>
 
         {/* Billing Section - Admin Only */}
         {role === "ROLE_ADMIN" && (
@@ -412,9 +602,9 @@ const getStatsGridStyle = (isMobile, role) => ({
   gridTemplateColumns: isMobile 
     ? "1fr" // Single column on mobile
     : role === "ROLE_ADMIN" 
-      ? "repeat(auto-fit, minmax(240px, 1fr))" // Auto-fit on larger screens
-      : "1fr",
-  gap: isMobile ? "16px" : "24px", // Smaller gap on mobile
+      ? "repeat(auto-fit, minmax(200px, 1fr))" // Auto-fit on larger screens for 6 cards
+      : "repeat(auto-fit, minmax(200px, 1fr))", // 3 cards for staff
+  gap: isMobile ? "16px" : "20px", // Smaller gap on mobile
   marginBottom: isMobile ? "24px" : "32px",
 });
 
@@ -671,3 +861,91 @@ const skeletonItem = {
   backgroundSize: "200% 100%",
   animation: "shimmer 1.5s infinite",
 };
+
+// Stock Overview Styles
+const stockOverviewContainer = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "24px",
+};
+
+const chartSection = {
+  padding: "20px",
+  borderRadius: "12px",
+  background: "#f8fafc",
+  border: "1px solid #e2e8f0",
+};
+
+const chartTitle = {
+  fontSize: "18px",
+  fontWeight: "700",
+  color: "#0f172a",
+  margin: "0 0 20px 0",
+};
+
+const pieChartWrapper = {
+  width: "100%",
+  marginTop: "16px",
+};
+
+const lowStockSection = {
+  marginTop: "24px",
+  padding: "20px",
+  borderRadius: "12px",
+  background: "#fef2f2",
+  border: "1px solid #fecaca",
+};
+
+const lowStockTitle = {
+  fontSize: "18px",
+  fontWeight: "700",
+  color: "#991b1b",
+  margin: "0 0 16px 0",
+};
+
+const lowStockList = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "12px",
+};
+
+const lowStockItem = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "12px 16px",
+  borderRadius: "8px",
+  background: "white",
+  border: "1px solid #fecaca",
+};
+
+const lowStockItemContent = {
+  flex: 1,
+};
+
+const lowStockItemName = {
+  fontSize: "15px",
+  fontWeight: "600",
+  color: "#0f172a",
+  marginBottom: "4px",
+};
+
+const lowStockItemDetails = {
+  fontSize: "13px",
+  color: "#64748b",
+};
+
+const lowStockQuantity = {
+  fontSize: "18px",
+  fontWeight: "700",
+  color: "#ef4444",
+  textAlign: "right",
+};
+
+const lowStockMore = {
+  marginTop: "12px",
+  fontSize: "14px",
+  color: "#64748b",
+  textAlign: "center",
+};
+

@@ -11,6 +11,8 @@ function StockManager() {
   const [standNo, setStandNo] = useState("");
   const [quantity, setQuantity] = useState("");
   const [stockMessage, setStockMessage] = useState("");
+  const [glassTypeMode, setGlassTypeMode] = useState("SELECT"); // SELECT or MANUAL
+  const [manualGlassType, setManualGlassType] = useState(""); // Manual glass type entry
   const [thicknessMode, setThicknessMode] = useState("SELECT"); // Changed: was glassMode
   const [manualThickness, setManualThickness] = useState("");
   const [height, setHeight] = useState("");
@@ -24,8 +26,8 @@ function StockManager() {
   const [showUndo, setShowUndo] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  // Glass type options
-  const glassTypeOptions = [
+  // Default glass type options
+  const defaultGlassTypeOptions = [
     "Plan",
     "Extra Clear",
     "Grey Tinted",
@@ -37,6 +39,44 @@ function StockManager() {
     "Diomand",
     "Mirror"
   ];
+
+  // Load custom glass types from localStorage
+  const [customGlassTypes, setCustomGlassTypes] = useState(() => {
+    try {
+      const saved = localStorage.getItem("customGlassTypes");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Combine default and custom glass types
+  const allGlassTypeOptions = [...defaultGlassTypeOptions, ...customGlassTypes];
+
+  // Save custom glass types to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("customGlassTypes", JSON.stringify(customGlassTypes));
+    } catch (error) {
+      console.error("Failed to save custom glass types:", error);
+    }
+  }, [customGlassTypes]);
+
+  // Add custom glass type when manual entry is used
+  const addCustomGlassType = (type) => {
+    if (type && type.trim() && !allGlassTypeOptions.includes(type.trim())) {
+      setCustomGlassTypes([...customGlassTypes, type.trim()]);
+    }
+  };
+
+  // Remove custom glass type
+  const removeCustomGlassType = (typeToRemove) => {
+    setCustomGlassTypes(customGlassTypes.filter(type => type !== typeToRemove));
+    // If the removed type was selected, clear it
+    if (glassType === typeToRemove) {
+      setGlassType("");
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -52,8 +92,9 @@ function StockManager() {
       return;
     }
 
-    if (!glassType) {
-      setStockMessage("❌ Please select glass type");
+    const finalGlassType = glassTypeMode === "SELECT" ? glassType : (manualGlassType || "").trim();
+    if (!finalGlassType) {
+      setStockMessage("❌ Please select or enter glass type");
       return;
     }
 
@@ -70,12 +111,17 @@ function StockManager() {
     const thicknessValue = thicknessMode === "SELECT" 
       ? Number(thickness.replace("MM", "")) 
       : Number(manualThickness);
+    
+    // Add custom glass type if manual entry was used
+    if (glassTypeMode === "MANUAL" && finalGlassType) {
+      addCustomGlassType(finalGlassType);
+    }
 
     const payload = {
       standNo: Number(standNo),
       quantity: Number(quantity),
       action,
-      glassType: glassType, // New: actual glass type (Plan, Extra Clear, etc.)
+      glassType: finalGlassType, // New: actual glass type (Plan, Extra Clear, etc.)
       thickness: thicknessValue, // Thickness value
       height,
       width,
@@ -103,6 +149,7 @@ function StockManager() {
       setManualThickness("");
       setThickness("");
       setGlassType("");
+      setManualGlassType("");
       setHsnNo("");
     } catch (error) {
       const errorData = error.response?.data;
@@ -152,45 +199,134 @@ function StockManager() {
 
         {/* Main Form Card */}
         <Card style={getFormCardStyle(isMobile)}>
-          {/* Glass Type Section */}
+          {/* Glass Type and Thickness Section */}
           <div style={section}>
             <div style={sectionHeader}>
               <div style={sectionIcon}>🔷</div>
               <div>
-                <h3 style={sectionTitle}>Glass Type</h3>
-                <p style={sectionSubtitle}>Select the type of glass</p>
+                <h3 style={sectionTitle}>Glass Type & Thickness</h3>
+                <p style={sectionSubtitle}>Select glass type, mode, and thickness</p>
               </div>
             </div>
 
-            <div style={getFormGridStyle(isMobile)}>
+            <div style={getGlassThicknessGridStyle(isMobile)}>
               <div style={formGroup}>
                 <Select
-                  label="Glass Type"
-                  value={glassType}
-                  onChange={e => setGlassType(e.target.value)}
+                  label="Glass Type Mode"
+                  value={glassTypeMode}
+                  onChange={e => {
+                    setGlassTypeMode(e.target.value);
+                    setGlassType("");
+                    setManualGlassType("");
+                  }}
                   icon="🔷"
-                  required
                 >
-                  <option value="">Select glass type</option>
-                  {glassTypeOptions.map((type) => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
+                  <option value="SELECT">Select from list</option>
+                  <option value="MANUAL">Manual entry</option>
                 </Select>
               </div>
-            </div>
-          </div>
 
-          {/* Thickness Section */}
-          <div style={section}>
-            <div style={sectionHeader}>
-              <div style={sectionIcon}>📏</div>
-              <div>
-                <h3 style={sectionTitle}>Thickness</h3>
-                <p style={sectionSubtitle}>Select or enter glass thickness</p>
-              </div>
-            </div>
+              {glassTypeMode === "SELECT" ? (
+                <div style={formGroup}>
+                  <label style={label}>
+                    Glass Type <span style={required}>*</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <Select
+                      value={glassType}
+                      onChange={e => setGlassType(e.target.value)}
+                      icon="🔷"
+                      required
+                    >
+                      <option value="">Select glass type</option>
+                      {defaultGlassTypeOptions.map((type) => (
+                        <option key={type} value={type}>{type}</option>
+                      ))}
+                      {customGlassTypes.length > 0 && (
+                        <>
+                          <option disabled>--- Custom Types ---</option>
+                          {customGlassTypes.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </>
+                      )}
+                    </Select>
+                    {customGlassTypes.length > 0 && (
+                      <div style={{
+                        marginTop: "8px",
+                        padding: "8px",
+                        backgroundColor: "#f8fafc",
+                        borderRadius: "6px",
+                        border: "1px solid #e2e8f0"
+                      }}>
+                        <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "6px", fontWeight: "600" }}>
+                          Custom Glass Types:
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                          {customGlassTypes.map((type) => (
+                            <span
+                              key={type}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                padding: "4px 8px",
+                                backgroundColor: "white",
+                                border: "1px solid #d1d5db",
+                                borderRadius: "4px",
+                                fontSize: "12px",
+                                color: "#374151"
+                              }}
+                            >
+                              {type}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  removeCustomGlassType(type);
+                                }}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  color: "#ef4444",
+                                  cursor: "pointer",
+                                  padding: "0",
+                                  marginLeft: "4px",
+                                  fontSize: "14px",
+                                  lineHeight: "1",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center"
+                                }}
+                                title="Remove custom glass type"
+                              >
+                                ✕
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div style={formGroup}>
+                  <Input
+                    label="Manual Glass Type"
+                    type="text"
+                    placeholder="Enter custom glass type"
+                    value={manualGlassType}
+                    onChange={e => setManualGlassType(e.target.value)}
+                    icon="🔷"
+                    required
+                  />
+                  <p style={{ marginTop: "4px", fontSize: "12px", color: "#6b7280" }}>
+                    This will be added to the dropdown list after saving
+                  </p>
+                </div>
+              )}
 
-            <div style={getFormGridStyle(isMobile)}>
               <div style={formGroup}>
                 <Select
                   label="Selection Mode"
@@ -527,6 +663,12 @@ const sectionSubtitle = {
 const getFormGridStyle = (isMobile) => ({
   display: "grid",
   gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(250px, 1fr))",
+  gap: "20px",
+});
+
+const getGlassThicknessGridStyle = (isMobile) => ({
+  display: "grid",
+  gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)",
   gap: "20px",
 });
 

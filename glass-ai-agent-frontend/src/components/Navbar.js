@@ -379,7 +379,7 @@ function Navbar() {
           borderBottom: isMobile ? "1px solid rgba(226, 232, 240, 0.8)" : "none",
           flex: isMobile ? "none" : 1,
           justifyContent: isMobile ? "flex-start" : "center",
-          overflowX: isMobile ? "visible" : "auto",
+          overflowX: isMobile ? "visible" : "visible",
           overflowY: isMobile ? "auto" : "visible",
           maxHeight: isMobile ? "calc(100vh - 70px)" : "none",
           zIndex: isMobile ? 9999 : "auto",
@@ -448,17 +448,22 @@ function Navbar() {
               position: "relative",
               ...navLinkStyle({ isActive: false }),
             }}
-            onMouseEnter={() => setBillingMenuOpen(true)}
-            onMouseLeave={() => setBillingMenuOpen(false)}
+            onMouseEnter={() => !isMobile && setBillingMenuOpen(true)}
+            onMouseLeave={() => !isMobile && setBillingMenuOpen(false)}
+            onClick={() => isMobile && setBillingMenuOpen(!billingMenuOpen)}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
               <span>🧾</span> Billing {billingMenuOpen ? "▲" : "▼"}
             </div>
             {billingMenuOpen && (
               <div 
-                style={billingDropdownNav}
-                onMouseEnter={() => setBillingMenuOpen(true)}
-                onMouseLeave={() => setBillingMenuOpen(false)}
+                style={{
+                  ...billingDropdownNav,
+                  position: isMobile ? "static" : "absolute",
+                  marginTop: isMobile ? "8px" : "0",
+                }}
+                onMouseEnter={() => !isMobile && setBillingMenuOpen(true)}
+                onMouseLeave={() => !isMobile && setBillingMenuOpen(false)}
               >
                 <div style={billingDropdownContent}>
                   <NavLink 
@@ -468,8 +473,8 @@ function Navbar() {
                       setOpen(false);
                       setBillingMenuOpen(false);
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(99, 102, 241, 0.1)"}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                    onMouseEnter={(e) => !isMobile && (e.currentTarget.style.backgroundColor = "rgba(99, 102, 241, 0.1)")}
+                    onMouseLeave={(e) => !isMobile && (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     <span>👥</span> Customers
                   </NavLink>
@@ -480,8 +485,8 @@ function Navbar() {
                       setOpen(false);
                       setBillingMenuOpen(false);
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(99, 102, 241, 0.1)"}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                    onMouseEnter={(e) => !isMobile && (e.currentTarget.style.backgroundColor = "rgba(99, 102, 241, 0.1)")}
+                    onMouseLeave={(e) => !isMobile && (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     <span>📄</span> Quotations
                   </NavLink>
@@ -492,8 +497,8 @@ function Navbar() {
                       setOpen(false);
                       setBillingMenuOpen(false);
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "rgba(99, 102, 241, 0.1)"}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                    onMouseEnter={(e) => !isMobile && (e.currentTarget.style.backgroundColor = "rgba(99, 102, 241, 0.1)")}
+                    onMouseLeave={(e) => !isMobile && (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     <span>🧾</span> Invoices
                   </NavLink>
@@ -614,7 +619,7 @@ const billingDropdownNav = {
   left: 0,
   paddingTop: "8px",
   background: "transparent",
-  zIndex: 10001,
+  zIndex: 10002,
   minWidth: "180px",
   display: "flex",
   flexDirection: "column",

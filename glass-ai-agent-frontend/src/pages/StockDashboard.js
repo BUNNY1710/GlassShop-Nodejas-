@@ -491,7 +491,7 @@ function StockDashboard() {
             <div style={filterIcon}>🔍</div>
             <div>
               <h3 style={filterTitle}>Search & Filter</h3>
-              <p style={filterSubtitle}>Filter stock by type, dimensions, or unit</p>
+              <p style={filterSubtitle}>Search & Filter stock by type, dimensions, or unit</p>
             </div>
           </div>
 
@@ -582,8 +582,8 @@ function StockDashboard() {
                   <thead>
                     <tr>
                       <th style={tableHeaderCell}>Stand</th>
-                      <th style={tableHeaderCell}>Glass Type</th>
                       <th style={tableHeaderCell}>Thickness</th>
+                      <th style={tableHeaderCell}>Glass Type</th>
                       <th style={tableHeaderCell}>Height</th>
                       <th style={tableHeaderCell}>Width</th>
                       <th style={tableHeaderCell}>Quantity</th>
@@ -620,10 +620,10 @@ function StockDashboard() {
                               </span>
                             )}
                           </td>
+                          <td style={tableCell}>{s.glass?.thickness ? `${s.glass.thickness} mm` : "N/A"}</td>
                           <td style={{ ...tableCell, ...glassTypeCell }}>
                             <strong>{s.glass?.type || "N/A"}</strong>
                           </td>
-                          <td style={tableCell}>{s.glass?.thickness ? `${s.glass.thickness} mm` : "N/A"}</td>
                           <td style={tableCell}>
                             {s.height || "N/A"}{" "}
                             {s.glass?.unit === "FEET" && "ft"}
