@@ -249,12 +249,12 @@ function GlassPriceMaster() {
     <PageWrapper>
       <div style={getContainerStyle(isMobile)}>
         {/* Header */}
-        <div style={headerSection}>
+        <div style={getHeaderSectionStyle(isMobile)}>
           <div>
-            <h1 style={pageTitle}>Glass Price Master</h1>
-            <p style={pageSubtitle}>Manage glass type pricing (Admin only)</p>
+            <h1 style={getPageTitleStyle(isMobile)}>Glass Price Master</h1>
+            <p style={getPageSubtitleStyle(isMobile)}>Manage glass type pricing (Admin only)</p>
           </div>
-          <div style={headerActions}>
+          <div style={getHeaderActionsStyle(isMobile)}>
             <Button
               variant={!showPending ? "primary" : "outline"}
               onClick={() => {
@@ -427,7 +427,7 @@ function GlassPriceMaster() {
               />
             </div>
 
-            <div style={formActions}>
+            <div style={getFormActionsStyle(isMobile)}>
               <Button variant="primary" onClick={handleSave}>
                 {editingId ? "Update" : "Add"} Entry
               </Button>
@@ -470,7 +470,63 @@ function GlassPriceMaster() {
                   : "Add new entries to get started"}
               </p>
             </div>
+          ) : isMobile ? (
+            // Mobile: Card-based layout
+            <div style={getMobileCardContainerStyle()}>
+              {priceMaster.map((entry) => (
+                <div key={entry.id} style={getMobileCardStyle()}>
+                  <div style={getMobileCardHeaderStyle()}>
+                    <div>
+                      <h3 style={getMobileCardTitleStyle()}>{entry.glassType}</h3>
+                      <p style={getMobileCardSubtitleStyle()}>
+                        {entry.thickness ? `${parseFloat(entry.thickness).toFixed(2)} MM` : "—"}
+                      </p>
+                    </div>
+                    <span style={getStatusBadgeStyle(entry.isPending)}>
+                      {entry.isPending ? "⏳ Pending" : "✅ Approved"}
+                    </span>
+                  </div>
+                  <div style={getMobileCardContentStyle()}>
+                    <div style={getMobileCardRowStyle()}>
+                      <span style={getMobileCardLabelStyle()}>Purchase Price:</span>
+                      <span style={getMobileCardValueStyle()}>
+                        {entry.purchasePrice 
+                          ? `₹${parseFloat(entry.purchasePrice).toFixed(2)}` 
+                          : <span style={{color: "#94a3b8"}}>—</span>}
+                      </span>
+                    </div>
+                    <div style={getMobileCardRowStyle()}>
+                      <span style={getMobileCardLabelStyle()}>Selling Price:</span>
+                      <span style={getMobileCardValueStyle()}>
+                        {entry.sellingPrice 
+                          ? `₹${parseFloat(entry.sellingPrice).toFixed(2)}` 
+                          : <span style={{color: "#94a3b8"}}>—</span>}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={getMobileCardActionsStyle()}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon="✏️"
+                      onClick={() => handleEdit(entry)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      icon="🗑️"
+                      onClick={() => handleDelete(entry.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
+            // Desktop: Table layout
             <div style={tableContainer}>
               <table style={table}>
                 <thead>
@@ -665,17 +721,17 @@ const getContainerStyle = (isMobile) => ({
   width: "100%",
 });
 
-const headerSection = {
+const getHeaderSectionStyle = (isMobile) => ({
   display: "flex",
+  flexDirection: isMobile ? "column" : "row",
   justifyContent: "space-between",
-  alignItems: "flex-start",
-  marginBottom: "32px",
-  flexWrap: "wrap",
-  gap: "16px",
-};
+  alignItems: isMobile ? "flex-start" : "flex-start",
+  marginBottom: isMobile ? "24px" : "32px",
+  gap: isMobile ? "16px" : "16px",
+});
 
-const pageTitle = {
-  fontSize: "36px",
+const getPageTitleStyle = (isMobile) => ({
+  fontSize: isMobile ? "24px" : "36px",
   fontWeight: "800",
   color: "#0f172a",
   margin: "0 0 8px 0",
@@ -683,20 +739,21 @@ const pageTitle = {
   WebkitBackgroundClip: "text",
   WebkitTextFillColor: "transparent",
   backgroundClip: "text",
-};
+});
 
-const pageSubtitle = {
-  fontSize: "16px",
+const getPageSubtitleStyle = (isMobile) => ({
+  fontSize: isMobile ? "14px" : "16px",
   color: "#64748b",
   margin: "0",
   fontWeight: "400",
-};
+});
 
-const headerActions = {
+const getHeaderActionsStyle = (isMobile) => ({
   display: "flex",
-  gap: "12px",
-  flexWrap: "wrap",
-};
+  flexDirection: isMobile ? "column" : "row",
+  gap: isMobile ? "8px" : "12px",
+  width: isMobile ? "100%" : "auto",
+});
 
 const getFormCardStyle = (isMobile) => ({
   padding: isMobile ? "24px" : "32px",
@@ -713,17 +770,93 @@ const formTitle = {
 const getFormGridStyle = (isMobile) => ({
   display: "grid",
   gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)",
-  gap: "20px",
+  gap: isMobile ? "16px" : "20px",
   marginBottom: "24px",
 });
 
-const formActions = {
+// Make form actions responsive
+const getFormActionsStyle = (isMobile) => ({
   display: "flex",
+  flexDirection: isMobile ? "column" : "row",
   gap: "12px",
-};
+  width: "100%",
+});
 
 const getTableCardStyle = (isMobile) => ({
   padding: isMobile ? "16px" : "24px",
+  overflow: "hidden",
+});
+
+// Mobile card styles
+const getMobileCardContainerStyle = () => ({
+  display: "flex",
+  flexDirection: "column",
+  gap: "16px",
+});
+
+const getMobileCardStyle = () => ({
+  backgroundColor: "#ffffff",
+  border: "1px solid #e2e8f0",
+  borderRadius: "12px",
+  padding: "16px",
+  boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+});
+
+const getMobileCardHeaderStyle = () => ({
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  marginBottom: "12px",
+  gap: "12px",
+});
+
+const getMobileCardTitleStyle = () => ({
+  fontSize: "16px",
+  fontWeight: "700",
+  color: "#0f172a",
+  margin: "0 0 4px 0",
+});
+
+const getMobileCardSubtitleStyle = () => ({
+  fontSize: "14px",
+  color: "#64748b",
+  margin: "0",
+});
+
+const getMobileCardContentStyle = () => ({
+  display: "flex",
+  flexDirection: "column",
+  gap: "12px",
+  marginBottom: "16px",
+  paddingTop: "12px",
+  borderTop: "1px solid #e2e8f0",
+});
+
+const getMobileCardRowStyle = () => ({
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "12px",
+});
+
+const getMobileCardLabelStyle = () => ({
+  fontSize: "13px",
+  color: "#64748b",
+  fontWeight: "500",
+});
+
+const getMobileCardValueStyle = () => ({
+  fontSize: "14px",
+  color: "#0f172a",
+  fontWeight: "600",
+  textAlign: "right",
+});
+
+const getMobileCardActionsStyle = () => ({
+  display: "flex",
+  gap: "8px",
+  paddingTop: "12px",
+  borderTop: "1px solid #e2e8f0",
 });
 
 const tableContainer = {
@@ -744,6 +877,7 @@ const tableHeaderCell = {
   color: "#475569",
   backgroundColor: "#f8fafc",
   borderBottom: "2px solid #e2e8f0",
+  whiteSpace: "nowrap",
 };
 
 const tableRow = {
@@ -760,6 +894,7 @@ const tableCell = {
 const actionButtons = {
   display: "flex",
   gap: "8px",
+  flexWrap: "wrap",
 };
 
 const getStatusBadgeStyle = (isPending) => ({
