@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Stock, Glass, StockHistory, User, Shop, AuditLog } = require('../models');
+const { Stock, Glass, StockHistory, User, Shop, AuditLog, GlassPriceMaster } = require('../models');
 const { Op } = require('sequelize');
 const { requireStaff } = require('../middleware/auth');
 
@@ -80,7 +80,7 @@ router.get('/recent', async (req, res) => {
 // Update stock (add/remove)
 router.post('/update', async (req, res) => {
   try {
-    const { glassType, thickness, unit, standNo, quantity, action, height, width, purchasePrice, sellingPrice } = req.body;
+    const { glassType, thickness, unit, standNo, quantity, action, height, width } = req.body;
 
     const user = await User.findOne({
       where: { userName: req.user.username },
@@ -96,14 +96,48 @@ router.post('/update', async (req, res) => {
       return res.status(400).json('❌ Glass type is required');
     }
 
-    const thicknessValue = parseInt(thickness);
+    const thicknessValue = parseFloat(thickness);
     if (isNaN(thicknessValue) || thicknessValue <= 0) {
       return res.status(400).json('❌ Valid thickness is required');
     }
 
+    // Check Glass Price Master for prices
+    let priceMaster = await GlassPriceMaster.findOne({
+      where: {
+        shopId: user.shopId,
+        glassType,
+        thickness: thicknessValue
+      }
+    });
+
+    let purchasePrice = null;
+    let sellingPrice = null;
+    let stockStatus = 'PENDING';
+
+    if (priceMaster) {
+      if (!priceMaster.isPending && (priceMaster.purchasePrice || priceMaster.sellingPrice)) {
+        // Prices exist in master and entry is approved, use them
+        purchasePrice = priceMaster.purchasePrice;
+        sellingPrice = priceMaster.sellingPrice;
+        stockStatus = 'APPROVED';
+      } else {
+        // Entry exists but is pending (no prices), keep status as PENDING
+        stockStatus = 'PENDING';
+      }
+    } else {
+      // No entry in master, create one as pending
+      priceMaster = await GlassPriceMaster.create({
+        shopId: user.shopId,
+        glassType,
+        thickness: thicknessValue,
+        purchasePrice: null,
+        sellingPrice: null,
+        isPending: true
+      });
+      stockStatus = 'PENDING';
+    }
+
     // Find or create glass
-    // glassType is now the actual glass type (Plan, Extra Clear, etc.)
-    // thickness is passed separately
     let glass = await Glass.findOne({
       where: {
         type: glassType,
@@ -132,25 +166,24 @@ router.post('/update', async (req, res) => {
     });
 
     if (!stock) {
+      // Create new stock with prices and status from Price Master
       stock = await Stock.create({
         glassId: glass.id,
         standNo: standNo,
         shopId: user.shopId,
         quantity: 0,
-        minQuantity: 5, // Must be > 0 per database constraint (default is 5)
+        minQuantity: 5,
         height: height,
         width: width,
-        purchasePrice: purchasePrice ? parseFloat(purchasePrice) : null,
-        sellingPrice: sellingPrice ? parseFloat(sellingPrice) : null
+        purchasePrice: purchasePrice,
+        sellingPrice: sellingPrice,
+        status: stockStatus
       });
     } else {
-      // Update prices if provided
-      if (purchasePrice !== null && purchasePrice !== undefined) {
-        stock.purchasePrice = parseFloat(purchasePrice);
-      }
-      if (sellingPrice !== null && sellingPrice !== undefined) {
-        stock.sellingPrice = parseFloat(sellingPrice);
-      }
+      // Update existing stock: always update prices and status from Price Master
+      stock.purchasePrice = purchasePrice;
+      stock.sellingPrice = sellingPrice;
+      stock.status = stockStatus;
     }
 
     // Update quantity based on action
@@ -210,11 +243,12 @@ router.post('/transfer', async (req, res) => {
       return res.status(404).json('❌ User not found or not linked to a shop');
     }
 
-    const thicknessValue = parseInt(thickness);
+    const thicknessValue = parseFloat(thickness);
     if (isNaN(thicknessValue) || thicknessValue <= 0) {
       return res.status(400).json('❌ Valid thickness is required');
     }
 
+    // Find or create glass
     let glass = await Glass.findOne({
       where: {
         type: glassType,
@@ -224,7 +258,11 @@ router.post('/transfer', async (req, res) => {
     });
 
     if (!glass) {
-      return res.status(404).json('❌ Glass type not found');
+      glass = await Glass.create({
+        type: glassType,
+        thickness: thicknessValue,
+        unit: unit || 'MM'
+      });
     }
 
     // Find source stock
@@ -240,6 +278,42 @@ router.post('/transfer', async (req, res) => {
 
     if (!sourceStock || sourceStock.quantity < quantity) {
       return res.status(400).json('❌ Insufficient stock in source stand');
+    }
+
+    // Check Glass Price Master for prices (for destination stock)
+    let priceMaster = await GlassPriceMaster.findOne({
+      where: {
+        shopId: user.shopId,
+        glassType,
+        thickness: thicknessValue
+      }
+    });
+
+    let purchasePrice = null;
+    let sellingPrice = null;
+    let stockStatus = 'PENDING';
+
+    if (priceMaster) {
+      if (!priceMaster.isPending && (priceMaster.purchasePrice || priceMaster.sellingPrice)) {
+        // Prices exist in master and entry is approved, use them
+        purchasePrice = priceMaster.purchasePrice;
+        sellingPrice = priceMaster.sellingPrice;
+        stockStatus = 'APPROVED';
+      } else {
+        // Entry exists but is pending (no prices), keep status as PENDING
+        stockStatus = 'PENDING';
+      }
+    } else {
+      // No entry in master, create one as pending
+      priceMaster = await GlassPriceMaster.create({
+        shopId: user.shopId,
+        glassType,
+        thickness: thicknessValue,
+        purchasePrice: null,
+        sellingPrice: null,
+        isPending: true
+      });
+      stockStatus = 'PENDING';
     }
 
     // Find or create destination stock
@@ -261,8 +335,16 @@ router.post('/transfer', async (req, res) => {
         quantity: 0,
         minQuantity: sourceStock.minQuantity,
         height: height,
-        width: width
+        width: width,
+        purchasePrice: purchasePrice,
+        sellingPrice: sellingPrice,
+        status: stockStatus
       });
+    } else {
+      // Update prices and status from Price Master for destination stock
+      destStock.purchasePrice = purchasePrice;
+      destStock.sellingPrice = sellingPrice;
+      destStock.status = stockStatus;
     }
 
     // Transfer quantity

@@ -10,8 +10,10 @@ import AuditLog from "./pages/AuditLog";
 import ManageStaff from "./pages/ManageStaff";
 import CustomerManagement from "./pages/CustomerManagement";
 import QuotationManagement from "./pages/QuotationManagement";
+import StaffQuotationManagement from "./pages/StaffQuotationManagement";
 import InvoiceManagement from "./pages/InvoiceManagement";
 import StockTransfer from "./pages/StockTransfer";
+import GlassPriceMaster from "./pages/GlassPriceMaster";
 import Login from "./auth/Login";
 import Register from "./auth/Register";
 import Layout from "./layout/Layout";
@@ -93,6 +95,15 @@ function App() {
         />
 
         <Route
+          path="/staff-quotations"
+          element={
+            <ProtectedRoute allowedRoles={["ROLE_STAFF"]}>
+              <StaffQuotationManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/invoices"
           element={
             <ProtectedRoute allowedRoles={["ROLE_ADMIN"]}>
@@ -104,6 +115,11 @@ function App() {
         <Route
           path="/stock-transfer"
           element={<ProtectedRoute><StockTransfer /></ProtectedRoute>}
+        />
+
+        <Route
+          path="/glass-price-master"
+          element={<RequireAdmin><GlassPriceMaster /></RequireAdmin>}
         />
       </Route>
 

@@ -64,6 +64,11 @@ module.exports = (sequelize) => {
       allowNull: true,
       field: 'selling_price'
     },
+    status: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+      defaultValue: 'APPROVED'
+    },
     updatedAt: {
       type: DataTypes.DATE,
       allowNull: true,

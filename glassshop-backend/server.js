@@ -14,6 +14,7 @@ const quotationRoutes = require('./routes/quotation');
 const invoiceRoutes = require('./routes/invoice');
 const auditRoutes = require('./routes/audit');
 const aiRoutes = require('./routes/ai');
+const glassPriceMasterRoutes = require('./routes/glassPriceMaster');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -90,6 +91,7 @@ app.use('/api/quotations', authMiddleware, quotationRoutes);
 app.use('/api/invoices', authMiddleware, invoiceRoutes);
 app.use('/api/audit', authMiddleware, auditRoutes);
 app.use('/api/ai', authMiddleware, aiRoutes);
+app.use('/api/glass-price-master', authMiddleware, glassPriceMasterRoutes);
 
 // Health check
 app.get('/health', (req, res) => {

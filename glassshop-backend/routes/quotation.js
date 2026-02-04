@@ -4,8 +4,8 @@ const { Quotation, QuotationItem, Customer, User, Shop } = require('../models');
 const { requireAdmin } = require('../middleware/auth');
 const pdfService = require('../services/pdfService');
 
-// Apply admin-only middleware
-router.use(requireAdmin);
+// Note: Most routes are accessible to both admin and staff
+// Only confirm/reject route requires admin access
 
 // Create quotation
 router.post('/', async (req, res) => {
@@ -277,8 +277,8 @@ router.get('/status/:status', async (req, res) => {
   }
 });
 
-// Confirm quotation
-router.put('/:id/confirm', async (req, res) => {
+// Confirm quotation (Admin only)
+router.put('/:id/confirm', requireAdmin, async (req, res) => {
   try {
     const user = await User.findOne({
       where: { userName: req.user.username },

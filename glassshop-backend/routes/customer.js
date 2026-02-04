@@ -4,8 +4,8 @@ const { Customer, User, Shop } = require('../models');
 const { Op } = require('sequelize');
 const { requireAdmin } = require('../middleware/auth');
 
-// Apply admin-only middleware
-router.use(requireAdmin);
+// Note: Most routes are accessible to both admin and staff
+// Staff can create customers when creating quotations
 
 // Validate and normalize mobile number
 const validateMobileNumber = (mobile) => {
@@ -184,8 +184,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Update customer
-router.put('/:id', async (req, res) => {
+// Update customer (Admin only)
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const user = await User.findOne({
       where: { userName: req.user.username },
@@ -223,7 +223,8 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete customer
-router.delete('/:id', async (req, res) => {
+// Delete customer (Admin only)
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const user = await User.findOne({
       where: { userName: req.user.username },

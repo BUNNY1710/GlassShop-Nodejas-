@@ -4,6 +4,7 @@ import api from "../api/api";
 import PageWrapper from "../components/PageWrapper";
 import { Card, Button, Input, Select, StatCard } from "../components/ui";
 import ConfirmModal from "../components/ConfirmModal";
+import { getUserRole } from "../utils/auth";
 import "../styles/design-system.css";
 
 // Helper functions for dimension parsing and conversion
@@ -68,13 +69,13 @@ function StockDashboard() {
   const [searchUnit, setSearchUnit] = useState("MM");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [loading, setLoading] = useState(true);
+  const userRole = getUserRole();
+  const isAdmin = userRole === "ROLE_ADMIN";
 
   // Add/Remove Modal State
   const [showAddRemoveModal, setShowAddRemoveModal] = useState(false);
   const [selectedStock, setSelectedStock] = useState(null);
   const [quantity, setQuantity] = useState("");
-  const [purchasePrice, setPurchasePrice] = useState("");
-  const [sellingPrice, setSellingPrice] = useState("");
   const [stockMessage, setStockMessage] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingPayload, setPendingPayload] = useState(null);
@@ -130,8 +131,6 @@ function StockDashboard() {
   const openAddRemoveModal = (stock) => {
     setSelectedStock(stock);
     setQuantity("");
-    setPurchasePrice(stock.purchasePrice || "");
-    setSellingPrice(stock.sellingPrice || "");
     setStockMessage("");
     setShowAddRemoveModal(true);
   };
@@ -140,8 +139,6 @@ function StockDashboard() {
     setShowAddRemoveModal(false);
     setSelectedStock(null);
     setQuantity("");
-    setPurchasePrice("");
-    setSellingPrice("");
     setStockMessage("");
   };
 
@@ -179,20 +176,6 @@ function StockDashboard() {
       // Update stock quantity if there's a pending payload
       if (pendingPayload) {
         await api.post("/api/stock/update", pendingPayload);
-      }
-      
-      // Update prices if provided (always try to update, even if empty to clear values)
-      if (selectedStock && (purchasePrice !== "" || sellingPrice !== "")) {
-        try {
-          await api.post("/api/stock/update-price", {
-            stockId: selectedStock.id,
-            purchasePrice: purchasePrice ? parseFloat(purchasePrice) : null,
-            sellingPrice: sellingPrice ? parseFloat(sellingPrice) : null
-          });
-        } catch (priceError) {
-          console.error("Price update error:", priceError);
-          // Don't fail the whole operation if price update fails
-        }
       }
       
       setShowConfirm(false);
@@ -662,9 +645,20 @@ function StockDashboard() {
                             </span>
                           </td>
                           <td style={tableCell}>
-                            <span style={getStatusBadgeStyle(isLow)}>
-                              {isLow ? "🔴 LOW" : "✅ OK"}
-                            </span>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                              <span style={getStatusBadgeStyle(isLow)}>
+                                {isLow ? "🔴 LOW" : "✅ OK"}
+                              </span>
+                              {s.status === "PENDING" && (
+                                <span style={{
+                                  fontSize: "11px",
+                                  color: "#f59e0b",
+                                  fontWeight: "600"
+                                }}>
+                                  ⏳ Pending
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td style={tableCell}>
                             <div style={actionButtonsContainer}>
@@ -751,32 +745,23 @@ function StockDashboard() {
                 min="1"
               />
 
-              {/* Purchase Price and Selling Price Section */}
-              <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? "10px" : "12px", marginTop: isMobile ? "8px" : "10px", paddingTop: isMobile ? "10px" : "12px", borderTop: "1px solid #e2e8f0" }}>
-                <h4 style={{ fontSize: isMobile ? "13px" : "14px", fontWeight: "600", color: "#374151", margin: "0 0 4px 0" }}>💰 Pricing Information</h4>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "10px" : "12px" }}>
-                  <Input
-                    label="Purchase Price (₹)"
-                    type="number"
-                    placeholder="Enter purchase price"
-                    value={purchasePrice}
-                    onChange={(e) => setPurchasePrice(e.target.value)}
-                    icon="💰"
-                    min="0"
-                    step="0.01"
-                  />
-                  <Input
-                    label="Selling Price (₹)"
-                    type="number"
-                    placeholder="Enter selling price"
-                    value={sellingPrice}
-                    onChange={(e) => setSellingPrice(e.target.value)}
-                    icon="💵"
-                    min="0"
-                    step="0.01"
-                  />
+              
+              {/* Status Display */}
+              {selectedStock.status && (
+                <div style={{ marginTop: isMobile ? "8px" : "10px", paddingTop: isMobile ? "10px" : "12px", borderTop: "1px solid #e2e8f0" }}>
+                  <div style={getInfoItemStyle(isMobile)}>
+                    <span style={getInfoLabelStyle(isMobile)}>Status:</span>
+                    <span style={getStatusBadgeStyle(selectedStock.status === "PENDING")}>
+                      {selectedStock.status === "PENDING" ? "⏳ Pending Approval" : "✅ Approved"}
+                    </span>
+                  </div>
+                  {selectedStock.status === "PENDING" && (
+                    <p style={{ marginTop: "8px", fontSize: "12px", color: "#f59e0b" }}>
+                      ⚠️ This stock is pending price approval from Admin
+                    </p>
+                  )}
                 </div>
-              </div>
+              )}
 
               <div style={getButtonGroupStyle(isMobile)}>
                 <Button

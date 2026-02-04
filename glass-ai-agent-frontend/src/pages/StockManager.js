@@ -15,12 +15,11 @@ function StockManager() {
   const [manualGlassType, setManualGlassType] = useState(""); // Manual glass type entry
   const [thicknessMode, setThicknessMode] = useState("SELECT"); // Changed: was glassMode
   const [manualThickness, setManualThickness] = useState("");
+  const [thicknessFocused, setThicknessFocused] = useState(false);
   const [height, setHeight] = useState("");
   const [width, setWidth] = useState("");
   const [unit, setUnit] = useState("MM");
   const [hsnNo, setHsnNo] = useState("");
-  const [purchasePrice, setPurchasePrice] = useState("");
-  const [sellingPrice, setSellingPrice] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingPayload, setPendingPayload] = useState(null);
   const [showUndo, setShowUndo] = useState(false);
@@ -109,8 +108,8 @@ function StockManager() {
     }
 
     const thicknessValue = thicknessMode === "SELECT" 
-      ? Number(thickness.replace("MM", "")) 
-      : Number(manualThickness);
+      ? parseFloat(thickness) 
+      : parseFloat(manualThickness);
     
     // Add custom glass type if manual entry was used
     if (glassTypeMode === "MANUAL" && finalGlassType) {
@@ -126,9 +125,7 @@ function StockManager() {
       height,
       width,
       unit,
-      hsnNo: hsnNo || null,
-      purchasePrice: purchasePrice || null,
-      sellingPrice: sellingPrice || null
+      hsnNo: hsnNo || null
     };
 
     setPendingPayload(payload);
@@ -147,6 +144,7 @@ function StockManager() {
       setHeight("");
       setWidth("");
       setManualThickness("");
+      setThicknessFocused(false);
       setThickness("");
       setGlassType("");
       setManualGlassType("");
@@ -328,12 +326,15 @@ function StockManager() {
               )}
 
               <div style={formGroup}>
-                <Select
-                  label="Selection Mode"
-                  value={thicknessMode} 
-                  onChange={e => setThicknessMode(e.target.value)}
-                  icon="📏"
-                >
+                  <Select
+                    label="Selection Mode"
+                    value={thicknessMode} 
+                    onChange={e => {
+                      setThicknessMode(e.target.value);
+                      setThicknessFocused(false);
+                    }}
+                    icon="📏"
+                  >
                   <option value="SELECT">Select from list</option>
                   <option value="MANUAL">Manual entry</option>
                 </Select>
@@ -349,22 +350,50 @@ function StockManager() {
                     required
                   >
                     <option value="">Select thickness</option>
-                    <option value="5MM">5 MM</option>
-                    <option value="8MM">8 MM</option>
-                    <option value="10MM">10 MM</option>
-                    <option value="12MM">12 MM</option>
-                    <option value="15MM">15 MM</option>
-                    <option value="20MM">20 MM</option>
+                    <option value="3.5">3.5 MM</option>
+                    <option value="4">4 MM</option>
+                    <option value="5">5 MM</option>
+                    <option value="6">6 MM</option>
+                    <option value="8">8 MM</option>
+                    <option value="10">10 MM</option>
+                    <option value="12">12 MM</option>
+                    <option value="15">15 MM</option>
+                    <option value="19">19 MM</option>
                   </Select>
                 </div>
               ) : (
                 <div style={formGroup}>
                   <Input
                     label="Manual Thickness (MM)"
-                    type="number"
-                    placeholder="Enter thickness in MM"
-                    value={manualThickness}
-                    onChange={e => setManualThickness(e.target.value)}
+                    type="text"
+                    placeholder="Enter thickness (e.g., 2)"
+                    value={thicknessFocused ? manualThickness : (manualThickness ? `${manualThickness} MM` : "")}
+                    onChange={e => {
+                      let inputVal = e.target.value;
+                      // Remove "MM" if user types it, keep only the number
+                      inputVal = inputVal.replace(/mm/gi, '').trim();
+                      // Extract only numbers and decimal point
+                      inputVal = inputVal.replace(/[^\d.]/g, '');
+                      setManualThickness(inputVal);
+                    }}
+                    onFocus={(e) => {
+                      // On focus, show just the number (remove MM) so user can edit
+                      setThicknessFocused(true);
+                      let inputVal = e.target.value.replace(/mm/gi, '').trim();
+                      inputVal = inputVal.replace(/[^\d.]/g, '');
+                      setManualThickness(inputVal);
+                    }}
+                    onBlur={(e) => {
+                      // On blur (when moving to next field), format with MM if valid number
+                      setThicknessFocused(false);
+                      let inputVal = e.target.value.replace(/mm/gi, '').trim();
+                      inputVal = inputVal.replace(/[^\d.]/g, '');
+                      if (inputVal && !isNaN(parseFloat(inputVal))) {
+                        setManualThickness(inputVal);
+                      } else if (!inputVal) {
+                        setManualThickness("");
+                      }
+                    }}
                     icon="📏"
                     required
                   />
@@ -460,43 +489,6 @@ function StockManager() {
             </div>
           </div>
 
-          {/* Pricing Information Section */}
-          <div style={section}>
-            <div style={sectionHeader}>
-              <div style={sectionIcon}>💰</div>
-              <div>
-                <h3 style={sectionTitle}>Pricing Information</h3>
-                <p style={sectionSubtitle}>Purchase and selling prices</p>
-              </div>
-            </div>
-
-            <div style={getFormGridStyle(isMobile)}>
-              <div style={formGroup}>
-                <Input
-                  label="Purchase Price (₹)"
-                  type="number"
-                  placeholder="Enter purchase price"
-                  value={purchasePrice}
-                  onChange={e => setPurchasePrice(e.target.value)}
-                  icon="💰"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-              <div style={formGroup}>
-                <Input
-                  label="Selling Price (₹)"
-                  type="number"
-                  placeholder="Enter selling price"
-                  value={sellingPrice}
-                  onChange={e => setSellingPrice(e.target.value)}
-                  icon="💵"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-            </div>
-          </div>
 
           {/* Additional Information Section */}
           <div style={section}>

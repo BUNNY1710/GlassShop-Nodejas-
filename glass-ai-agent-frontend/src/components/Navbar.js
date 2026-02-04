@@ -441,6 +441,23 @@ function Navbar() {
           <span>🔁</span> Transfer Stock
         </NavLink>
 
+        {/* Staff Quotations - STAFF ONLY */}
+        {role === "ROLE_STAFF" && (
+          <NavLink 
+            to="/staff-quotations" 
+            style={({ isActive }) => ({
+              ...navLinkStyle({ isActive }),
+              fontSize: isMobile ? "13px" : "14px",
+              padding: isMobile ? "12px 14px" : "10px 16px",
+              gap: isMobile ? "4px" : "6px",
+              minHeight: isMobile ? "44px" : "auto",
+            })} 
+            onClick={() => setOpen(false)}
+          >
+            <span>📄</span> Create Quotation
+          </NavLink>
+        )}
+
         {/* Billing Dropdown - ADMIN ONLY */}
         {role === "ROLE_ADMIN" && (
           <div 
@@ -550,6 +567,20 @@ function Navbar() {
               onClick={() => setOpen(false)}
             >
               <span>👤</span> Create Staff
+            </NavLink>
+
+            <NavLink 
+              to="/glass-price-master" 
+              style={({ isActive }) => ({
+                ...navLinkStyle({ isActive }),
+                fontSize: isMobile ? "13px" : "14px",
+                padding: isMobile ? "12px 14px" : "10px 16px",
+                gap: isMobile ? "4px" : "6px",
+                minHeight: isMobile ? "44px" : "auto",
+              })} 
+              onClick={() => setOpen(false)}
+            >
+              <span>💰</span> Price Master
             </NavLink>
           </>
         )}

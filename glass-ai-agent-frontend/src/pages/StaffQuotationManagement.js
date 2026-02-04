@@ -3,25 +3,20 @@ import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
 import dashboardBg from "../assets/dashboard-bg.jpg";
 import {
-  getCustomers,
   createCustomer,
   getQuotations,
   createQuotation,
-  confirmQuotation,
   getQuotationById,
   getAllStock,
-  deleteQuotation,
   downloadQuotationPdf,
   printCuttingPad,
 } from "../api/quotationApi";
 import { useResponsive } from "../hooks/useResponsive";
-import { getUserRole } from "../utils/auth";
 import "../styles/design-system.css";
 
-function QuotationManagement() {
+function StaffQuotationManagement() {
   const navigate = useNavigate();
   const [quotations, setQuotations] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [allStock, setAllStock] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -30,10 +25,6 @@ function QuotationManagement() {
   const { isMobile, isTablet } = useResponsive(); // Use responsive hook
   const [showStockDropdown, setShowStockDropdown] = useState({}); // { [index]: true/false }
   const [stockDropdownType, setStockDropdownType] = useState({}); // { [index]: 'glassType' | 'thickness' }
-  const [confirmAction, setConfirmAction] = useState(null); // { type: 'CONFIRM'|'REJECT'|'DELETE', quotationId: number, quotationNumber: string }
-  const [showRejectionModal, setShowRejectionModal] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
-  const [pendingRejection, setPendingRejection] = useState(null); // { quotationId, action }
 
   const getDefaultValidUntil = (quotationDate) => {
     if (!quotationDate) return "";
@@ -43,7 +34,7 @@ function QuotationManagement() {
   };
 
   const [formData, setFormData] = useState({
-    customerSelectionMode: "SELECT_FROM_LIST", // "SELECT_FROM_LIST" or "MANUAL"
+    customerSelectionMode: "MANUAL", // Staff always uses manual entry
     customerId: "",
     manualCustomerName: "",
     manualCustomerMobile: "",
@@ -72,7 +63,6 @@ function QuotationManagement() {
         quantity: 1,
         ratePerSqft: "",
         sellingPrice: "", // Selling price from stock (per SqFt)
-        purchasePrice: "", // Purchase price from stock (for profit calculation, admin only)
         design: "",
         hsnCode: "",
         description: "",
@@ -101,7 +91,6 @@ function QuotationManagement() {
   });
 
   useEffect(() => {
-    loadCustomers();
     loadQuotations();
     loadStock();
     // Removed manual resize handler - useResponsive hook handles it
@@ -116,22 +105,17 @@ function QuotationManagement() {
     }
   };
 
-  const loadCustomers = async () => {
-    try {
-      const response = await getCustomers();
-      setCustomers(response.data);
-    } catch (error) {
-      console.error("Failed to load customers", error);
-    }
-  };
-
   const loadQuotations = async () => {
     try {
       setLoading(true);
+      setMessage("");
       const response = await getQuotations();
-      setQuotations(response.data);
+      setQuotations(response.data || []);
     } catch (error) {
-      setMessage("❌ Failed to load quotations");
+      console.error("Failed to load quotations:", error);
+      const errorMessage = error.response?.data?.error || error.message || "Failed to load quotations";
+      setMessage(`❌ ${errorMessage}`);
+      setQuotations([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -855,65 +839,56 @@ function QuotationManagement() {
     e.preventDefault();
     setMessage("");
 
-    let finalCustomerId = formData.customerId;
-
-    // If manual mode, create customer first
-    if (formData.customerSelectionMode === "MANUAL") {
-      if (!formData.manualCustomerName || !formData.manualCustomerMobile) {
-        setMessage("❌ Please provide customer name and mobile number");
-        return;
-      }
-      try {
-        // Validate and clean mobile number before sending
-        let mobile = formData.manualCustomerMobile?.trim();
-        if (mobile) {
-          // Remove spaces, dashes, and parentheses
-          let cleaned = mobile.replace(/[\s\-\(\)]/g, "");
-          
-          // Remove leading zero if present (Indian mobile numbers sometimes have leading 0)
-          if (cleaned.length === 11 && cleaned.startsWith("0")) {
-            cleaned = cleaned.substring(1);
-          }
-          
-          // Check if it starts with +91
-          if (cleaned.startsWith("+91")) {
-            const digits = cleaned.substring(3);
-            if (digits.length !== 10 || !/^\d+$/.test(digits)) {
-              setMessage("❌ Mobile number with +91 must have 10 digits after country code");
-              return;
-            }
-            mobile = cleaned; // Use cleaned version with +91
-          } else if (!/^\d+$/.test(cleaned)) {
-            setMessage("❌ Mobile number must contain only digits (or +91 followed by 10 digits)");
-            return;
-          } else if (cleaned.length !== 10) {
-            setMessage(`❌ Mobile number must be exactly 10 digits (you entered ${cleaned.length} digits)`);
-            return;
-          } else {
-            mobile = cleaned; // Use cleaned version without leading zero
-          }
+    // Staff always uses manual entry - create customer first
+    if (!formData.manualCustomerName || !formData.manualCustomerMobile) {
+      setMessage("❌ Please provide customer name and mobile number");
+      return;
+    }
+    
+    let finalCustomerId;
+    try {
+      // Validate and clean mobile number before sending
+      let mobile = formData.manualCustomerMobile?.trim();
+      if (mobile) {
+        // Remove spaces, dashes, and parentheses
+        let cleaned = mobile.replace(/[\s\-\(\)]/g, "");
+        
+        // Remove leading zero if present (Indian mobile numbers sometimes have leading 0)
+        if (cleaned.length === 11 && cleaned.startsWith("0")) {
+          cleaned = cleaned.substring(1);
         }
+        
+        // Check if it starts with +91
+        if (cleaned.startsWith("+91")) {
+          const digits = cleaned.substring(3);
+          if (digits.length !== 10 || !/^\d+$/.test(digits)) {
+            setMessage("❌ Mobile number with +91 must have 10 digits after country code");
+            return;
+          }
+          mobile = cleaned; // Use cleaned version with +91
+        } else if (!/^\d+$/.test(cleaned)) {
+          setMessage("❌ Mobile number must contain only digits (or +91 followed by 10 digits)");
+          return;
+        } else if (cleaned.length !== 10) {
+          setMessage(`❌ Mobile number must be exactly 10 digits (you entered ${cleaned.length} digits)`);
+          return;
+        } else {
+          mobile = cleaned; // Use cleaned version without leading zero
+        }
+      }
 
-        const customerResponse = await createCustomer({
-          name: formData.manualCustomerName.trim(),
-          mobile: mobile,
-          email: formData.manualCustomerEmail?.trim() || null,
-          address: formData.manualCustomerAddress?.trim() || null,
-        });
-        finalCustomerId = customerResponse.data.id;
-        // Reload customers list
-        await loadCustomers();
-      } catch (error) {
-        const errorMessage = error.response?.data?.error || error.message || "Failed to create customer. Please try again.";
-        setMessage(`❌ ${errorMessage}`);
-        console.error("Customer creation error:", error.response?.data || error);
-        return;
-      }
-    } else {
-      if (!formData.customerId) {
-        setMessage("❌ Please select a customer");
-        return;
-      }
+      const customerResponse = await createCustomer({
+        name: formData.manualCustomerName.trim(),
+        mobile: mobile,
+        email: formData.manualCustomerEmail?.trim() || null,
+        address: formData.manualCustomerAddress?.trim() || null,
+      });
+      finalCustomerId = customerResponse.data.id;
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || error.message || "Failed to create customer. Please try again.";
+      setMessage(`❌ ${errorMessage}`);
+      console.error("Customer creation error:", error.response?.data || error);
+      return;
     }
 
     if (formData.items.length === 0) {
@@ -1117,75 +1092,6 @@ function QuotationManagement() {
     }
   };
 
-  const handleConfirm = async (quotationId, action) => {
-    try {
-      // If rejecting, show rejection reason modal first
-      if (action === "REJECTED") {
-        setConfirmAction(null); // Close confirmation modal
-        setPendingRejection({ quotationId, action });
-        setShowRejectionModal(true);
-        setRejectionReason("");
-        return;
-      }
-      
-      // For confirm action, proceed directly
-      await confirmQuotation(quotationId, {
-        action: action,
-        rejectionReason: null,
-      });
-      setMessage("✅ Quotation confirmed");
-      setConfirmAction(null);
-      loadQuotations();
-    } catch (error) {
-      setMessage("❌ Failed to update quotation");
-      setConfirmAction(null);
-    }
-  };
-
-  const handleRejectionSubmit = async () => {
-    if (!rejectionReason.trim()) {
-      setMessage("❌ Please enter a rejection reason");
-      return;
-    }
-
-    try {
-      await confirmQuotation(pendingRejection.quotationId, {
-        action: "REJECTED",
-        rejectionReason: rejectionReason.trim(),
-      });
-      setMessage("✅ Quotation rejected");
-      setConfirmAction(null);
-      setShowRejectionModal(false);
-      setRejectionReason("");
-      setPendingRejection(null);
-      loadQuotations();
-    } catch (error) {
-      setMessage("❌ Failed to reject quotation");
-      setShowRejectionModal(false);
-      setPendingRejection(null);
-    }
-  };
-
-  const handleDelete = async (quotationId) => {
-    try {
-      await deleteQuotation(quotationId);
-      setMessage("✅ Quotation deleted successfully");
-      setConfirmAction(null);
-      loadQuotations();
-    } catch (error) {
-      setMessage("❌ Failed to delete quotation");
-      setConfirmAction(null);
-    }
-  };
-
-  const showConfirmDialog = (type, quotation) => {
-    setConfirmAction({
-      type,
-      quotationId: quotation.id,
-      quotationNumber: quotation.quotationNumber,
-      customerName: quotation.customerName,
-    });
-  };
 
   const handleView = async (id) => {
     try {
@@ -1199,7 +1105,7 @@ function QuotationManagement() {
   const resetForm = () => {
     const today = new Date().toISOString().split("T")[0];
     setFormData({
-      customerSelectionMode: "SELECT_FROM_LIST",
+      customerSelectionMode: "MANUAL",
       customerId: "",
       manualCustomerName: "",
       manualCustomerMobile: "",
@@ -1311,10 +1217,6 @@ function QuotationManagement() {
         const qty = parseInt(newItems[index].quantity) || 1;
         newItems[index].subtotal = areaInFeet * sellingPricePerSqFt * qty;
       }
-    }
-    // Store purchase price for profit calculation (not shown to user, only for admin profit display)
-    if (stockItem?.purchasePrice) {
-      newItems[index].purchasePrice = stockItem.purchasePrice;
     }
     setFormData({ ...formData, items: newItems });
     setShowStockDropdown({ ...showStockDropdown, [index]: false });
@@ -1571,173 +1473,104 @@ function QuotationManagement() {
                 }}>
                   <div>
                     <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
-                      Customer Selection * <span style={{ color: "#ef4444" }}>●</span>
+                      Customer Details * <span style={{ color: "#ef4444" }}>●</span>
                     </label>
-                    <select
-                      value={formData.customerSelectionMode}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          customerSelectionMode: e.target.value,
-                          customerId: "",
-                          manualCustomerName: "",
-                          manualCustomerMobile: "",
-                          manualCustomerEmail: "",
-                          manualCustomerAddress: "",
-                        })
-                      }
-                        style={{
-                          width: "100%",
-                          padding: isMobile ? "14px 12px" : "12px", // Larger touch target
-                          borderRadius: "8px",
-                          border: "1px solid #d1d5db",
-                          fontSize: "16px", // Prevent iOS zoom
-                          backgroundColor: "#fff",
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                          marginBottom: "15px",
-                          minHeight: "44px", // Touch target
-                          boxSizing: "border-box",
-                        }}
-                      onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                      onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                    >
-                      <option value="SELECT_FROM_LIST">📋 Select from List</option>
-                      <option value="MANUAL">✏️ Manual Entry</option>
-                    </select>
-
-                    {formData.customerSelectionMode === "SELECT_FROM_LIST" ? (
-                      <>
-                        <select
-                          required={formData.customerSelectionMode === "SELECT_FROM_LIST"}
-                          value={formData.customerId}
-                          onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
+                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "15px" }}>
+                      <div>
+                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                          Name * <span style={{ color: "#ef4444" }}>●</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.manualCustomerName}
+                          onChange={(e) => setFormData({ ...formData, manualCustomerName: e.target.value })}
+                          placeholder="Enter customer name"
                           style={{
                             width: "100%",
                             padding: isMobile ? "14px 12px" : "12px", // Larger touch target
                             borderRadius: "8px",
                             border: "1px solid #d1d5db",
                             fontSize: "16px", // Prevent iOS zoom
-                            backgroundColor: "#fff",
-                            cursor: "pointer",
                             transition: "all 0.2s",
                             minHeight: "44px", // Touch target
                             boxSizing: "border-box",
                           }}
                           onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
                           onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                        >
-                          <option value="">🔍 Select a customer...</option>
-                          {customers.map((customer) => (
-                            <option key={customer.id} value={customer.id}>
-                              {customer.name} {customer.mobile ? `(${customer.mobile})` : ""}
-                            </option>
-                          ))}
-                        </select>
-                        {customers.length === 0 && (
-                          <p style={{ marginTop: "5px", color: "#f59e0b", fontSize: "12px" }}>
-                            ⚠️ No customers found. Switch to "Manual Entry" to add a new customer.
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "15px" }}>
-                        <div>
-                          <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
-                            Name * <span style={{ color: "#ef4444" }}>●</span>
-                          </label>
-                          <input
-                            type="text"
-                            required
-                            value={formData.manualCustomerName}
-                            onChange={(e) => setFormData({ ...formData, manualCustomerName: e.target.value })}
-                            placeholder="Enter customer name"
-                            style={{
-                              width: "100%",
-                              padding: isMobile ? "14px 12px" : "12px", // Larger touch target
-                              borderRadius: "8px",
-                              border: "1px solid #d1d5db",
-                              fontSize: "16px", // Prevent iOS zoom
-                              transition: "all 0.2s",
-                              minHeight: "44px", // Touch target
-                              boxSizing: "border-box",
-                            }}
-                            onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                            onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
-                            Mobile * <span style={{ color: "#ef4444" }}>●</span>
-                          </label>
-                          <input
-                            type="tel"
-                            required
-                            value={formData.manualCustomerMobile}
-                            onChange={(e) => setFormData({ ...formData, manualCustomerMobile: e.target.value })}
-                            placeholder="Enter mobile number"
-                            style={{
-                              width: "100%",
-                              padding: isMobile ? "14px 12px" : "12px", // Larger touch target
-                              borderRadius: "8px",
-                              border: "1px solid #d1d5db",
-                              fontSize: "16px", // Prevent iOS zoom
-                              transition: "all 0.2s",
-                              minHeight: "44px", // Touch target
-                              boxSizing: "border-box",
-                            }}
-                            onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                            onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
-                            Email (Optional)
-                          </label>
-                          <input
-                            type="email"
-                            value={formData.manualCustomerEmail}
-                            onChange={(e) => setFormData({ ...formData, manualCustomerEmail: e.target.value })}
-                            placeholder="Enter email address"
-                            style={{
-                              width: "100%",
-                              padding: isMobile ? "14px 12px" : "12px", // Larger touch target
-                              borderRadius: "8px",
-                              border: "1px solid #d1d5db",
-                              fontSize: "16px", // Prevent iOS zoom
-                              transition: "all 0.2s",
-                              minHeight: "44px", // Touch target
-                              boxSizing: "border-box",
-                            }}
-                            onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                            onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
-                            Address (Optional)
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.manualCustomerAddress}
-                            onChange={(e) => setFormData({ ...formData, manualCustomerAddress: e.target.value })}
-                            placeholder="Enter address"
-                            style={{
-                              width: "100%",
-                              padding: isMobile ? "14px 12px" : "12px", // Larger touch target
-                              borderRadius: "8px",
-                              border: "1px solid #d1d5db",
-                              fontSize: "16px", // Prevent iOS zoom
-                              transition: "all 0.2s",
-                              minHeight: "44px", // Touch target
-                              boxSizing: "border-box",
-                            }}
-                            onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
-                            onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
-                          />
-                        </div>
+                        />
                       </div>
-                    )}
+                      <div>
+                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                          Mobile * <span style={{ color: "#ef4444" }}>●</span>
+                        </label>
+                        <input
+                          type="tel"
+                          required
+                          value={formData.manualCustomerMobile}
+                          onChange={(e) => setFormData({ ...formData, manualCustomerMobile: e.target.value })}
+                          placeholder="Enter mobile number"
+                          style={{
+                            width: "100%",
+                            padding: isMobile ? "14px 12px" : "12px", // Larger touch target
+                            borderRadius: "8px",
+                            border: "1px solid #d1d5db",
+                            fontSize: "16px", // Prevent iOS zoom
+                            transition: "all 0.2s",
+                            minHeight: "44px", // Touch target
+                            boxSizing: "border-box",
+                          }}
+                          onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
+                          onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                          Email (Optional)
+                        </label>
+                        <input
+                          type="email"
+                          value={formData.manualCustomerEmail}
+                          onChange={(e) => setFormData({ ...formData, manualCustomerEmail: e.target.value })}
+                          placeholder="Enter email address"
+                          style={{
+                            width: "100%",
+                            padding: isMobile ? "14px 12px" : "12px", // Larger touch target
+                            borderRadius: "8px",
+                            border: "1px solid #d1d5db",
+                            fontSize: "16px", // Prevent iOS zoom
+                            transition: "all 0.2s",
+                            minHeight: "44px", // Touch target
+                            boxSizing: "border-box",
+                          }}
+                          onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
+                          onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
+                          Address (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.manualCustomerAddress}
+                          onChange={(e) => setFormData({ ...formData, manualCustomerAddress: e.target.value })}
+                          placeholder="Enter address"
+                          style={{
+                            width: "100%",
+                            padding: isMobile ? "14px 12px" : "12px", // Larger touch target
+                            borderRadius: "8px",
+                            border: "1px solid #d1d5db",
+                            fontSize: "16px", // Prevent iOS zoom
+                            transition: "all 0.2s",
+                            minHeight: "44px", // Touch target
+                            boxSizing: "border-box",
+                          }}
+                          onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
+                          onBlur={(e) => (e.target.style.borderColor = "#d1d5db")}
+                        />
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label style={{ display: "block", marginBottom: "8px", color: "#374151", fontWeight: "500", fontSize: "14px" }}>
@@ -3351,67 +3184,6 @@ function QuotationManagement() {
                         />
                         <p style={{ marginTop: "5px", color: "#6b7280", fontSize: isMobile ? "11px" : "11px" }}>✨ Auto-calculated: (Table height × Table width in ft) × Rate per SqFt × Quantity</p>
                       </div>
-                      
-                      {/* Profit Field - Read Only */}
-                      <div style={{
-                        width: "100%",
-                        boxSizing: "border-box",
-                      }}>
-                        <label style={{ 
-                          display: "block", 
-                          marginBottom: "8px", 
-                          color: "#374151", 
-                          fontWeight: "500", 
-                          fontSize: isMobile ? "13px" : "14px" 
-                        }}>
-                          Profit (₹) 🔒
-                        </label>
-                        <input
-                          type="number"
-                          readOnly
-                          value={
-                            (() => {
-                              // Calculate profit for this item
-                              const purchasePrice = parseFloat(item.purchasePrice) || 0;
-                              const sellingPrice = parseFloat(item.sellingPrice || item.ratePerSqft) || 0;
-                              
-                              // Use table values if available, otherwise fallback to input values
-                              const heightTableValue = item.selectedHeightTableValue ? parseFloat(item.selectedHeightTableValue) : parseFraction(item.height || 0);
-                              const widthTableValue = item.selectedWidthTableValue ? parseFloat(item.selectedWidthTableValue) : parseFraction(item.width || 0);
-                              
-                              // Convert table values to feet
-                              const heightInFeet = convertToFeet(heightTableValue, item.heightUnit || "FEET");
-                              const widthInFeet = convertToFeet(widthTableValue, item.widthUnit || "FEET");
-                              
-                              // Calculate area and profit
-                              const areaInFeet = heightInFeet * widthInFeet;
-                              const qty = parseInt(item.quantity) || 0;
-                              const totalArea = areaInFeet * qty;
-                              
-                              // Profit = (Selling Price - Purchase Price) × Area
-                              const profit = (sellingPrice - purchasePrice) * totalArea;
-                              return profit.toFixed(2);
-                            })()
-                          }
-                          style={{
-                            width: "100%",
-                            maxWidth: "100%",
-                            padding: isMobile ? "14px 12px" : "12px",
-                            borderRadius: "8px",
-                            border: "1px solid #d1d5db",
-                            fontSize: "16px", // Prevent iOS zoom
-                            backgroundColor: "#d1fae5",
-                            color: "#065f46",
-                            fontWeight: "600",
-                            cursor: "not-allowed",
-                            boxSizing: "border-box",
-                            minHeight: "44px", // Touch target
-                          }}
-                        />
-                        <p style={{ marginTop: "5px", color: "#6b7280", fontSize: isMobile ? "11px" : "11px" }}>
-                          ✨ Auto-calculated: (Selling Price - Purchase Price) × Area × Quantity
-                        </p>
-                      </div>
                       <div style={{
                         width: "100%",
                         boxSizing: "border-box",
@@ -3768,54 +3540,6 @@ function QuotationManagement() {
                       >
                         👁️ View
                       </button>
-                      {(quotation.status === "DRAFT" || quotation.status === "SENT") && (
-                        <>
-                          <button
-                            onClick={() => showConfirmDialog("CONFIRM", quotation)}
-                            style={{
-                              padding: "5px 10px",
-                              backgroundColor: "#4caf50",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "4px",
-                              cursor: "pointer",
-                              marginRight: "5px",
-                              fontSize: "12px",
-                            }}
-                          >
-                            ✅ Confirm
-                          </button>
-                          <button
-                            onClick={() => showConfirmDialog("REJECT", quotation)}
-                            style={{
-                              padding: "5px 10px",
-                              backgroundColor: "#f44336",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "4px",
-                              cursor: "pointer",
-                              marginRight: "5px",
-                              fontSize: "12px",
-                            }}
-                          >
-                            ❌ Reject
-                          </button>
-                        </>
-                      )}
-                      <button
-                        onClick={() => showConfirmDialog("DELETE", quotation)}
-                        style={{
-                          padding: "5px 10px",
-                          backgroundColor: "#dc2626",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                        }}
-                      >
-                        🗑️ Delete
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -4114,81 +3838,6 @@ function QuotationManagement() {
                       )}
                     </>
                   )}
-                  {(() => {
-                    // Calculate profit for admin only
-                    const userRole = getUserRole();
-                    if (userRole !== "ROLE_ADMIN") return null;
-                    
-                    let totalPurchaseCost = 0;
-                    let totalSellingPrice = 0;
-                    
-                    selectedQuotation.items?.forEach((item) => {
-                      const purchasePrice = parseFloat(item.purchasePrice) || 0;
-                      const sellingPrice = parseFloat(item.sellingPrice || item.ratePerSqft) || 0;
-                      const height = parseFloat(item.height) || 0;
-                      const width = parseFloat(item.width) || 0;
-                      const quantity = parseFloat(item.quantity) || 0;
-                      
-                      // Convert dimensions to feet based on unit
-                      const convertToFeet = (value, unit) => {
-                        if (!value || value === 0) return 0;
-                        const numValue = parseFloat(value) || 0;
-                        if (unit === 'FEET') return numValue;
-                        if (unit === 'INCH') return numValue / 12;
-                        if (unit === 'MM') return numValue / 304.8;
-                        return numValue; // Default assume feet
-                      };
-                      
-                      const heightUnit = item.heightUnit || 'FEET';
-                      const widthUnit = item.widthUnit || 'FEET';
-                      const heightInFeet = convertToFeet(height, heightUnit);
-                      const widthInFeet = convertToFeet(width, widthUnit);
-                      
-                      // Calculate area in square feet
-                      const areaInSqFt = heightInFeet * widthInFeet;
-                      const itemArea = areaInSqFt * quantity;
-                      
-                      // Purchase cost = purchase price per SqFt * area
-                      totalPurchaseCost += purchasePrice * itemArea;
-                      
-                      // Selling price = selling price per SqFt * area
-                      totalSellingPrice += sellingPrice * itemArea;
-                    });
-                    
-                    const profit = totalSellingPrice - totalPurchaseCost;
-                    const profitMargin = totalSellingPrice > 0 ? (profit / totalSellingPrice) * 100 : 0;
-                    
-                    if (totalPurchaseCost === 0 && totalSellingPrice === 0) return null;
-                    
-                    return (
-                      <div style={{ 
-                        gridColumn: isMobile ? "1" : "1 / -1", 
-                        marginTop: "15px", 
-                        paddingTop: "15px", 
-                        borderTop: "2px solid #fbbf24" 
-                      }}>
-                        <div style={{ fontSize: "13px", color: "#92400e", marginBottom: "5px", fontWeight: "600" }}>
-                          💰 Profit (Admin Only)
-                        </div>
-                        <div style={{ 
-                          fontSize: "20px", 
-                          color: profit >= 0 ? "#059669" : "#dc2626", 
-                          fontWeight: "700" 
-                        }}>
-                          ₹{profit.toFixed(2)}
-                        </div>
-                        <div style={{ 
-                          marginTop: "6px", 
-                          fontSize: "12px", 
-                          color: "#92400e" 
-                        }}>
-                          Purchase Cost: ₹{totalPurchaseCost.toFixed(2)} | 
-                          Selling Price: ₹{totalSellingPrice.toFixed(2)} | 
-                          Margin: {profitMargin.toFixed(2)}%
-                        </div>
-                      </div>
-                    );
-                  })()}
                   <div style={{ gridColumn: isMobile ? "1" : "1 / -1", paddingTop: "15px", borderTop: "2px solid #fbbf24" }}>
                     <div style={{ fontSize: "14px", color: "#92400e", marginBottom: "8px", fontWeight: "500" }}>Grand Total</div>
                     <div style={{ fontSize: "28px", color: "#78350f", fontWeight: "800" }}>₹{(parseFloat(selectedQuotation.grandTotal) || 0).toFixed(2)}</div>
@@ -4262,390 +3911,12 @@ function QuotationManagement() {
           </div>
         )}
 
-        {/* Confirmation Modal */}
-        {confirmAction && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 10004,
-              padding: isMobile ? "15px" : "20px",
-            }}
-            onClick={() => setConfirmAction(null)}
-          >
-            <div
-              style={{
-                backgroundColor: "white",
-                padding: isMobile ? "25px" : "35px",
-                borderRadius: "16px",
-                maxWidth: "500px",
-                width: "100%",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ marginBottom: "20px", textAlign: "center" }}>
-                <div
-                  style={{
-                    fontSize: "48px",
-                    marginBottom: "15px",
-                    color:
-                      confirmAction.type === "CONFIRM"
-                        ? "#22c55e"
-                        : confirmAction.type === "REJECT"
-                        ? "#f59e0b"
-                        : "#ef4444",
-                  }}
-                >
-                  {confirmAction.type === "CONFIRM"
-                    ? "⚠️"
-                    : confirmAction.type === "REJECT"
-                    ? "⚠️"
-                    : "🗑️"}
-                </div>
-                <h2
-                  style={{
-                    margin: 0,
-                    color: "#1f2937",
-                    fontSize: isMobile ? "20px" : "24px",
-                    fontWeight: "700",
-                    marginBottom: "10px",
-                  }}
-                >
-                  {confirmAction.type === "CONFIRM"
-                    ? "Confirm Quotation?"
-                    : confirmAction.type === "REJECT"
-                    ? "Reject Quotation?"
-                    : "Delete Quotation?"}
-                </h2>
-                <p style={{ margin: "8px 0 0 0", color: "#6b7280", fontSize: "14px", lineHeight: "1.6" }}>
-                  {confirmAction.type === "CONFIRM"
-                    ? `Are you sure you want to confirm quotation "${confirmAction.quotationNumber}"? This action will lock the quotation and enable invoice conversion.`
-                    : confirmAction.type === "REJECT"
-                    ? `Are you sure you want to reject quotation "${confirmAction.quotationNumber}"? You will be asked to provide a rejection reason.`
-                    : `Are you sure you want to permanently delete quotation "${confirmAction.quotationNumber}"? This action cannot be undone.`}
-                </p>
-                <div
-                  style={{
-                    marginTop: "15px",
-                    padding: "12px",
-                    backgroundColor: "#f3f4f6",
-                    borderRadius: "8px",
-                    textAlign: "left",
-                  }}
-                >
-                  <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "4px" }}>Quotation Details:</div>
-                  <div style={{ fontSize: "14px", color: "#1f2937", fontWeight: "600" }}>
-                    #{confirmAction.quotationNumber}
-                  </div>
-                  <div style={{ fontSize: "13px", color: "#6b7280", marginTop: "4px" }}>
-                    Customer: {confirmAction.customerName}
-                  </div>
-                </div>
-              </div>
 
-              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: "12px" }}>
-                <button
-                  onClick={() => {
-                    if (confirmAction.type === "DELETE") {
-                      handleDelete(confirmAction.quotationId);
-                    } else {
-                      handleConfirm(
-                        confirmAction.quotationId,
-                        confirmAction.type === "CONFIRM" ? "CONFIRMED" : "REJECTED"
-                      );
-                    }
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "12px 24px",
-                    backgroundColor:
-                      confirmAction.type === "CONFIRM"
-                        ? "#22c55e"
-                        : confirmAction.type === "REJECT"
-                        ? "#f59e0b"
-                        : "#ef4444",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    transition: "all 0.2s",
-                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.2)",
-                  }}
-                  onMouseOver={(e) => {
-                    if (confirmAction.type === "CONFIRM") {
-                      e.target.style.backgroundColor = "#16a34a";
-                    } else if (confirmAction.type === "REJECT") {
-                      e.target.style.backgroundColor = "#d97706";
-                    } else {
-                      e.target.style.backgroundColor = "#dc2626";
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    if (confirmAction.type === "CONFIRM") {
-                      e.target.style.backgroundColor = "#22c55e";
-                    } else if (confirmAction.type === "REJECT") {
-                      e.target.style.backgroundColor = "#f59e0b";
-                    } else {
-                      e.target.style.backgroundColor = "#ef4444";
-                    }
-                  }}
-                >
-                  {confirmAction.type === "CONFIRM"
-                    ? "✅ Yes, Confirm"
-                    : confirmAction.type === "REJECT"
-                    ? "⚠️ Yes, Reject"
-                    : "🗑️ Yes, Delete"}
-                </button>
-                <button
-                  onClick={() => setConfirmAction(null)}
-                  style={{
-                    flex: 1,
-                    padding: "12px 24px",
-                    backgroundColor: "#6b7280",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseOver={(e) => (e.target.style.backgroundColor = "#4b5563")}
-                  onMouseOut={(e) => (e.target.style.backgroundColor = "#6b7280")}
-                >
-                  ❌ Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* REJECTION REASON MODAL */}
-        {showRejectionModal && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              width: "100vw",
-              height: "100vh",
-              background: "rgba(0, 0, 0, 0.5)",
-              backdropFilter: "blur(4px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 100000,
-              animation: "fadeIn 0.2s ease-in-out",
-            }}
-            onClick={() => {
-              setShowRejectionModal(false);
-              setRejectionReason("");
-              setPendingRejection(null);
-            }}
-          >
-            <div
-              style={{
-                background: "white",
-                borderRadius: "16px",
-                padding: "32px",
-                maxWidth: "500px",
-                width: "90%",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-                border: "1px solid rgba(226, 232, 240, 0.8)",
-                animation: "slideUp 0.3s ease-out",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ display: "flex", alignItems: "center", marginBottom: "20px" }}>
-                <div
-                  style={{
-                    width: "48px",
-                    height: "48px",
-                    borderRadius: "50%",
-                    background: "linear-gradient(135deg, #f59e0b, #d97706)",
-                    color: "white",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "24px",
-                    fontWeight: "bold",
-                    marginRight: "16px",
-                    boxShadow: "0 4px 12px rgba(245, 158, 11, 0.3)",
-                  }}
-                >
-                  ⚠️
-                </div>
-                <div>
-                  <h3
-                    style={{
-                      fontSize: "20px",
-                      fontWeight: "700",
-                      color: "#0f172a",
-                      margin: 0,
-                      marginBottom: "4px",
-                    }}
-                  >
-                    Enter Rejection Reason
-                  </h3>
-                  <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
-                    Please provide a reason for rejecting this quotation
-                  </p>
-                </div>
-              </div>
-
-              <textarea
-                placeholder="Enter the reason for rejection..."
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                style={{
-                  width: "100%",
-                  minHeight: "120px",
-                  padding: "12px 16px",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(226, 232, 240, 0.8)",
-                  background: "#ffffff",
-                  color: "#0f172a",
-                  outline: "none",
-                  fontSize: "14px",
-                  fontFamily: "inherit",
-                  resize: "vertical",
-                  transition: "all 0.2s ease",
-                  marginBottom: "24px",
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = "#6366f1";
-                  e.target.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.1)";
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = "rgba(226, 232, 240, 0.8)";
-                  e.target.style.boxShadow = "none";
-                }}
-                autoFocus
-              />
-
-              <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-                <button
-                  onClick={() => {
-                    setShowRejectionModal(false);
-                    setRejectionReason("");
-                    setPendingRejection(null);
-                  }}
-                  style={{
-                    padding: "12px 24px",
-                    background: "#ef4444",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    color: "white",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                    transition: "all 0.2s ease",
-                    boxShadow: "0 2px 4px rgba(239, 68, 68, 0.2)",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.transform = "scale(1.02)";
-                    e.target.style.boxShadow = "0 4px 8px rgba(239, 68, 68, 0.3)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.transform = "scale(1)";
-                    e.target.style.boxShadow = "0 2px 4px rgba(239, 68, 68, 0.2)";
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleRejectionSubmit}
-                  disabled={!rejectionReason.trim()}
-                  style={{
-                    padding: "12px 24px",
-                    background: rejectionReason.trim()
-                      ? "linear-gradient(135deg, #f59e0b, #d97706)"
-                      : "#d1d5db",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: rejectionReason.trim() ? "pointer" : "not-allowed",
-                    color: "white",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                    transition: "all 0.2s ease",
-                    boxShadow: rejectionReason.trim()
-                      ? "0 2px 4px rgba(245, 158, 11, 0.2)"
-                      : "none",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (rejectionReason.trim()) {
-                      e.target.style.transform = "scale(1.02)";
-                      e.target.style.boxShadow = "0 4px 8px rgba(245, 158, 11, 0.3)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (rejectionReason.trim()) {
-                      e.target.style.transform = "scale(1)";
-                      e.target.style.boxShadow = "0 2px 4px rgba(245, 158, 11, 0.2)";
-                    }
-                  }}
-                >
-                  Submit Rejection
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Next Button to Invoice Page */}
-        <div style={{ 
-          display: "flex", 
-          justifyContent: "flex-end", 
-          marginTop: "30px",
-          paddingTop: "20px",
-          borderTop: "2px solid rgba(255, 255, 255, 0.2)"
-        }}>
-          <button
-            onClick={() => navigate("/invoices")}
-            style={{
-              padding: "12px 32px",
-              backgroundColor: "#6366f1",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontSize: "16px",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              transition: "all 0.2s",
-              boxShadow: "0 4px 6px -1px rgba(99, 102, 241, 0.3)",
-            }}
-            onMouseOver={(e) => {
-              e.target.style.backgroundColor = "#4f46e5";
-              e.target.style.boxShadow = "0 6px 8px -1px rgba(99, 102, 241, 0.4)";
-              e.target.style.transform = "translateY(-2px)";
-            }}
-            onMouseOut={(e) => {
-              e.target.style.backgroundColor = "#6366f1";
-              e.target.style.boxShadow = "0 4px 6px -1px rgba(99, 102, 241, 0.3)";
-              e.target.style.transform = "translateY(0)";
-            }}
-          >
-            Next: Invoices
-            <span style={{ fontSize: "18px" }}>→</span>
-          </button>
-        </div>
       </div>
     </PageWrapper>
   );
 }
 
-export default QuotationManagement;
+export default StaffQuotationManagement;
 

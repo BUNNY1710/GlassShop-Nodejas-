@@ -338,14 +338,16 @@ const generateQuotationPdf = async (quotationId, userId) => {
 
   let currentY = 50;
 
-  // Title - Centered
-  doc.fontSize(20).font('Helvetica-Bold').text('QUOTATION', { align: 'center' });
-  currentY = 80;
-
-  // Shop Details
+  // Shop Details at the top
   if (quotation.shop) {
-    doc.fontSize(12).font('Helvetica-Bold').text(quotation.shop.shopName || '', 40, currentY);
-    currentY += 15;
+    if (quotation.shop.shopName) {
+      doc.fontSize(12).font('Helvetica-Bold').text(quotation.shop.shopName, 40, currentY);
+      currentY += 15;
+    }
+    if (quotation.shop.email) {
+      doc.fontSize(10).font('Helvetica').text(`Email: ${quotation.shop.email}`, 40, currentY);
+      currentY += 12;
+    }
     // Address and phone - only show if fields exist (columns may not exist in database yet)
     if (quotation.shop && quotation.shop.address) {
       doc.fontSize(10).font('Helvetica').text(quotation.shop.address, 40, currentY);
@@ -353,10 +355,6 @@ const generateQuotationPdf = async (quotationId, userId) => {
     }
     if (quotation.shop && quotation.shop.phone) {
       doc.fontSize(10).font('Helvetica').text(`Phone no.: ${quotation.shop.phone}`, 40, currentY);
-      currentY += 12;
-    }
-    if (quotation.shop.email) {
-      doc.fontSize(10).font('Helvetica').text(`Email: ${quotation.shop.email}`, 40, currentY);
       currentY += 12;
     }
     // GST number - only show if field exists (column may not exist in database yet)
@@ -368,16 +366,20 @@ const generateQuotationPdf = async (quotationId, userId) => {
   }
   currentY += 10;
 
-  // Document Details Box (bordered)
+  // Title - Centered
+  doc.fontSize(20).font('Helvetica-Bold').text('QUOTATION', { align: 'center' });
+  currentY += 30;
+
+  // Document Details Box (bordered) - Quotation No. and Date in one row
   const detailsBoxY = currentY;
-  doc.rect(40, detailsBoxY, 515, 60).stroke();
+  doc.rect(40, detailsBoxY, 515, 50).stroke();
   doc.fontSize(10).font('Helvetica-Bold').text('Quotation No.:', 50, detailsBoxY + 10);
   doc.fontSize(10).font('Helvetica').text(quotation.quotationNumber || '', 150, detailsBoxY + 10);
-  doc.fontSize(10).font('Helvetica-Bold').text('Date:', 50, detailsBoxY + 25);
-  doc.fontSize(10).font('Helvetica').text(formatDate(quotation.quotationDate), 150, detailsBoxY + 25);
-  doc.fontSize(10).font('Helvetica-Bold').text('Place of Supply:', 50, detailsBoxY + 40);
-  doc.fontSize(10).font('Helvetica').text(quotation.customerState || 'N/A', 150, detailsBoxY + 40);
-  currentY = detailsBoxY + 70;
+  doc.fontSize(10).font('Helvetica-Bold').text('Date:', 320, detailsBoxY + 10);
+  doc.fontSize(10).font('Helvetica').text(formatDate(quotation.quotationDate), 360, detailsBoxY + 10);
+  doc.fontSize(10).font('Helvetica-Bold').text('Place of Supply:', 50, detailsBoxY + 30);
+  doc.fontSize(10).font('Helvetica').text(quotation.customerState || 'N/A', 150, detailsBoxY + 30);
+  currentY = detailsBoxY + 60;
 
   // Customer Section and Shipping Address side by side
   const leftX = 40;
@@ -626,9 +628,9 @@ const generateQuotationPdf = async (quotationId, userId) => {
   doc.fontSize(8).font('Helvetica-Bold');
   const totalTextY = currentY + 14; // Match item row baseline
   doc.text('Total', 60, totalTextY);
-  doc.text(totalQuantity.toFixed(1), 260, totalTextY);
-  doc.text('₹' + totalGST.toFixed(2), 380, totalTextY);
-  doc.text('₹' + totalAmount.toFixed(2), 450, totalTextY);
+  doc.text(totalQuantity.toFixed(1), 280, totalTextY); // Aligned with Qty column
+  doc.text('₹' + totalGST.toFixed(2), 400, totalTextY); // Aligned with GST column
+  doc.text('₹' + totalAmount.toFixed(2), 470, totalTextY); // Aligned with Amount column
   currentY += 30;
 
   // Amount in Words
@@ -1005,15 +1007,16 @@ const generateInvoicePdf = async (invoiceId, userId) => {
 
   let currentY = 50;
 
-  // Title - Centered
-  const title = invoice.billingType === 'GST' ? 'TAX INVOICE' : 'BILL / CASH MEMO';
-  doc.fontSize(20).font('Helvetica-Bold').text(title, { align: 'center' });
-  currentY = 80;
-
-  // Shop Details
+  // Shop Details at the top
   if (invoice.shop) {
-    doc.fontSize(12).font('Helvetica-Bold').text(invoice.shop.shopName || '', 40, currentY);
-    currentY += 15;
+    if (invoice.shop.shopName) {
+      doc.fontSize(12).font('Helvetica-Bold').text(invoice.shop.shopName, 40, currentY);
+      currentY += 15;
+    }
+    if (invoice.shop.email) {
+      doc.fontSize(10).font('Helvetica').text(`Email: ${invoice.shop.email}`, 40, currentY);
+      currentY += 12;
+    }
     // Address and phone - only show if fields exist (columns may not exist in database yet)
     if (invoice.shop && invoice.shop.address) {
       doc.fontSize(10).font('Helvetica').text(invoice.shop.address, 40, currentY);
@@ -1021,10 +1024,6 @@ const generateInvoicePdf = async (invoiceId, userId) => {
     }
     if (invoice.shop && invoice.shop.phone) {
       doc.fontSize(10).font('Helvetica').text(`Phone no.: ${invoice.shop.phone}`, 40, currentY);
-      currentY += 12;
-    }
-    if (invoice.shop.email) {
-      doc.fontSize(10).font('Helvetica').text(`Email: ${invoice.shop.email}`, 40, currentY);
       currentY += 12;
     }
     // GST number - check if field exists
@@ -1039,16 +1038,21 @@ const generateInvoicePdf = async (invoiceId, userId) => {
   }
   currentY += 10;
 
-  // Document Details Box (bordered)
+  // Title - Centered
+  const title = invoice.billingType === 'GST' ? 'TAX INVOICE' : 'BILL / CASH MEMO';
+  doc.fontSize(20).font('Helvetica-Bold').text(title, { align: 'center' });
+  currentY += 30;
+
+  // Document Details Box (bordered) - Invoice No. and Date in one row
   const detailsBoxY = currentY;
-  doc.rect(40, detailsBoxY, 515, 60).stroke();
+  doc.rect(40, detailsBoxY, 515, 50).stroke();
   doc.fontSize(10).font('Helvetica-Bold').text('Invoice No.:', 50, detailsBoxY + 10);
   doc.fontSize(10).font('Helvetica').text(invoice.invoiceNumber || '', 150, detailsBoxY + 10);
-  doc.fontSize(10).font('Helvetica-Bold').text('Date:', 50, detailsBoxY + 25);
-  doc.fontSize(10).font('Helvetica').text(formatDate(invoice.invoiceDate), 150, detailsBoxY + 25);
-  doc.fontSize(10).font('Helvetica-Bold').text('Place of Supply:', 50, detailsBoxY + 40);
-  doc.fontSize(10).font('Helvetica').text(invoice.customerState || 'N/A', 150, detailsBoxY + 40);
-  currentY = detailsBoxY + 70;
+  doc.fontSize(10).font('Helvetica-Bold').text('Date:', 320, detailsBoxY + 10);
+  doc.fontSize(10).font('Helvetica').text(formatDate(invoice.invoiceDate), 360, detailsBoxY + 10);
+  doc.fontSize(10).font('Helvetica-Bold').text('Place of Supply:', 50, detailsBoxY + 30);
+  doc.fontSize(10).font('Helvetica').text(invoice.customerState || 'N/A', 150, detailsBoxY + 30);
+  currentY = detailsBoxY + 60;
 
   // Customer Section and Shipping Address side by side
   const leftX = 40;
@@ -1244,9 +1248,9 @@ const generateInvoicePdf = async (invoiceId, userId) => {
   doc.fontSize(8).font('Helvetica-Bold');
   const totalTextY = currentY + 14; // Match item row baseline
   doc.text('Total', 60, totalTextY);
-  doc.text(totalQuantity.toFixed(1), 260, totalTextY);
-  doc.text('₹' + totalGST.toFixed(2), 380, totalTextY);
-  doc.text('₹' + totalAmount.toFixed(2), 450, totalTextY);
+  doc.text(totalQuantity.toFixed(1), 280, totalTextY); // Aligned with Qty column
+  doc.text('₹' + totalGST.toFixed(2), 400, totalTextY); // Aligned with GST column
+  doc.text('₹' + totalAmount.toFixed(2), 470, totalTextY); // Aligned with Amount column
   currentY += 30;
 
   // Amount in Words
@@ -1412,16 +1416,16 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
   doc.fontSize(20).font('Helvetica-Bold').text('ESTIMATE', { align: 'center' });
   currentY = 80;
 
-  // Document Details Box (bordered) - NO SHOP DETAILS
+  // Document Details Box (bordered) - Estimate No. and Date in one row
   const detailsBoxY = currentY;
-  doc.rect(40, detailsBoxY, 515, 60).stroke();
+  doc.rect(40, detailsBoxY, 515, 50).stroke();
   doc.fontSize(10).font('Helvetica-Bold').text('Estimate No.:', 50, detailsBoxY + 10);
   doc.fontSize(10).font('Helvetica').text(invoice.invoiceNumber || '', 150, detailsBoxY + 10);
-  doc.fontSize(10).font('Helvetica-Bold').text('Date:', 50, detailsBoxY + 25);
-  doc.fontSize(10).font('Helvetica').text(formatDate(invoice.invoiceDate), 150, detailsBoxY + 25);
-  doc.fontSize(10).font('Helvetica-Bold').text('Place of Supply:', 50, detailsBoxY + 40);
-  doc.fontSize(10).font('Helvetica').text(invoice.customerState || 'N/A', 150, detailsBoxY + 40);
-  currentY = detailsBoxY + 70;
+  doc.fontSize(10).font('Helvetica-Bold').text('Date:', 320, detailsBoxY + 10);
+  doc.fontSize(10).font('Helvetica').text(formatDate(invoice.invoiceDate), 360, detailsBoxY + 10);
+  doc.fontSize(10).font('Helvetica-Bold').text('Place of Supply:', 50, detailsBoxY + 30);
+  doc.fontSize(10).font('Helvetica').text(invoice.customerState || 'N/A', 150, detailsBoxY + 30);
+  currentY = detailsBoxY + 60;
 
   // Customer Section and Shipping Address side by side
   const leftX = 40;
@@ -1617,9 +1621,9 @@ const generateBasicInvoicePdf = async (invoiceId, userId) => {
   doc.fontSize(8).font('Helvetica-Bold');
   const totalTextY = currentY + 14; // Match item row baseline
   doc.text('Total', 60, totalTextY);
-  doc.text(totalQuantity.toFixed(1), 260, totalTextY);
-  doc.text('₹' + totalGST.toFixed(2), 380, totalTextY);
-  doc.text('₹' + totalAmount.toFixed(2), 450, totalTextY);
+  doc.text(totalQuantity.toFixed(1), 280, totalTextY); // Aligned with Qty column
+  doc.text('₹' + totalGST.toFixed(2), 400, totalTextY); // Aligned with GST column
+  doc.text('₹' + totalAmount.toFixed(2), 470, totalTextY); // Aligned with Amount column
   currentY += 30;
 
   // Amount in Words

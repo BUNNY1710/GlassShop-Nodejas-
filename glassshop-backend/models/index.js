@@ -15,6 +15,7 @@ const Payment = require('./Payment')(sequelize);
 const AuditLog = require('./AuditLog')(sequelize);
 const Installation = require('./Installation')(sequelize);
 const Site = require('./Site')(sequelize);
+const GlassPriceMaster = require('./GlassPriceMaster')(sequelize);
 
 // Define associations
 // Shop associations
@@ -90,5 +91,6 @@ module.exports = {
   Payment,
   AuditLog,
   Installation,
-  Site
+  Site,
+  GlassPriceMaster
 };
