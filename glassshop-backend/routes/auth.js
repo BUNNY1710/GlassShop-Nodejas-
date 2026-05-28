@@ -8,16 +8,22 @@ const { authMiddleware, requireAdmin } = require('../middleware/auth');
 // Register shop (Public)
 router.post('/register-shop', async (req, res) => {
   try {
-    const { username, password, shopName, email } = req.body;
+    const username = (req.body.username || '').trim();
+    const password = req.body.password || '';
+    const shopName = (req.body.shopName || '').trim();
+    const email = (req.body.email || '').trim() || null;
 
-    if (!username || !username.trim()) {
+    if (!username) {
       return res.status(400).json({ error: 'Username is required' });
     }
-    if (!password || !password.trim()) {
+    if (!password || !String(password).trim()) {
       return res.status(400).json({ error: 'Password is required' });
     }
-    if (!shopName || !shopName.trim()) {
+    if (!shopName) {
       return res.status(400).json({ error: 'Shop name is required' });
+    }
+    if (password.length < 4) {
+      return res.status(400).json({ error: 'Password must be at least 4 characters long' });
     }
 
     // Check if username already exists
@@ -33,7 +39,7 @@ router.post('/register-shop', async (req, res) => {
     });
 
     // Create admin user
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(String(password).trim(), 10);
     await User.create({
       userName: username,
       password: hashedPassword,
@@ -112,12 +118,13 @@ router.post('/create-staff', authMiddleware, requireAdmin, async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const username = (req.body.username || '').trim();
+    const password = req.body.password || '';
 
-    if (!username || !username.trim()) {
+    if (!username) {
       return res.status(400).json({ error: 'Username is required' });
     }
-    if (!password || !password.trim()) {
+    if (!password) {
       return res.status(400).json({ error: 'Password is required' });
     }
 

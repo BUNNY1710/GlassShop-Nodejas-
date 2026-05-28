@@ -17,7 +17,7 @@ const aiRoutes = require('./routes/ai');
 const glassPriceMasterRoutes = require('./routes/glassPriceMaster');
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3001;
 
 // ==================== CORS CONFIGURATION ====================
 // Simplified and permissive CORS for EC2 deployment

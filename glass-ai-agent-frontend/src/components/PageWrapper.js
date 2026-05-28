@@ -1,87 +1,26 @@
-// function PageWrapper({ background, children }) {
-//   return (
-//     <div
-//       style={{
-//         minHeight: "100vh",
-//         backgroundImage: `url(${background})`,
-//         backgroundSize: "cover",
-//         backgroundPosition: "center",
-//         position: "relative",
-//       }}
-//     >
-//       {/* Overlay */}
-//       <div
-//         style={{
-//           position: "absolute",
-//           inset: 0,
-//           background: "rgba(0,0,0,0.6)",
-//           zIndex: 0,
-//         }}
-//       />
+import { motion } from 'framer-motion';
+import { pageTransition } from '../design/motion';
+import { cn } from '../lib/utils';
 
-//       {/* Content */}
-//       <div
-//         style={{
-//           position: "relative",
-//           zIndex: 1,
-//           minHeight: "calc(100vh - 64px)",
-//           padding:  "clamp(12px, 4vw, 40px)",
-//           color: "white",
-//         }}
-//       >
-//         {children}
-//       </div>
-//     </div>
-//   );
-// }
+function PageWrapper({ children, className, maxWidth = '7xl' }) {
+  const maxWidths = {
+    sm: 'max-w-3xl',
+    md: 'max-w-5xl',
+    lg: 'max-w-6xl',
+    xl: 'max-w-7xl',
+    '7xl': 'max-w-[1400px]',
+    full: 'max-w-full',
+  };
 
-// export default PageWrapper;
-
-function PageWrapper({ background, children, backgroundImage }) {
-  const bg = background || backgroundImage;
-  
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        backgroundImage: bg ? `url(${bg})` : "none",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
-        position: "relative",
-        paddingTop: "70px", // Account for fixed navbar
-      }}
+    <motion.div
+      variants={pageTransition}
+      initial="hidden"
+      animate="visible"
+      className={cn('page-container page-section', maxWidths[maxWidth] || maxWidths['7xl'], className)}
     >
-      {/* Modern Gradient Overlay */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background: bg 
-            ? "linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(30, 41, 59, 0.75) 100%)" 
-            : "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%)",
-          zIndex: 0,
-        }}
-      />
-
-      {/* Content Container - Mobile-first responsive */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 1,
-          minHeight: "calc(100vh - 70px)",
-          padding: "clamp(12px, 4vw, 40px)", // Responsive padding: 12px mobile, scales up
-          color: bg ? "white" : "#0f172a",
-          maxWidth: "1600px",
-          margin: "0 auto",
-          width: "100%",
-          boxSizing: "border-box", // Prevent overflow
-          overflowX: "hidden", // Prevent horizontal scroll
-        }}
-      >
-        {children}
-      </div>
-    </div>
+      {children}
+    </motion.div>
   );
 }
 

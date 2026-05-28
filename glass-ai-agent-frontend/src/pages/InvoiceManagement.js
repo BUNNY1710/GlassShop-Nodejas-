@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 import PageWrapper from "../components/PageWrapper";
-import dashboardBg from "../assets/dashboard-bg.jpg";
+import useResponsive from "../hooks/useResponsive";
+import { Badge, Button, cn, DataTable, EmptyState, PageHeader } from "../components/ui";
+import { FileText, Plus } from "lucide-react";
 import {
   getQuotations,
   getInvoices,
@@ -16,8 +19,6 @@ import {
   printBasicInvoice,
   getQuotationsByStatus,
 } from "../api/quotationApi";
-import api from "../api/api";
-import "../styles/design-system.css";
 
 function InvoiceManagement() {
   const [invoices, setInvoices] = useState([]);
@@ -30,7 +31,7 @@ function InvoiceManagement() {
   const [selectedQuotationDetails, setSelectedQuotationDetails] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [currentInvoiceId, setCurrentInvoiceId] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const { isMobile } = useResponsive();
 
   const [convertForm, setConvertForm] = useState({
     invoiceType: "FINAL",
@@ -53,9 +54,6 @@ function InvoiceManagement() {
   useEffect(() => {
     loadInvoices();
     loadConfirmedQuotations();
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const loadInvoices = async () => {
@@ -128,7 +126,7 @@ function InvoiceManagement() {
     }
 
     try {
-      const response = await createInvoiceFromQuotation({
+      await createInvoiceFromQuotation({
         quotationId: selectedQuotation.id,
         invoiceType: convertForm.invoiceType,
         invoiceDate: convertForm.invoiceDate,
@@ -219,203 +217,249 @@ function InvoiceManagement() {
   };
 
   const getPaymentStatusBadge = (status) => {
-    const colors = {
-      PAID: "#4caf50",
-      PARTIAL: "#ff9800",
-      DUE: "#f44336",
-    };
+    const normalized = String(status || "").toUpperCase();
+    const variant =
+      normalized === "PAID"
+        ? "success"
+        : normalized === "PARTIAL"
+          ? "warning"
+          : normalized === "DUE"
+            ? "danger"
+            : "default";
+
     return (
-      <span
-        style={{
-          padding: "4px 8px",
-          borderRadius: "4px",
-          backgroundColor: colors[status] || "#757575",
-          color: "white",
-          fontSize: "12px",
-        }}
-      >
-        {status}
-      </span>
+      <Badge variant={variant} dot>
+        {normalized || "UNKNOWN"}
+      </Badge>
     );
   };
 
+  const invoiceColumns = [
+    {
+        key: "invoiceNumber",
+        header: "Invoice #",
+        className: "font-semibold text-slate-800 dark:text-slate-200",
+        render: (invoice) => invoice.invoiceNumber,
+    },
+    {
+        key: "customerName",
+        header: "Customer",
+        render: (invoice) => (
+          <div className="min-w-0">
+            <p className="font-medium text-slate-700 dark:text-slate-200 truncate">
+              {invoice.customerName}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-500 md:hidden">
+              {invoice.invoiceDate}
+            </p>
+          </div>
+        ),
+    },
+    { key: "invoiceType", header: "Type", hideBelow: "md" },
+    { key: "billingType", header: "Billing", hideBelow: "md" },
+    {
+        key: "paymentStatus",
+        header: "Payment",
+        hideBelow: "md",
+        render: (invoice) => getPaymentStatusBadge(invoice.paymentStatus),
+    },
+    {
+        key: "grandTotal",
+        header: "Total",
+        hideBelow: "md",
+        className: "font-semibold tabular-nums",
+        render: (invoice) =>
+          `₹${(parseFloat(invoice.grandTotal) || 0).toFixed(2)}`,
+    },
+    {
+        key: "paidAmount",
+        header: "Paid",
+        hideBelow: "md",
+        className: "tabular-nums",
+        render: (invoice) =>
+          `₹${(parseFloat(invoice.paidAmount) || 0).toFixed(2)}`,
+    },
+    {
+        key: "dueAmount",
+        header: "Due",
+        hideBelow: "md",
+        className: "font-semibold tabular-nums",
+        render: (invoice) => (
+          <span
+            className={
+              (parseFloat(invoice.dueAmount) || 0) > 0
+                ? "text-red-600 dark:text-red-400"
+                : "text-emerald-600 dark:text-emerald-400"
+            }
+          >
+            ₹{(parseFloat(invoice.dueAmount) || 0).toFixed(2)}
+          </span>
+        ),
+    },
+    { key: "invoiceDate", header: "Date", hideBelow: "md" },
+    {
+        key: "actions",
+        header: "Actions",
+        className: "w-[1%] whitespace-nowrap",
+        render: (invoice) => (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleViewInvoice(invoice.id)}
+            >
+              View
+            </Button>
+            {invoice.paymentStatus !== "PAID" && (
+              <Button
+                variant="success"
+                size="sm"
+                onClick={async () => {
+                  setCurrentInvoiceId(invoice.id);
+                  setCurrentInvoiceForPayment(invoice);
+                  try {
+                    const response = await getInvoiceById(invoice.id);
+                    setCurrentInvoiceForPayment(response.data);
+                  } catch (error) {
+                    console.error("Failed to load invoice details", error);
+                  }
+                  setShowPaymentModal(true);
+                }}
+              >
+                Add payment
+              </Button>
+            )}
+          </div>
+        ),
+    },
+  ];
+
   return (
-    <PageWrapper backgroundImage={dashboardBg}>
-      <div style={{ padding: isMobile ? "15px" : "20px", maxWidth: "1400px", margin: "0 auto" }}>
-        <div style={{ marginBottom: "25px", padding: "20px", backgroundColor: "rgba(0,0,0,0.5)", borderRadius: "12px", backdropFilter: "blur(10px)" }}>
-          <h1 style={{ color: "#fff", marginBottom: "8px", fontSize: isMobile ? "26px" : "32px", fontWeight: "800", textShadow: "2px 2px 4px rgba(0,0,0,0.5)" }}>
-            🧾 Invoice & Billing Management
-          </h1>
-          <p style={{ color: "#fff", fontSize: "15px", margin: 0, fontWeight: "500", textShadow: "1px 1px 2px rgba(0,0,0,0.5)" }}>
-            Manage invoices, payments, and convert confirmed quotations to invoices
-          </p>
-        </div>
+    <PageWrapper>
+      <div className="space-y-5">
+        <PageHeader
+          title="Invoices"
+          description="Manage invoices, payments, and convert confirmed quotations to invoices."
+          icon={<FileText size={18} />}
+          actions={
+            <Button
+              variant="success"
+              size={isMobile ? "lg" : "md"}
+              fullWidth={isMobile}
+              icon={<Plus size={16} />}
+              onClick={() => {
+                setShowConvertModal(true);
+                loadConfirmedQuotations();
+              }}
+            >
+              Convert quotation
+            </Button>
+          }
+        />
 
         {message && (
           <div
-            style={{
-              padding: "10px",
-              marginBottom: "20px",
-              backgroundColor: message.includes("✅") ? "#4caf50" : "#f44336",
-              color: "white",
-              borderRadius: "4px",
-            }}
+            className={cn(
+              "rounded-xl border px-4 py-3 text-sm font-medium",
+              message.includes("✅")
+                ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-200"
+                : "border-red-200 bg-red-50 text-red-800 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200"
+            )}
+            role="status"
           >
             {message}
           </div>
         )}
 
-        <div style={{ marginBottom: "20px", display: "flex", flexDirection: isMobile ? "column" : "row", gap: "12px" }}>
-          <button
-            onClick={() => {
-              setShowConvertModal(true);
-              loadConfirmedQuotations();
-            }}
-            style={{
-              padding: "12px 24px",
-              backgroundColor: "#22c55e",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontSize: "14px",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              boxShadow: "0 4px 6px -1px rgba(34, 197, 94, 0.3)",
-              transition: "all 0.2s",
-              width: isMobile ? "100%" : "auto",
-            }}
-            onMouseOver={(e) => {
-              e.target.style.backgroundColor = "#16a34a";
-              e.target.style.boxShadow = "0 6px 8px -1px rgba(34, 197, 94, 0.4)";
-              e.target.style.transform = "translateY(-1px)";
-            }}
-            onMouseOut={(e) => {
-              e.target.style.backgroundColor = "#22c55e";
-              e.target.style.boxShadow = "0 4px 6px -1px rgba(34, 197, 94, 0.3)";
-              e.target.style.transform = "translateY(0)";
-            }}
-          >
-            ➕ Convert Quotation to Invoice
-          </button>
-        </div>
-
-        {loading ? (
-          <div style={{ textAlign: "center", color: "#fff", padding: "20px" }}>Loading...</div>
-        ) : (
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "8px",
-              overflow: "hidden",
-            }}
-          >
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
-                <thead>
-                  <tr style={{ backgroundColor: "#f5f5f5" }}>
-                    <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Invoice #</th>
-                    <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Customer</th>
-                    {!isMobile && (
-                      <>
-                        <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Type</th>
-                        <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Billing Type</th>
-                        <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Payment Status</th>
-                        <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Grand Total</th>
-                        <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Paid</th>
-                        <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Due</th>
-                        <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Date</th>
-                      </>
-                    )}
-                    <th style={{ padding: "12px", textAlign: "left", fontSize: "13px", fontWeight: "600" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.map((invoice, idx) => (
-                    <tr
-                      key={invoice.id}
-                      style={{
-                        borderTop: "1px solid #ddd",
-                        backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f9fafb",
-                        transition: "background-color 0.2s",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = idx % 2 === 0 ? "#ffffff" : "#f9fafb")}
-                    >
-                      <td style={{ padding: "12px", fontWeight: "500" }}>{invoice.invoiceNumber}</td>
-                      <td style={{ padding: "12px" }}>{invoice.customerName}</td>
-                      {!isMobile && (
-                        <>
-                          <td style={{ padding: "12px" }}>{invoice.invoiceType}</td>
-                          <td style={{ padding: "12px" }}>{invoice.billingType}</td>
-                          <td style={{ padding: "12px" }}>{getPaymentStatusBadge(invoice.paymentStatus)}</td>
-                          <td style={{ padding: "12px", fontWeight: "600" }}>₹{(parseFloat(invoice.grandTotal) || 0).toFixed(2)}</td>
-                          <td style={{ padding: "12px" }}>₹{(parseFloat(invoice.paidAmount) || 0).toFixed(2)}</td>
-                          <td style={{ padding: "12px", color: invoice.dueAmount > 0 ? "#ef4444" : "#22c55e", fontWeight: "500" }}>
-                            ₹{(parseFloat(invoice.dueAmount) || 0).toFixed(2)}
-                          </td>
-                          <td style={{ padding: "12px" }}>{invoice.invoiceDate}</td>
-                        </>
-                      )}
-                      <td style={{ padding: "12px" }}>
-                      <button
-                        onClick={() => handleViewInvoice(invoice.id)}
-                        style={{
-                          padding: "5px 10px",
-                          backgroundColor: "#2196f3",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "4px",
-                          cursor: "pointer",
-                          marginRight: "5px",
-                        }}
-                      >
-                        View
-                      </button>
-                      {invoice.paymentStatus !== "PAID" && (
-                        <button
-                          onClick={async () => {
-                            setCurrentInvoiceId(invoice.id);
-                            setCurrentInvoiceForPayment(invoice);
-                            // Load full invoice details
-                            try {
-                              const response = await getInvoiceById(invoice.id);
-                              setCurrentInvoiceForPayment(response.data);
-                            } catch (error) {
-                              console.error("Failed to load invoice details", error);
-                            }
-                            setShowPaymentModal(true);
-                          }}
-                          style={{
-                            padding: "5px 10px",
-                            backgroundColor: "#4caf50",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                            fontSize: "12px",
-                          }}
-                        >
-                          💳 Add Payment
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-            {invoices.length === 0 && (
-              <div style={{ padding: "60px 20px", textAlign: "center", color: "#6b7280" }}>
-                <div style={{ fontSize: "48px", marginBottom: "16px", opacity: 0.5 }}>🧾</div>
-                <p style={{ fontSize: "16px", fontWeight: "500", marginBottom: "8px" }}>No invoices found</p>
-                <p style={{ fontSize: "14px", color: "#9ca3af" }}>Convert a confirmed quotation to create your first invoice</p>
+        <DataTable
+          stickyHeader
+          loading={loading}
+          rows={invoices}
+          rowKey="id"
+          columns={invoiceColumns}
+          empty={
+            <EmptyState
+              icon={<FileText size={18} />}
+              title="No invoices yet"
+              description="Convert a confirmed quotation to create your first invoice."
+              actionLabel="Convert quotation"
+              onAction={() => {
+                setShowConvertModal(true);
+                loadConfirmedQuotations();
+              }}
+            />
+          }
+          renderMobileCard={(invoice) => (
+            <div className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">
+                    Invoice #{invoice.invoiceNumber}
+                  </p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 truncate">
+                    {invoice.customerName}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-500">
+                    {invoice.invoiceDate}
+                  </p>
+                </div>
+                {getPaymentStatusBadge(invoice.paymentStatus)}
               </div>
-            )}
-          </div>
-        )}
+
+              <div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-50 dark:bg-slate-800/40 p-3 border border-slate-200/70 dark:border-slate-700/50">
+                <div>
+                  <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-500">
+                    Total
+                  </p>
+                  <p className="mt-0.5 font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                    ₹{(parseFloat(invoice.grandTotal) || 0).toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-500">
+                    Due
+                  </p>
+                  <p
+                    className={cn(
+                      "mt-0.5 font-semibold tabular-nums",
+                      (parseFloat(invoice.dueAmount) || 0) > 0
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-emerald-600 dark:text-emerald-400"
+                    )}
+                  >
+                    ₹{(parseFloat(invoice.dueAmount) || 0).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Button variant="secondary" size="lg" fullWidth onClick={() => handleViewInvoice(invoice.id)}>
+                  View details
+                </Button>
+                {invoice.paymentStatus !== "PAID" && (
+                  <Button
+                    variant="success"
+                    size="lg"
+                    fullWidth
+                    onClick={async () => {
+                      setCurrentInvoiceId(invoice.id);
+                      setCurrentInvoiceForPayment(invoice);
+                      try {
+                        const response = await getInvoiceById(invoice.id);
+                        setCurrentInvoiceForPayment(response.data);
+                      } catch (error) {
+                        console.error("Failed to load invoice details", error);
+                      }
+                      setShowPaymentModal(true);
+                    }}
+                  >
+                    Add payment
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        />
 
         {/* Convert Quotation Modal */}
         {showConvertModal && (
@@ -1247,7 +1291,7 @@ function InvoiceManagement() {
                           window.URL.revokeObjectURL(url);
                         } catch (error) {
                           console.error("Failed to download invoice", error);
-                          alert("Failed to download invoice PDF");
+                          toast.error("Failed to download invoice PDF");
                         }
                       }}
                       style={{
@@ -1282,7 +1326,7 @@ function InvoiceManagement() {
                           }
                         } catch (error) {
                           console.error("Failed to print invoice", error);
-                          alert("Failed to print invoice PDF");
+                          toast.error("Failed to print invoice PDF");
                         }
                       }}
                       style={{
@@ -1318,7 +1362,7 @@ function InvoiceManagement() {
                           window.URL.revokeObjectURL(url);
                         } catch (error) {
                           console.error("Failed to download basic invoice", error);
-                          alert("Failed to download basic invoice PDF");
+                          toast.error("Failed to download basic invoice PDF");
                         }
                       }}
                       style={{
@@ -1353,7 +1397,7 @@ function InvoiceManagement() {
                           }
                         } catch (error) {
                           console.error("Failed to print basic invoice", error);
-                          alert("Failed to print basic invoice PDF");
+                          toast.error("Failed to print basic invoice PDF");
                         }
                       }}
                       style={{
@@ -1388,7 +1432,7 @@ function InvoiceManagement() {
                           }
                         } catch (error) {
                           console.error("Failed to print delivery challan", error);
-                          alert("Failed to print delivery challan PDF");
+                          toast.error("Failed to print delivery challan PDF");
                         }
                       }}
                       style={{
@@ -1424,7 +1468,7 @@ function InvoiceManagement() {
                           window.URL.revokeObjectURL(url);
                         } catch (error) {
                           console.error("Failed to download transport challan", error);
-                          alert("Failed to download delivery challan PDF");
+                          toast.error("Failed to download delivery challan PDF");
                         }
                       }}
                       style={{

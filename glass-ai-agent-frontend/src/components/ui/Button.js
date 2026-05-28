@@ -1,7 +1,10 @@
 import React from 'react';
-import { useResponsive } from '../../hooks/useResponsive';
+import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
+import { cn } from '../../lib/utils';
+import { type } from '../../design/typography';
 
-const Button = ({
+const Button = React.forwardRef(({
   children,
   variant = 'primary',
   size = 'md',
@@ -9,136 +12,95 @@ const Button = ({
   loading = false,
   icon,
   iconPosition = 'left',
-  onClick,
-  type = 'button',
   disabled = false,
   className = '',
+  type: buttonType = 'button',
   ...props
-}) => {
-  const baseStyle = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-    fontWeight: '600',
-    borderRadius: '12px',
-    border: 'none',
-    cursor: disabled || loading ? 'not-allowed' : 'pointer',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    position: 'relative',
-    overflow: 'hidden',
-    fontFamily: 'inherit',
-    width: fullWidth ? '100%' : 'auto',
-    opacity: disabled || loading ? 0.6 : 1,
+}, ref) => {
+
+  const base = cn(
+    type.button,
+    'inline-flex items-center justify-center gap-2',
+    'transition-all duration-150 focus-ring',
+    'disabled:opacity-45 disabled:pointer-events-none',
+    'relative select-none'
+  );
+
+  const variants = {
+    primary: cn(
+      'btn-shine',
+      'bg-sky-600 hover:bg-sky-700 active:bg-sky-800',
+      'text-white',
+      'shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_-1px_0_0_rgba(0,0,0,0.12)_inset]',
+      'hover:shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_-1px_0_0_rgba(0,0,0,0.16)_inset,0_4px_12px_-3px_rgba(2,132,199,0.40)]'
+    ),
+    secondary: cn(
+      'bg-white dark:bg-slate-800/90',
+      'text-slate-700 dark:text-slate-200',
+      'border border-slate-200 dark:border-slate-700',
+      'shadow-[0_1px_2px_rgba(0,0,0,0.05)]',
+      'hover:bg-slate-50 dark:hover:bg-slate-800',
+      'hover:border-slate-300 dark:hover:border-slate-600',
+      'active:shadow-none'
+    ),
+    outline: cn(
+      'bg-transparent',
+      'text-slate-700 dark:text-slate-300',
+      'border border-slate-300 dark:border-slate-600',
+      'hover:border-sky-400/70 hover:bg-sky-50/60 hover:text-sky-700',
+      'dark:hover:border-sky-600/50 dark:hover:bg-sky-950/25 dark:hover:text-sky-300'
+    ),
+    ghost: cn(
+      'bg-transparent',
+      'text-slate-600 dark:text-slate-400',
+      'hover:bg-slate-100 dark:hover:bg-slate-800/70',
+      'hover:text-slate-800 dark:hover:text-slate-200'
+    ),
+    danger: cn(
+      'btn-shine',
+      'bg-red-600 hover:bg-red-700 active:bg-red-800',
+      'text-white',
+      'shadow-[0_1px_0_rgba(255,255,255,0.10)_inset]',
+      'hover:shadow-[0_1px_0_rgba(255,255,255,0.10)_inset,0_4px_12px_-3px_rgba(220,38,38,0.38)]'
+    ),
+    success: cn(
+      'btn-shine',
+      'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800',
+      'text-white',
+      'shadow-[0_1px_0_rgba(255,255,255,0.10)_inset]',
+      'hover:shadow-[0_1px_0_rgba(255,255,255,0.10)_inset,0_4px_12px_-3px_rgba(22,163,74,0.36)]'
+    ),
   };
 
-  // Responsive button sizes - larger touch targets on mobile
-  const { isMobile } = useResponsive();
-  const sizeStyles = {
-    sm: { 
-      padding: isMobile ? '12px 18px' : '10px 16px', 
-      fontSize: isMobile ? '15px' : '14px', // Prevent iOS zoom (min 16px)
-      minHeight: isMobile ? '44px' : '40px' // Minimum touch target
-    },
-    md: { 
-      padding: isMobile ? '14px 24px' : '14px 24px', 
-      fontSize: isMobile ? '16px' : '15px', 
-      minHeight: isMobile ? '48px' : '48px' 
-    },
-    lg: { 
-      padding: isMobile ? '18px 32px' : '16px 32px', 
-      fontSize: isMobile ? '17px' : '16px', 
-      minHeight: isMobile ? '52px' : '56px' 
-    },
-  };
-
-  const variantStyles = {
-    primary: {
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      color: '#ffffff',
-      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
-    },
-    success: {
-      background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-      color: '#ffffff',
-      boxShadow: '0 4px 12px rgba(34, 197, 94, 0.4)',
-    },
-    danger: {
-      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-      color: '#ffffff',
-      boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
-    },
-    outline: {
-      background: 'transparent',
-      color: '#667eea',
-      border: '2px solid #667eea',
-      boxShadow: 'none',
-    },
-    ghost: {
-      background: 'transparent',
-      color: '#64748b',
-      boxShadow: 'none',
-    },
-    secondary: {
-      background: '#f1f5f9',
-      color: '#475569',
-      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
-    },
-  };
-
-  const combinedStyle = {
-    ...baseStyle,
-    ...sizeStyles[size],
-    ...variantStyles[variant],
+  const sizes = {
+    sm: 'px-3 py-1.5 text-xs rounded-lg min-h-[32px] gap-1.5',
+    md: 'px-4 py-2.5 rounded-lg min-h-[38px]',
+    lg: 'px-5 py-3 text-base rounded-xl min-h-[46px]',
   };
 
   return (
-    <button
-      type={type}
-      className={`btn btn-${variant} ${className}`}
-      style={combinedStyle}
-      onClick={onClick}
+    <motion.button
+      ref={ref}
+      type={buttonType}
       disabled={disabled || loading}
-      onMouseEnter={(e) => {
-        if (!disabled && !loading) {
-          e.currentTarget.style.transform = 'translateY(-2px)';
-          if (variant !== 'ghost' && variant !== 'outline') {
-            e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.5)';
-          }
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!disabled && !loading) {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = combinedStyle.boxShadow;
-        }
-      }}
+      whileTap={disabled || loading ? {} : { scale: 0.975 }}
+      transition={{ duration: 0.08 }}
+      className={cn(base, variants[variant], sizes[size], fullWidth && 'w-full', className)}
       {...props}
     >
       {loading ? (
-        <>
-          <div
-            style={{
-              width: '16px',
-              height: '16px',
-              border: '2px solid rgba(255, 255, 255, 0.3)',
-              borderTopColor: '#ffffff',
-              borderRadius: '50%',
-              animation: 'spin 0.8s linear infinite',
-            }}
-          />
-          <span>Loading...</span>
-        </>
-      ) : (
-        <>
-          {icon && iconPosition === 'left' && <span>{icon}</span>}
-          <span>{children}</span>
-          {icon && iconPosition === 'right' && <span>{icon}</span>}
-        </>
+        <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden />
+      ) : icon && iconPosition === 'left' ? (
+        <span className="flex shrink-0">{icon}</span>
+      ) : null}
+      <span>{loading ? 'Please wait…' : children}</span>
+      {!loading && icon && iconPosition === 'right' && (
+        <span className="flex shrink-0">{icon}</span>
       )}
-    </button>
+    </motion.button>
   );
-};
+});
 
+Button.displayName = 'Button';
 export default Button;
-
+export { cn } from '../../lib/utils';

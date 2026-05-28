@@ -1,177 +1,128 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
-import dashboardBg from "../assets/dashboard-bg.jpg";
 import api from "../api/api";
+import {
+  PageHeader, Card, Button, Modal, ModalActions, EmptyState, Alert, parseMessageType,
+} from "../components/ui";
+import { Users, Trash2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { fadeUp } from "../design/motion";
+import { type } from "../design/typography";
+import { cn } from "../lib/utils";
 
 function ManageStaff() {
-  const [staff, setStaff] = useState([]);
+  const [staff, setStaff]           = useState([]);
   const [confirmUser, setConfirmUser] = useState(null);
-  const navigate = useNavigate();
+  const [removing, setRemoving]     = useState(false);
+  const [msg, setMsg]               = useState("");
 
   useEffect(() => {
     api.get("/api/auth/staff")
       .then(res => setStaff(res.data))
-      .catch(() => alert("Failed to load staff"));
+      .catch(() => setMsg("❌ Failed to load staff members"));
   }, []);
 
-  const removeStaff = (id) => {
-    api.delete(`/auth/staff/${id}`)
-      .then(() => {
-        setStaff(prev => prev.filter(s => s.id !== id));
-        setConfirmUser(null);
-      })
-      .catch(() => alert("Failed to remove staff"));
+  const removeStaff = async () => {
+    if (!confirmUser) return;
+    try {
+      setRemoving(true);
+      await api.delete(`/api/auth/staff/${confirmUser.id}`);
+      setStaff(prev => prev.filter(s => s.id !== confirmUser.id));
+      setConfirmUser(null);
+      setMsg("✅ Staff member removed successfully");
+    } catch {
+      setMsg("❌ Failed to remove staff member");
+      setConfirmUser(null);
+    } finally {
+      setRemoving(false);
+    }
   };
 
+  const parsed = parseMessageType(msg);
+
   return (
-    <PageWrapper background={dashboardBg}>
-      <div style={card}>
-        {/* ❌ CLOSE BUTTON */}
-        <button
-          style={closeBtn}
-          onClick={() => navigate("/dashboard")}
-          title="Close"
-        >
-          ✕
-        </button>
+    <PageWrapper>
+      <motion.div
+        variants={fadeUp}
+        initial="hidden"
+        animate="visible"
+        className="page-container page-section"
+      >
+        <PageHeader
+          eyebrow="Team management"
+          title="Staff members"
+          description="View and manage staff accounts for your workspace."
+          icon={<Users size={22} />}
+          className="mb-6"
+        />
 
-        <h2 style={{ marginBottom: "20px" }}>👥 Manage Staff</h2>
-
-        {staff.length === 0 ? (
-          <p style={{ opacity: 0.8 }}>No staff found</p>
-        ) : (
-          staff.map(s => (
-            <div key={s.id} style={row}>
-              <span>{s.userName}</span>
-
-              <button
-                style={removeBtn}
-                onClick={() => setConfirmUser(s)}
-              >
-                Remove
-              </button>
-            </div>
-          ))
+        {parsed && (
+          <Alert type={parsed.type} onDismiss={() => setMsg("")} className="mb-4">
+            {parsed.text}
+          </Alert>
         )}
-      </div>
 
-      {/* CONFIRM REMOVE MODAL */}
-      {confirmUser && (
-        <div style={overlay}>
-          <div style={confirmCard}>
-            <h3>Remove Staff</h3>
+        {staff.length === 0 && !msg && (
+          <EmptyState
+            icon={<Users size={28} />}
+            title="No staff members yet"
+            description="Create a staff account to get started."
+          />
+        )}
 
-            <p style={{ opacity: 0.85 }}>
-              Are you sure you want to remove
-              <b> {confirmUser.userName} </b>?
-            </p>
+        {staff.length > 0 && (
+          <Card glass padding="none" className="overflow-hidden">
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {staff.map(s => (
+                <li
+                  key={s.id}
+                  className="flex items-center justify-between gap-4 px-5 py-3.5"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500/15 to-sky-500/8 border border-sky-500/20 text-sky-700 dark:text-sky-300 flex items-center justify-center font-display font-semibold text-sm shrink-0">
+                      {s.userName?.charAt(0).toUpperCase() ?? "?"}
+                    </div>
+                    <span className={cn(type.bodyStrong, "truncate")}>{s.userName}</span>
+                  </div>
 
-            <div style={actions}>
-              <button
-                style={dangerBtn}
-                onClick={() => removeStaff(confirmUser.id)}
-              >
-                Yes, Remove
-              </button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    icon={<Trash2 size={14} />}
+                    onClick={() => setConfirmUser(s)}
+                  >
+                    Remove
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
+      </motion.div>
 
-              <button
-                style={cancelBtn}
-                onClick={() => setConfirmUser(null)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={!!confirmUser}
+        onClose={() => setConfirmUser(null)}
+        title="Remove staff member"
+        description={
+          confirmUser
+            ? `Are you sure you want to remove ${confirmUser.userName}? This cannot be undone.`
+            : undefined
+        }
+        size="sm"
+        footer={
+          <ModalActions
+            onCancel={() => setConfirmUser(null)}
+            onConfirm={removeStaff}
+            cancelLabel="Cancel"
+            confirmLabel="Remove"
+            confirmVariant="danger"
+            loading={removing}
+          />
+        }
+      />
     </PageWrapper>
   );
 }
 
 export default ManageStaff;
-
-/* ================= STYLES ================= */
-
-const card = {
-  width: "520px",
-  padding: "30px",
-  background: "rgba(0,0,0,0.65)",
-  borderRadius: "16px",
-  color: "white",
-  boxShadow: "0 20px 50px rgba(0,0,0,0.7)",
-  position: "relative", // 🔥 required for close button
-};
-
-const closeBtn = {
-  position: "absolute",
-  top: "14px",
-  right: "14px",
-  background: "transparent",
-  border: "none",
-  color: "#aaa",
-  fontSize: "20px",
-  cursor: "pointer",
-};
-
-const row = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "12px 0",
-  borderBottom: "1px solid rgba(255,255,255,0.1)",
-};
-
-const removeBtn = {
-  background: "#dc2626",
-  border: "none",
-  color: "white",
-  padding: "6px 14px",
-  borderRadius: "8px",
-  cursor: "pointer",
-};
-
-/* MODAL */
-
-const overlay = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(0,0,0,0.65)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 30000,
-};
-
-const confirmCard = {
-  width: "360px",
-  padding: "25px",
-  borderRadius: "16px",
-  background: "rgba(20,20,20,0.95)",
-  color: "white",
-  textAlign: "center",
-};
-
-const actions = {
-  display: "flex",
-  justifyContent: "space-between",
-  marginTop: "20px",
-};
-
-const dangerBtn = {
-  background: "#dc2626",
-  color: "white",
-  border: "none",
-  padding: "10px 16px",
-  borderRadius: "10px",
-  cursor: "pointer",
-};
-
-const cancelBtn = {
-  background: "#374151",
-  color: "white",
-  border: "none",
-  padding: "10px 16px",
-  borderRadius: "10px",
-  cursor: "pointer",
-};

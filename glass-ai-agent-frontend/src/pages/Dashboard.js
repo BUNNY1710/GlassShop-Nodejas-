@@ -1,11 +1,76 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import PageWrapper from "../components/PageWrapper";
-import { StatCard, Card, Button } from "../components/ui";
+import { StatCard, Card, Button, PageHeader, Badge, actionBadgeVariant, EmptyState } from "../components/ui";
+import { dashboard as copy } from "../design/copy";
+import { displayName, formatAuditAction } from "../design/format";
+import { type } from "../design/typography";
+import { cn } from "../lib/utils";
 import api from "../api/api";
 import { useResponsive } from "../hooks/useResponsive";
-import "../styles/design-system.css";
+import { motion } from "framer-motion";
+import { fadeUp } from "../design/motion";
+import {
+  Package, AlertTriangle, Layers, ArrowRightLeft,
+  Users, ScrollText, Plus, Eye, Receipt, FileText, ChevronRight,
+  TrendingUp, BarChart3, Activity
+} from "lucide-react";
+
+const CHART_COLORS = [
+  "#0ea5e9", "#0284c7", "#14b8a6", "#22c55e",
+  "#f59e0b", "#f43f5e", "#8b5cf6", "#6366f1"
+];
+
+function QuickActionCard({ icon: Icon, label, description, onClick, accent = "sky" }) {
+  const colors = {
+    sky:     "bg-sky-50 text-sky-600 dark:bg-sky-950/50 dark:text-sky-400 border-sky-100 dark:border-sky-800/40",
+    green:   "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/40",
+    orange:  "bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400 border-orange-100 dark:border-orange-800/40",
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "w-full flex items-center gap-4 p-4 rounded-xl text-left",
+        "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800",
+        "shadow-card hover:shadow-card-hover hover:-translate-y-0.5",
+        "transition-all duration-200 focus-ring group"
+      )}
+    >
+      <div className={cn("h-10 w-10 rounded-lg border flex items-center justify-center shrink-0", colors[accent])}>
+        <Icon size={18} strokeWidth={1.75} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={cn(type.h4, "text-sm truncate")}>{label}</p>
+        <p className={cn(type.caption, "truncate mt-0.5")}>{description}</p>
+      </div>
+      <ChevronRight size={16} className="text-slate-400 dark:text-slate-600 shrink-0 group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors" />
+    </button>
+  );
+}
+
+function CustomTooltip({ active, payload }) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-slate-800 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 shadow-dropdown">
+        <p className={cn(type.h4, "text-sm mb-1")}>{payload[0].name}</p>
+        <p className={type.bodySm}>
+          <span className="font-semibold text-slate-900 dark:text-white tabular-nums">
+            {payload[0].value.toLocaleString()}
+          </span>{" "}
+          units
+        </p>
+        <p className={cn(type.caption, "mt-0.5")}>
+          {payload[0].payload.count} line items
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -13,939 +78,367 @@ function Dashboard() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [stockData, setStockData] = useState([]);
   const [stats, setStats] = useState({
-    totalStock: 0,
-    totalTransfers: 0,
-    totalStaff: 0,
-    totalLogs: 0,
-    lowStock: 0,
-    totalQuantity: 0,
+    totalStock: 0, totalTransfers: 0, totalStaff: 0,
+    totalLogs: 0, lowStock: 0, totalQuantity: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [billingMenuOpen, setBillingMenuOpen] = useState(false);
-  const { isMobile } = useResponsive(); // Use responsive hook
-
-  // Removed manual resize handler - useResponsive hook handles it
+  const { isMobile } = useResponsive();
 
   useEffect(() => {
-    const loadDashboardData = async () => {
+    const load = async () => {
       try {
-        // Check if user is logged in
         const token = sessionStorage.getItem("token");
-        if (!token) {
-          console.warn("No authentication token found. Please log in.");
-          setLoading(false);
-          return;
-        }
-
+        if (!token) { setLoading(false); return; }
         setLoading(true);
 
-        const stockPromise = api.get("/api/stock/all")
-          .then(res => res.data)
-          .catch((error) => {
-            console.error("Error fetching stock:", error.response?.status, error.response?.data);
-            return [];
-          });
-
-        const staffPromise = role === "ROLE_ADMIN"
-          ? api.get("/api/auth/staff")
-            .then(res => res.data)
-            .catch((error) => {
-              console.error("Error fetching staff:", error.response?.status, error.response?.data);
-              return [];
-            })
-          : Promise.resolve([]);
-
-        const auditPromise = role === "ROLE_ADMIN"
-          ? api.get("/api/audit/recent")
-            .then(res => res.data)
-            .catch((error) => {
-              console.error("Error fetching audit logs:", error.response?.status, error.response?.data);
-              return [];
-            })
-          : Promise.resolve([]);
-
-        const transferCountPromise = api.get("/api/audit/transfer-count")
-          .then(res => {
-            // Backend returns { count: number }
-            const data = res.data;
-            if (typeof data === 'object' && data !== null && 'count' in data) {
-              return typeof data.count === 'number' ? data.count : parseInt(data.count, 10) || 0;
-            }
-            return typeof data === 'number' ? data : (typeof data === 'string' ? parseInt(data, 10) : 0);
-          })
-          .catch((error) => {
-            console.error('Error fetching transfer count:', error);
-            if (role === "ROLE_ADMIN") {
-              return null;
-            }
-            return 0;
-          });
-
         const [stockData, staffData, auditData, transferCount] = await Promise.all([
-          stockPromise,
-          staffPromise,
-          auditPromise,
-          transferCountPromise,
+          api.get("/api/stock/all").then(r => r.data).catch(() => []),
+          role === "ROLE_ADMIN"
+            ? api.get("/api/auth/staff").then(r => r.data).catch(() => [])
+            : Promise.resolve([]),
+          role === "ROLE_ADMIN"
+            ? api.get("/api/audit/recent").then(r => r.data).catch(() => [])
+            : Promise.resolve([]),
+          api.get("/api/audit/transfer-count").then(r => {
+            const d = r.data;
+            if (typeof d === 'object' && d !== null && 'count' in d)
+              return typeof d.count === 'number' ? d.count : parseInt(d.count, 10) || 0;
+            return typeof d === 'number' ? d : (typeof d === 'string' ? parseInt(d, 10) : 0);
+          }).catch(() => 0),
         ]);
 
-        if (role === "ROLE_ADMIN") {
-          setAuditLogs(auditData.slice(0, 3));
-        }
+        if (role === "ROLE_ADMIN") setAuditLogs((auditData || []).slice(0, 5));
 
-        const stockWithQuantity = Array.isArray(stockData) 
-          ? stockData.filter(item => item.quantity != null && item.quantity > 0)
-          : [];
-        const totalStock = stockWithQuantity.length;
-        
-        // Calculate stock statistics
-        const lowStockItems = stockWithQuantity.filter(item => 
-          item.quantity < (item.minQuantity || 10)
-        );
-        const lowStock = lowStockItems.length;
-        
-        const totalQuantity = stockWithQuantity.reduce((sum, item) => 
-          sum + (parseInt(item.quantity) || 0), 0
-        );
-        
-        const totalStaff = role === "ROLE_ADMIN" && Array.isArray(staffData) ? staffData.length : 0;
-        
-        let totalTransfers = 0;
-        
-        if (transferCount !== null && typeof transferCount === 'number') {
-          totalTransfers = transferCount;
-          
-          if (transferCount === 0 && role === "ROLE_ADMIN" && Array.isArray(auditData)) {
-            const auditTransferCount = auditData.filter(log => log && log.action === "TRANSFER").length;
-            if (auditTransferCount > 0) {
-              totalTransfers = auditTransferCount;
-            }
-          }
-        } else {
-          if (role === "ROLE_ADMIN" && Array.isArray(auditData)) {
-            totalTransfers = auditData.filter(log => log && log.action === "TRANSFER").length;
-          }
-        }
-        
-        const totalLogs = role === "ROLE_ADMIN" && Array.isArray(auditData) ? auditData.length : 0;
+        const valid = Array.isArray(stockData) ? stockData.filter(i => i.quantity != null && i.quantity > 0) : [];
+        const lowStock = valid.filter(i => i.quantity < (i.minQuantity || 10)).length;
+        const totalQuantity = valid.reduce((s, i) => s + (parseInt(i.quantity) || 0), 0);
 
-        setStockData(stockWithQuantity);
+        setStockData(valid);
         setStats({
-          totalStock,
-          totalTransfers,
-          totalStaff,
-          totalLogs,
+          totalStock: valid.length,
+          totalTransfers: transferCount || 0,
+          totalStaff: role === "ROLE_ADMIN" && Array.isArray(staffData) ? staffData.length : 0,
+          totalLogs: role === "ROLE_ADMIN" && Array.isArray(auditData) ? auditData.length : 0,
           lowStock,
           totalQuantity,
         });
-      } catch (error) {
-        console.error("Error loading dashboard data:", error);
+      } catch (e) {
+        console.error("Dashboard load error:", e);
       } finally {
         setLoading(false);
       }
     };
-
-    loadDashboardData();
+    load();
   }, [role]);
+
+  const username = displayName(sessionStorage.getItem("username"));
+
+  const pieData = stockData
+    .reduce((acc, item) => {
+      const key = item.glass?.type || "Unknown";
+      if (!acc[key]) acc[key] = { count: 0, quantity: 0 };
+      acc[key].count += 1;
+      acc[key].quantity += parseInt(item.quantity) || 0;
+      return acc;
+    }, {});
+
+  const chartData = Object.entries(pieData)
+    .sort((a, b) => b[1].quantity - a[1].quantity)
+    .slice(0, 8)
+    .map(([name, data]) => ({ name, value: data.quantity, count: data.count }));
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.07 } }
+  };
 
   return (
     <PageWrapper>
-      <div style={getContainerStyle(isMobile)}>
-        {/* Header Section */}
-        <div style={headerSection}>
-          <div>
-            <h1 style={getMainTitleStyle(isMobile)}>
-              Welcome Back! 👋
-            </h1>
-            <p style={subtitle}>
-              Here's what's happening with your inventory today
-            </p>
-          </div>
-          
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6">
+
+        {/* ── Page Header ── */}
+        <motion.div variants={fadeUp}>
+          <PageHeader
+            eyebrow={copy.eyebrow}
+            title={copy.greeting(username)}
+            description={copy.description}
+            icon={<BarChart3 size={22} />}
+            badge={
+              <span className="badge-premium hidden sm:inline-flex gap-1.5">
+                <Activity size={11} aria-hidden /> {copy.liveBadge}
+              </span>
+            }
+            actions={
+              role === "ROLE_ADMIN" ? (
+                <>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<Plus size={15} />}
+                    onClick={() => navigate("/manage-stock")}
+                    fullWidth={isMobile}
+                  >
+                    {copy.actions.addStock}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<Eye size={15} />}
+                    onClick={() => navigate("/view-stock")}
+                    fullWidth={isMobile}
+                  >
+                    {copy.actions.viewStock}
+                  </Button>
+                </>
+              ) : null
+            }
+          />
+        </motion.div>
+
+        {/* ── KPI Metrics ── */}
+        <motion.div variants={fadeUp} className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-4">
+          <StatCard delay={0}    icon={<Package size={18} />}       label={copy.metrics.totalStock}   value={stats.totalStock}   loading={loading} />
+          <StatCard delay={0.04} icon={<AlertTriangle size={18} />} label={copy.metrics.lowStock}     value={stats.lowStock}     accent={stats.lowStock > 0 ? "danger" : "primary"} loading={loading} />
+          <StatCard delay={0.08} icon={<Layers size={18} />}        label={copy.metrics.totalQuantity} value={stats.totalQuantity} accent="success" loading={loading} />
           {role === "ROLE_ADMIN" && (
-            <div style={quickActions}>
-              <Button
-                variant="primary"
-                icon="➕"
-                onClick={() => navigate("/manage-stock")}
-                fullWidth={isMobile} // Full width on mobile
-              >
-                Add Stock
-              </Button>
-              <Button
-                variant="outline"
-                icon="📊"
-                onClick={() => navigate("/view-stock")}
-                fullWidth={isMobile} // Full width on mobile
-              >
-                View Stock
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Stats Grid */}
-        <div style={getStatsGridStyle(isMobile, role)}>
-          {role === "ROLE_ADMIN" ? (
             <>
-              <StatCard
-                icon="📦"
-                label="Total Stock Items"
-                value={stats.totalStock}
-                color="#6366f1"
-                loading={loading}
-              />
-              <StatCard
-                icon="⚠️"
-                label="Low Stock"
-                value={stats.lowStock}
-                color={stats.lowStock > 0 ? "#ef4444" : "#22c55e"}
-                loading={loading}
-              />
-              <StatCard
-                icon="🔢"
-                label="Total Quantity"
-                value={stats.totalQuantity}
-                color="#3b82f6"
-                loading={loading}
-              />
-              <StatCard
-                icon="🔄"
-                label="Stock Transfers"
-                value={stats.totalTransfers}
-                color="#8b5cf6"
-                loading={loading}
-              />
-              <StatCard
-                icon="👥"
-                label="Staff Members"
-                value={stats.totalStaff}
-                color="#22c55e"
-                loading={loading}
-              />
-              <StatCard
-                icon="📜"
-                label="Activity Logs"
-                value={stats.totalLogs}
-                color="#f59e0b"
-                loading={loading}
-              />
-            </>
-          ) : (
-            <>
-              <StatCard
-                icon="📦"
-                label="Total Stock Items"
-                value={stats.totalStock}
-                color="#6366f1"
-                loading={loading}
-              />
-              <StatCard
-                icon="⚠️"
-                label="Low Stock"
-                value={stats.lowStock}
-                color={stats.lowStock > 0 ? "#ef4444" : "#22c55e"}
-                loading={loading}
-              />
-              <StatCard
-                icon="🔢"
-                label="Total Quantity"
-                value={stats.totalQuantity}
-                color="#3b82f6"
-                loading={loading}
-              />
+              <StatCard delay={0.12} icon={<ArrowRightLeft size={18} />} label={copy.metrics.transfers} value={stats.totalTransfers} loading={loading} />
+              <StatCard delay={0.16} icon={<Users size={18} />}           label={copy.metrics.staff}     value={stats.totalStaff}     loading={loading} />
+              <StatCard delay={0.20} icon={<ScrollText size={18} />}      label={copy.metrics.activity}  value={stats.totalLogs}      loading={loading} />
             </>
           )}
-        </div>
+        </motion.div>
 
-        {/* Stock Overview Section */}
-        <Card style={{ marginTop: isMobile ? "24px" : "32px" }}>
-          <div style={activityHeader}>
-            <div>
-              <h3 style={activityTitle}>📊 Stock Overview</h3>
-              <p style={activitySubtitle}>Current inventory status and low stock alerts</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/view-stock")}
-            >
-              View All →
-            </Button>
-          </div>
+        {/* ── Main Content Grid ── */}
+        <motion.div variants={fadeUp} className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-          {loading ? (
-            <div style={loadingState}>
-              <div style={skeletonItem}></div>
-              <div style={skeletonItem}></div>
-            </div>
-          ) : stockData.length === 0 ? (
-            <div style={emptyState}>
-              <div style={emptyIcon}>📦</div>
-              <p style={emptyText}>No stock available</p>
-              <p style={emptySubtext}>Add stock to get started</p>
-            </div>
-          ) : (
-            <>
-              {/* Stock Overview - Simple Visual */}
-              <div style={stockOverviewContainer}>
-                {/* Stock by Glass Type - Pie Chart */}
-                <div style={chartSection}>
-                  <h4 style={chartTitle}>📊 Stock by Glass Type</h4>
-                  {(() => {
-                    const typeData = Object.entries(
-                      stockData.reduce((acc, item) => {
-                        const type = item.glass?.type || "Unknown";
-                        if (!acc[type]) {
-                          acc[type] = { count: 0, quantity: 0 };
-                        }
-                        acc[type].count += 1;
-                        acc[type].quantity += parseInt(item.quantity) || 0;
-                        return acc;
-                      }, {})
-                    )
-                      .sort((a, b) => b[1].quantity - a[1].quantity)
-                      .slice(0, 8)
-                      .map(([type, data]) => ({
-                        name: type,
-                        value: data.quantity,
-                        count: data.count
-                      }));
-                    
-                    const colors = ["#6366f1", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"];
-                    
-                    const CustomTooltip = ({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div style={{
-                            backgroundColor: "white",
-                            padding: "12px",
-                            borderRadius: "8px",
-                            border: "1px solid #e2e8f0",
-                            boxShadow: "0 4px 6px rgba(0,0,0,0.1)"
-                          }}>
-                            <p style={{ margin: 0, fontWeight: "600", color: "#0f172a" }}>
-                              {payload[0].name}
-                            </p>
-                            <p style={{ margin: "4px 0 0 0", fontSize: "14px", color: "#64748b" }}>
-                              Quantity: {payload[0].value.toLocaleString()}
-                            </p>
-                            <p style={{ margin: "2px 0 0 0", fontSize: "12px", color: "#94a3b8" }}>
-                              Items: {payload[0].payload.count}
-                            </p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    };
-                    
-                    return (
-                      <div style={pieChartWrapper}>
-                        <ResponsiveContainer width="100%" height={300}>
-                          <PieChart>
-                            <Pie
-                              data={typeData}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                              outerRadius={isMobile ? 80 : 100}
-                              fill="#8884d8"
-                              dataKey="value"
-                            >
-                              {typeData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip content={<CustomTooltip />} />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* Low Stock Items - Simple List */}
-                {stats.lowStock > 0 && (
-                  <div style={lowStockSection}>
-                    <h4 style={lowStockTitle}>⚠️ Low Stock Items ({stats.lowStock})</h4>
-                    <div style={lowStockList}>
-                      {stockData
-                        .filter(item => item.quantity < (item.minQuantity || 10))
-                        .slice(0, 5)
-                        .map((item, i) => (
-                          <div key={i} style={lowStockItem}>
-                            <div style={lowStockItemContent}>
-                              <div style={lowStockItemName}>
-                                {item.glass?.type || "N/A"} - {item.glass?.thickness || "N/A"}{item.glass?.unit || "MM"}
-                              </div>
-                              <div style={lowStockItemDetails}>
-                                Stand #{item.standNo} • {item.height} × {item.width} {item.glass?.unit || "MM"}
-                              </div>
-                            </div>
-                            <div style={lowStockQuantity}>
-                              {item.quantity} / {item.minQuantity || 10}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                    {stats.lowStock > 5 && (
-                      <p style={lowStockMore}>
-                        +{stats.lowStock - 5} more. <a href="/view-stock" style={{color: "#6366f1", textDecoration: "none"}}>View all →</a>
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </Card>
-
-        {/* Billing Section - Admin Only */}
-        {role === "ROLE_ADMIN" && (
-          <div style={billingSection}>
-            <Card
-              hover
-              onClick={() => setBillingMenuOpen(!billingMenuOpen)}
-              style={{ cursor: 'pointer' }}
-            >
-              <div style={billingCardContent}>
-                <div style={billingIconWrapper}>
-                  <div style={billingIcon}>🧾</div>
-                </div>
-                <div style={billingInfo}>
-                  <h3 style={billingTitle}>Billing Management</h3>
-                  <p style={billingSubtitle}>Manage customers, quotations & invoices</p>
-                </div>
-                <div style={billingArrow}>
-                  {billingMenuOpen ? "▲" : "▼"}
-                </div>
-              </div>
-              
-              {billingMenuOpen && (
-                <div style={billingMenu}>
-                  <div
-                    style={billingMenuItem}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate("/customers");
-                      setBillingMenuOpen(false);
-                    }}
-                  >
-                    <span style={menuItemIcon}>👥</span>
-                    <div>
-                      <div style={menuItemTitle}>Customers</div>
-                      <div style={menuItemSubtitle}>Manage customer database</div>
-                    </div>
-                  </div>
-                  <div
-                    style={billingMenuItem}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate("/quotations");
-                      setBillingMenuOpen(false);
-                    }}
-                  >
-                    <span style={menuItemIcon}>📄</span>
-                    <div>
-                      <div style={menuItemTitle}>Quotations</div>
-                      <div style={menuItemSubtitle}>Create & manage quotations</div>
-                    </div>
-                  </div>
-                  <div
-                    style={{...billingMenuItem, borderBottom: 'none'}}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate("/invoices");
-                      setBillingMenuOpen(false);
-                    }}
-                  >
-                    <span style={menuItemIcon}>🧾</span>
-                    <div>
-                      <div style={menuItemTitle}>Invoices</div>
-                      <div style={menuItemSubtitle}>Track payments & invoices</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </Card>
-          </div>
-        )}
-
-        {/* Recent Activity - Admin Only */}
-        {role === "ROLE_ADMIN" && (
-          <Card style={{ marginTop: '32px' }}>
-            <div style={activityHeader}>
+          {/* Stock Distribution Chart */}
+          <Card padding="none" className="lg:col-span-3 overflow-hidden">
+            <div className="flex items-center justify-between px-6 pt-5 pb-0">
               <div>
-                <h3 style={activityTitle}>Recent Stock Activity</h3>
-                <p style={activitySubtitle}>Last 3 updates from your team</p>
+                <h3 className={type.h3}>{copy.stockOverview.title}</h3>
+                <p className={cn(type.bodySm, 'mt-0.5')}>{copy.stockOverview.description}</p>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate("/audit")}
-              >
-                View All →
+              <Button variant="ghost" size="sm" onClick={() => navigate("/view-stock")}>
+                {copy.stockOverview.viewAll}
               </Button>
             </div>
 
             {loading ? (
-              <div style={loadingState}>
-                <div style={skeletonItem}></div>
-                <div style={skeletonItem}></div>
-                <div style={skeletonItem}></div>
+              <div className="px-6 pb-6 mt-6 space-y-3">
+                {[1, 2, 3].map(i => <div key={i} className="skeleton h-12 rounded-lg" />)}
               </div>
-            ) : auditLogs.length === 0 ? (
-              <div style={emptyState}>
-                <div style={emptyIcon}>📋</div>
-                <p style={emptyText}>No recent activity</p>
-                <p style={emptySubtext}>Activity will appear here as your team updates stock</p>
+            ) : chartData.length === 0 ? (
+              <div className="px-6 pb-6">
+                <EmptyState
+                  icon={<Package size={24} />}
+                  title={copy.stockOverview.emptyTitle}
+                  description={copy.stockOverview.emptyDescription}
+                  onAction={() => navigate("/manage-stock")}
+                  actionLabel={copy.actions.addStock}
+                />
               </div>
             ) : (
-              <div style={activityList}>
-                {auditLogs.map((log, i) => (
-                  <div key={i} style={activityItem}>
-                    <div style={activityAvatar}>
-                      {log.username?.charAt(0).toUpperCase() || "U"}
+              <div className="px-6 pb-6">
+                {/* Chart */}
+                <div className="mt-4 h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={chartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={isMobile ? 45 : 55}
+                        outerRadius={isMobile ? 75 : 88}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {chartData.map((_, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                            className="outline-none"
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<CustomTooltip />} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Legend */}
+                <div className="mt-3 grid grid-cols-2 gap-1.5">
+                  {chartData.slice(0, 6).map((item, i) => (
+                    <div key={item.name} className="flex items-center gap-2 min-w-0">
+                      <div
+                        className="h-2 w-2 rounded-full shrink-0"
+                        style={{ background: CHART_COLORS[i % CHART_COLORS.length] }}
+                      />
+                      <span className={cn(type.caption, 'truncate')}>{item.name}</span>
+                      <span className={cn(type.caption, 'ml-auto tabular-nums font-medium text-slate-700 dark:text-slate-300')}>
+                        {item.value.toLocaleString()}
+                      </span>
                     </div>
-                    <div style={activityContent}>
-                      <div style={activityTop}>
-                        <span style={activityUsername}>{log.username || "Unknown"}</span>
-                        <span style={getBadgeStyle(log.action)}>
-                          {log.action}
-                        </span>
-                      </div>
-                      <div style={activityDetails}>
-                        <span style={activityQuantity}>
-                          <strong>{log.quantity}</strong> × {log.glassType || "N/A"}
-                        </span>
-                        {log.standNo && (
-                          <span style={activityStand}>Stand #{log.standNo}</span>
-                        )}
-                      </div>
-                      {log.height && log.width && (
-                        <div style={activitySize}>
-                          Size: {log.height} × {log.width} {log.unit || "MM"}
-                        </div>
-                      )}
-                      <div style={activityMeta}>
-                        {log.role} • {new Date(log.timestamp).toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </Card>
+
+          {/* Quick Actions / Low Stock */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Quick Actions */}
+            {role === "ROLE_ADMIN" && (
+              <Card padding="none">
+                <div className="px-5 pt-5 pb-3">
+                  <h3 className={type.h3}>Quick Actions</h3>
+                </div>
+                <div className="px-4 pb-4 space-y-2">
+                  <QuickActionCard
+                    icon={Users}
+                    label={copy.billing.customers.title}
+                    description={copy.billing.customers.description}
+                    onClick={() => navigate("/customers")}
+                    accent="sky"
+                  />
+                  <QuickActionCard
+                    icon={FileText}
+                    label={copy.billing.quotations.title}
+                    description={copy.billing.quotations.description}
+                    onClick={() => navigate("/quotations")}
+                    accent="green"
+                  />
+                  <QuickActionCard
+                    icon={Receipt}
+                    label={copy.billing.invoices.title}
+                    description={copy.billing.invoices.description}
+                    onClick={() => navigate("/invoices")}
+                    accent="orange"
+                  />
+                </div>
+              </Card>
+            )}
+
+            {/* Low Stock Alert */}
+            {stats.lowStock > 0 && !loading && (
+              <Card padding="none" className="border-red-200 dark:border-red-900/50">
+                <div className="flex items-center justify-between px-5 pt-4 pb-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-red-500" />
+                    <h3 className={cn(type.h3, 'text-sm text-red-700 dark:text-red-400')}>
+                      Low Stock ({stats.lowStock})
+                    </h3>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => navigate("/view-stock")} className="text-xs">
+                    View all
+                  </Button>
+                </div>
+                <div className="px-4 pb-4 space-y-1.5">
+                  {stockData
+                    .filter(item => item.quantity < (item.minQuantity || 10))
+                    .slice(0, 4)
+                    .map((item, i) => (
+                      <div key={i} className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-red-50 dark:bg-red-950/25 border border-red-100 dark:border-red-900/30">
+                        <div className="min-w-0">
+                          <p className={cn(type.tableCellStrong, 'text-xs truncate')}>
+                            {item.glass?.type || "—"} · {item.glass?.thickness || "—"} mm
+                          </p>
+                          <p className={cn(type.caption, 'mt-0.5')}>
+                            Rack {item.standNo}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0 ml-3">
+                          <span className="text-sm font-semibold text-red-700 dark:text-red-300 tabular-nums">
+                            {item.quantity}
+                          </span>
+                          <span className={cn(type.caption, 'ml-1')}>/ {item.minQuantity || 10}</span>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </Card>
+            )}
+          </div>
+        </motion.div>
+
+        {/* ── Recent Activity (Admin Only) ── */}
+        {role === "ROLE_ADMIN" && (
+          <motion.div variants={fadeUp}>
+            <Card padding="none">
+              <div className="flex items-center justify-between px-6 pt-5 pb-0">
+                <div>
+                  <h3 className={type.h3}>{copy.activity.title}</h3>
+                  <p className={cn(type.bodySm, 'mt-0.5')}>{copy.activity.description}</p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/audit")}>
+                  {copy.activity.viewAll}
+                </Button>
+              </div>
+
+              {loading ? (
+                <div className="px-6 pb-6 mt-4 space-y-3">
+                  {[1, 2, 3].map(i => <div key={i} className="skeleton h-16 rounded-xl" />)}
+                </div>
+              ) : auditLogs.length === 0 ? (
+                <div className="px-6 pb-6">
+                  <EmptyState
+                    icon={<ScrollText size={22} />}
+                    title={copy.activity.emptyTitle}
+                    description={copy.activity.emptyDescription}
+                  />
+                </div>
+              ) : (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th className={type.tableHead}>User</th>
+                        <th className={type.tableHead}>Action</th>
+                        <th className={type.tableHead}>Glass Type</th>
+                        <th className={type.tableHead}>Qty</th>
+                        <th className={type.tableHead}>Rack</th>
+                        <th className={type.tableHead}>Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditLogs.map((log, i) => (
+                        <tr key={i}>
+                          <td>
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-7 w-7 rounded-lg bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 flex items-center justify-center font-semibold text-xs border border-sky-100 dark:border-sky-800/40 shrink-0">
+                                {log.username?.charAt(0).toUpperCase() || "U"}
+                              </div>
+                              <span className={type.tableCellStrong}>{log.username || "—"}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <Badge variant={actionBadgeVariant(log.action)}>
+                              {formatAuditAction(log.action)}
+                            </Badge>
+                          </td>
+                          <td className={type.tableCell}>{log.glassType || "—"}</td>
+                          <td className={cn(type.tableCell, 'tabular-nums font-medium')}>{log.quantity ?? "—"}</td>
+                          <td className={type.tableCell}>
+                            {log.action === "TRANSFER"
+                              ? `${log.fromStand} → ${log.toStand}`
+                              : log.standNo != null ? `Rack ${log.standNo}` : "—"}
+                          </td>
+                          <td className={cn(type.caption, 'tabular-nums whitespace-nowrap')}>
+                            {new Date(log.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+          </motion.div>
         )}
-      </div>
+
+      </motion.div>
     </PageWrapper>
   );
 }
 
 export default Dashboard;
-
-/* ================= STYLES ================= */
-
-// Mobile-first container with responsive padding
-const getContainerStyle = (isMobile) => ({
-  maxWidth: "1400px",
-  margin: "0 auto",
-  padding: isMobile ? "16px 12px" : "40px 24px", // Tighter padding on mobile
-  width: "100%",
-  boxSizing: "border-box",
-  overflowX: "hidden", // Prevent horizontal scroll
-});
-
-// Responsive header - stacks on mobile
-const headerSection = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  marginBottom: "32px", // Reduced on mobile
-  flexWrap: "wrap",
-  gap: "16px", // Smaller gap on mobile
-  flexDirection: "column", // Stack on mobile by default
-};
-
-const getMainTitleStyle = (isMobile) => ({
-  fontSize: isMobile ? "32px" : "48px",
-  fontWeight: "800",
-  color: "#0f172a",
-  margin: "0 0 8px 0",
-  lineHeight: "1.2",
-  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  WebkitBackgroundClip: "text",
-  WebkitTextFillColor: "transparent",
-  backgroundClip: "text",
-});
-
-// Responsive subtitle
-const subtitle = {
-  fontSize: "clamp(14px, 4vw, 18px)", // Fluid typography
-  color: "#64748b",
-  margin: "0",
-  fontWeight: "400",
-  lineHeight: "1.5",
-};
-
-// Full-width buttons on mobile for better touch targets
-const quickActions = {
-  display: "flex",
-  gap: "12px",
-  flexWrap: "wrap",
-  width: "100%", // Full width on mobile
-};
-
-// Mobile-first responsive grid
-const getStatsGridStyle = (isMobile, role) => ({
-  display: "grid",
-  gridTemplateColumns: isMobile 
-    ? "1fr" // Single column on mobile
-    : role === "ROLE_ADMIN" 
-      ? "repeat(auto-fit, minmax(200px, 1fr))" // Auto-fit on larger screens for 6 cards
-      : "repeat(auto-fit, minmax(200px, 1fr))", // 3 cards for staff
-  gap: isMobile ? "16px" : "20px", // Smaller gap on mobile
-  marginBottom: isMobile ? "24px" : "32px",
-});
-
-const billingSection = {
-  marginBottom: "32px",
-};
-
-// Responsive billing card - stacks on mobile
-const billingCardContent = {
-  display: "flex",
-  alignItems: "center",
-  gap: "20px",
-  flexWrap: "wrap", // Allow wrapping on small screens
-};
-
-const billingIconWrapper = {
-  flexShrink: 0,
-};
-
-// Responsive billing icon
-const billingIcon = {
-  width: "clamp(48px, 12vw, 64px)", // Scales with viewport
-  height: "clamp(48px, 12vw, 64px)",
-  borderRadius: "16px",
-  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: "clamp(24px, 6vw, 32px)", // Responsive font size
-  boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
-  flexShrink: 0, // Prevent shrinking
-};
-
-const billingInfo = {
-  flex: 1,
-};
-
-// Responsive billing title
-const billingTitle = {
-  fontSize: "clamp(18px, 5vw, 24px)", // Fluid typography
-  fontWeight: "700",
-  color: "#0f172a",
-  margin: "0 0 4px 0",
-};
-
-const billingSubtitle = {
-  fontSize: "14px",
-  color: "#64748b",
-  margin: "0",
-  fontWeight: "500",
-};
-
-const billingArrow = {
-  fontSize: "20px",
-  color: "#94a3b8",
-  transition: "transform 0.2s ease",
-};
-
-const billingMenu = {
-  marginTop: "20px",
-  paddingTop: "20px",
-  borderTop: "1px solid #e2e8f0",
-  display: "flex",
-  flexDirection: "column",
-  gap: "0",
-};
-
-const billingMenuItem = {
-  display: "flex",
-  alignItems: "center",
-  gap: "16px",
-  padding: "16px",
-  borderRadius: "12px",
-  cursor: "pointer",
-  transition: "all 0.2s ease",
-  borderBottom: "1px solid #f1f5f9",
-};
-
-const menuItemIcon = {
-  fontSize: "24px",
-  width: "40px",
-  height: "40px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: "10px",
-  background: "#f8fafc",
-  flexShrink: 0,
-};
-
-const menuItemTitle = {
-  fontSize: "16px",
-  fontWeight: "600",
-  color: "#0f172a",
-  marginBottom: "2px",
-};
-
-const menuItemSubtitle = {
-  fontSize: "13px",
-  color: "#64748b",
-};
-
-const activityHeader = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  marginBottom: "24px",
-  flexWrap: "wrap",
-  gap: "16px",
-};
-
-const activityTitle = {
-  fontSize: "20px",
-  fontWeight: "700",
-  color: "#0f172a",
-  margin: "0 0 4px 0",
-};
-
-const activitySubtitle = {
-  fontSize: "14px",
-  color: "#64748b",
-  margin: "0",
-};
-
-const activityList = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "16px",
-};
-
-const activityItem = {
-  display: "flex",
-  gap: "16px",
-  padding: "20px",
-  borderRadius: "12px",
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-  transition: "all 0.2s ease",
-};
-
-const activityAvatar = {
-  width: "48px",
-  height: "48px",
-  borderRadius: "12px",
-  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontWeight: "700",
-  color: "white",
-  fontSize: "18px",
-  flexShrink: 0,
-  boxShadow: "0 2px 8px rgba(102, 126, 234, 0.3)",
-};
-
-const activityContent = {
-  flex: 1,
-  fontSize: "14px",
-};
-
-const activityTop = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "8px",
-  flexWrap: "wrap",
-  gap: "8px",
-};
-
-const activityUsername = {
-  color: "#0f172a",
-  fontWeight: "600",
-  fontSize: "15px",
-};
-
-const activityDetails = {
-  marginTop: "4px",
-  color: "#475569",
-  fontSize: "14px",
-  display: "flex",
-  gap: "12px",
-  flexWrap: "wrap",
-};
-
-const activityQuantity = {
-  fontWeight: "500",
-};
-
-const activityStand = {
-  color: "#64748b",
-};
-
-const activitySize = {
-  fontSize: "13px",
-  color: "#64748b",
-  marginTop: "6px",
-};
-
-const activityMeta = {
-  fontSize: "12px",
-  color: "#94a3b8",
-  marginTop: "8px",
-};
-
-const getBadgeStyle = (action) => ({
-  padding: "4px 12px",
-  borderRadius: "999px",
-  fontSize: "11px",
-  fontWeight: "600",
-  color: "white",
-  background:
-    action === "ADD"
-      ? "linear-gradient(135deg, #22c55e, #16a34a)"
-      : action === "TRANSFER"
-      ? "linear-gradient(135deg, #3b82f6, #2563eb)"
-      : "linear-gradient(135deg, #ef4444, #dc2626)",
-  boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-});
-
-const emptyState = {
-  textAlign: "center",
-  padding: "60px 20px",
-};
-
-const emptyIcon = {
-  fontSize: "64px",
-  marginBottom: "16px",
-  opacity: 0.3,
-};
-
-const emptyText = {
-  color: "#475569",
-  fontSize: "16px",
-  fontWeight: "600",
-  margin: "0 0 8px 0",
-};
-
-const emptySubtext = {
-  color: "#94a3b8",
-  fontSize: "14px",
-  margin: "0",
-};
-
-const loadingState = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "16px",
-};
-
-const skeletonItem = {
-  height: "80px",
-  borderRadius: "12px",
-  background: "linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)",
-  backgroundSize: "200% 100%",
-  animation: "shimmer 1.5s infinite",
-};
-
-// Stock Overview Styles
-const stockOverviewContainer = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "24px",
-};
-
-const chartSection = {
-  padding: "20px",
-  borderRadius: "12px",
-  background: "#f8fafc",
-  border: "1px solid #e2e8f0",
-};
-
-const chartTitle = {
-  fontSize: "18px",
-  fontWeight: "700",
-  color: "#0f172a",
-  margin: "0 0 20px 0",
-};
-
-const pieChartWrapper = {
-  width: "100%",
-  marginTop: "16px",
-};
-
-const lowStockSection = {
-  marginTop: "24px",
-  padding: "20px",
-  borderRadius: "12px",
-  background: "#fef2f2",
-  border: "1px solid #fecaca",
-};
-
-const lowStockTitle = {
-  fontSize: "18px",
-  fontWeight: "700",
-  color: "#991b1b",
-  margin: "0 0 16px 0",
-};
-
-const lowStockList = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "12px",
-};
-
-const lowStockItem = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  padding: "12px 16px",
-  borderRadius: "8px",
-  background: "white",
-  border: "1px solid #fecaca",
-};
-
-const lowStockItemContent = {
-  flex: 1,
-};
-
-const lowStockItemName = {
-  fontSize: "15px",
-  fontWeight: "600",
-  color: "#0f172a",
-  marginBottom: "4px",
-};
-
-const lowStockItemDetails = {
-  fontSize: "13px",
-  color: "#64748b",
-};
-
-const lowStockQuantity = {
-  fontSize: "18px",
-  fontWeight: "700",
-  color: "#ef4444",
-  textAlign: "right",
-};
-
-const lowStockMore = {
-  marginTop: "12px",
-  fontSize: "14px",
-  color: "#64748b",
-  textAlign: "center",
-};
-

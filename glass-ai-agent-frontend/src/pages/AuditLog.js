@@ -1,166 +1,45 @@
-// import { useEffect, useState } from "react";
-// import api from "../api/api";
-// import PageWrapper from "../components/PageWrapper";
-
-// function AuditLogs() {
-//   const [logs, setLogs] = useState([]);
-
-//  useEffect(() => {
-//   api.get("/audit/recent")
-//     .then(res => {
-//       console.log("AUDIT LOGS:", res.data);
-//       setLogs(res.data);
-//     })
-//     .catch(err => {
-//       console.error("AUDIT ERROR", err.response?.status);
-//     });
-// }, []);
-
-
-//   return (
-//     <PageWrapper>
-//       <div style={{ width: "90%", margin: "auto" }}>
-//         {/* <button
-//   style={downloadBtn}
-//   onClick={() => window.open("http://localhost:8080/audit/download")}
-// >
-//   ⬇ Download Report
-// </button> */}
-
-//         <h2 style={{ textAlign: "center" }}>📜 Staff Activity Log</h2>
-
-//         <table style={tableStyle}>
-//           <thead>
-//   <tr>
-//     <th>User</th>
-//     <th>Role</th>
-//     <th>Action</th>
-//     <th>Glass</th>
-
-//     {/* ✅ NEW COLUMNS */}
-//     <th>Height</th>
-//     <th>Width</th>
-
-//     <th>Qty</th>
-//     <th>Stand</th>
-//     <th>Time</th>
-//   </tr>
-// </thead>
-
-
-//           <tbody>
-//   {logs.map((log, i) => (
-//     <tr key={i}>
-//       <td>{log.username}</td>
-//       <td>{log.role}</td>
-//       <td>{log.action}</td>
-//       <td>{log.glassType}</td>
-
-//       {/* ✅ HEIGHT */}
-//       <td>{log.height}{log.unit}</td>
-
-//       {/* ✅ WIDTH */}
-//       <td>{log.width}{log.unit}</td>
-
-//       <td>{log.quantity}</td>
-//       {/* <td>{log.standNo}</td> */}
-//       <td>
-//   {log.action === "TRANSFER"
-//     ? `${log.fromStand} → ${log.toStand}`
-//     : log.standNo}
-// </td>
-
-//       <td>{new Date(log.timestamp).toLocaleString()}</td>
-//     </tr>
-//   ))}
-// </tbody>
-
-//         </table>
-//       </div>
-//     </PageWrapper>
-//   );
-// }
-
-// const tableStyle = {
-//   width: "100%",
-//   color: "white",
-//   borderCollapse: "collapse",
-//   textAlign: "center"
-// };
-// // const downloadBtn = {
-// //   padding: "10px 18px",
-// //   borderRadius: "10px",
-// //   background: "linear-gradient(135deg, #22c55e, #16a34a)",
-// //   color: "white",
-// //   fontWeight: "600",
-// //   border: "none",
-// //   cursor: "pointer",
-// //   marginBottom: "15px",
-// // };
-
-
-// export default AuditLogs;
-
 import { useEffect, useState } from "react";
 import api from "../api/api";
 import PageWrapper from "../components/PageWrapper";
+import { PageHeader, Card, Badge, actionBadgeVariant, EmptyState } from "../components/ui";
+import { audit as copy } from "../design/copy";
+import { formatRole, formatAuditAction } from "../design/format";
+import { type } from "../design/typography";
+import { cn } from "../lib/utils";
+import { ScrollText } from "lucide-react";
+import { useResponsive } from "../hooks/useResponsive";
 
 function AuditLogs() {
   const [logs, setLogs] = useState([]);
   const [error, setError] = useState("");
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const { isMobile } = useResponsive();
 
-  // Helper function to format timestamp in IST (Indian Standard Time)
   const formatIST = (timestamp) => {
-    if (!timestamp) return 'N/A';
+    if (!timestamp) return '—';
     try {
-      // Ensure timestamp is a valid date
       const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
-      
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        return 'Invalid Date';
-      }
-      
-      // Use Intl.DateTimeFormat to format in IST timezone
-      const formatter = new Intl.DateTimeFormat('en-IN', {
+      if (isNaN(date.getTime())) return '—';
+      return new Intl.DateTimeFormat('en-IN', {
         timeZone: 'Asia/Kolkata',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      });
-      
-      const parts = formatter.formatToParts(date);
-      const day = parts.find(p => p.type === 'day').value;
-      const month = parts.find(p => p.type === 'month').value;
-      const year = parts.find(p => p.type === 'year').value;
-      const hour = parts.find(p => p.type === 'hour').value;
-      const minute = parts.find(p => p.type === 'minute').value;
-      const second = parts.find(p => p.type === 'second').value;
-      
-      return `${day}/${month}/${year}, ${hour}:${minute}:${second} IST`;
-    } catch (error) {
-      console.error('Error formatting timestamp:', error, timestamp);
-      // Fallback to simple format if Intl API fails
-      try {
-        return new Date(timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
-      } catch (e) {
-        return 'Invalid Date';
-      }
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(date);
+    } catch {
+      return '—';
     }
   };
 
-  // Helper function to format size with dimensions and unit
   const formatSize = (log) => {
-    if (!log.height || !log.width) {
-      return 'N/A';
-    }
-    const unit = log.unit || 'MM';
+    if (!log.height || !log.width) return '—';
+    const unit = (log.unit || 'mm').toLowerCase();
     return `${log.height} × ${log.width} ${unit}`;
+  };
+
+  const formatStand = (log) => {
+    if (log.action === "TRANSFER") {
+      return `Rack ${log.fromStand} → ${log.toStand}`;
+    }
+    return log.standNo != null ? `Rack ${log.standNo}` : '—';
   };
 
   useEffect(() => {
@@ -168,252 +47,102 @@ function AuditLogs() {
       .then(res => setLogs(res.data))
       .catch(err => {
         if (err.response?.status === 403) {
-          setError("You are not authorized to view audit logs");
+          setError(copy.unauthorized);
         } else {
-          setError("Failed to load audit logs");
+          setError(copy.loadFailed);
         }
       });
   }, []);
 
-  useEffect(() => {
-    const resize = () => setIsMobile(window.innerWidth < 768);
-    window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
-  }, []);
-
   return (
     <PageWrapper>
-      <div style={container}>
-        {/* HEADER CARD */}
-        <div style={headerCard}>
-          <h2 style={title}>📜 Staff Activity Log</h2>
-          <p style={subtitle}>
-            Track all stock actions done by staff
-          </p>
-        </div>
+      <div className="page-container page-section">
+        <PageHeader
+          eyebrow={copy.eyebrow}
+          title={copy.title}
+          description={copy.description}
+          icon={<ScrollText size={26} />}
+        />
 
-        {/* ERROR / EMPTY STATE */}
         {error && (
-          <div style={emptyCard}>
-            🚫 {error}
-          </div>
+          <Card glass padding="md" className="border-rose-500/20">
+            <p className={cn(type.bodySm, 'text-rose-600 dark:text-rose-400')}>{error}</p>
+          </Card>
         )}
 
         {!error && logs.length === 0 && (
-          <div style={emptyCard}>
-            No activity logs available
-          </div>
+          <EmptyState
+            icon={<ScrollText size={28} />}
+            title={copy.empty}
+            description={copy.description}
+          />
         )}
 
-        {/* DESKTOP TABLE */}
-        {!isMobile && logs.length > 0 && (
-          <div className="table-wrapper" style={tableWrap}>
-            <table style={table}>
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Role</th>
-                  <th>Action</th>
-                  <th>Glass</th>
-                  <th>Size</th>
-                  <th>Qty</th>
-                  <th>Stand</th>
-                  <th>Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.map((log, i) => (
-                  <tr key={i}>
-                    <td>{log.username}</td>
-                    <td>{log.role}</td>
-                    <td>
-                      <span style={badge(log.action)}>
-                        {log.action}
-                      </span>
-                    </td>
-                    <td>{log.glassType}</td>
-                    <td>{formatSize(log)}</td>
-                    <td>{log.quantity}</td>
-                    <td>
-                      {log.action === "TRANSFER"
-                        ? `${log.fromStand} → ${log.toStand}`
-                        : log.standNo}
-                    </td>
-                    <td>{formatIST(log.timestamp)}</td>
+        {!error && !isMobile && logs.length > 0 && (
+          <Card padding="none" glass className="overflow-hidden">
+            <div className="table-wrapper overflow-x-auto">
+              <table className="data-table w-full">
+                <thead>
+                  <tr>
+                    <th className={type.tableHead}>{copy.columns.user}</th>
+                    <th className={type.tableHead}>{copy.columns.role}</th>
+                    <th className={type.tableHead}>{copy.columns.action}</th>
+                    <th className={type.tableHead}>{copy.columns.glass}</th>
+                    <th className={type.tableHead}>{copy.columns.size}</th>
+                    <th className={type.tableHead}>{copy.columns.qty}</th>
+                    <th className={type.tableHead}>{copy.columns.stand}</th>
+                    <th className={type.tableHead}>{copy.columns.time}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {logs.map((log, i) => (
+                    <tr key={i}>
+                      <td className={type.tableCellStrong}>{log.username || '—'}</td>
+                      <td className={type.tableCell}>{formatRole(log.role)}</td>
+                      <td>
+                        <Badge variant={actionBadgeVariant(log.action)}>{formatAuditAction(log.action)}</Badge>
+                      </td>
+                      <td className={type.tableCell}>{log.glassType || '—'}</td>
+                      <td className={type.tableCell}>{formatSize(log)}</td>
+                      <td className={cn(type.tableCell, 'tabular-nums')}>{log.quantity ?? '—'}</td>
+                      <td className={type.tableCell}>{formatStand(log)}</td>
+                      <td className={cn(type.caption, 'tabular-nums whitespace-nowrap')}>{formatIST(log.timestamp)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         )}
 
-        {/* MOBILE CARDS */}
-        {isMobile && logs.length > 0 && (
-          <div style={cardList}>
+        {!error && isMobile && logs.length > 0 && (
+          <div className="space-y-4">
             {logs.map((log, i) => (
-              <div key={i} style={card}>
-                <div style={cardTop}>
-                  <div style={avatar}>
-                    {log.username?.charAt(0).toUpperCase()}
+              <Card key={i} glass padding="md" className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/10 text-sky-700 dark:text-sky-300 flex items-center justify-center font-display font-semibold border border-violet-500/20 shrink-0">
+                    {log.username?.charAt(0).toUpperCase() || '?'}
                   </div>
-                  <div>
-                    <b>{log.username}</b>
-                    <div style={role}>{log.role}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className={type.bodyStrong}>{log.username || '—'}</p>
+                    <p className={type.caption}>{formatRole(log.role)}</p>
                   </div>
-                  <span style={badge(log.action)}>
-                    {log.action}
-                  </span>
+                  <Badge variant={actionBadgeVariant(log.action)}>{formatAuditAction(log.action)}</Badge>
                 </div>
-
-                <div style={row}><span>Glass</span><span>{log.glassType}</span></div>
-                <div style={row}><span>Size</span><span>{formatSize(log)}</span></div>
-                <div style={row}><span>Qty</span><span>{log.quantity}</span></div>
-                <div style={row}><span>Stand</span>
-                  <span>
-                    {log.action === "TRANSFER"
-                      ? `${log.fromStand} → ${log.toStand}`
-                      : log.standNo}
-                  </span>
-                </div>
-
-                <div style={time}>
-                  🕒 {formatIST(log.timestamp)}
-                </div>
-              </div>
+                <dl className="grid grid-cols-2 gap-2 text-sm">
+                  <div><dt className={type.caption}>{copy.columns.glass}</dt><dd className={type.tableCell}>{log.glassType || '—'}</dd></div>
+                  <div><dt className={type.caption}>{copy.columns.size}</dt><dd className={type.tableCell}>{formatSize(log)}</dd></div>
+                  <div><dt className={type.caption}>{copy.columns.qty}</dt><dd className={cn(type.tableCell, 'tabular-nums')}>{log.quantity ?? '—'}</dd></div>
+                  <div><dt className={type.caption}>{copy.columns.stand}</dt><dd className={type.tableCell}>{formatStand(log)}</dd></div>
+                </dl>
+                <p className={cn(type.caption, 'text-right tabular-nums')}>{formatIST(log.timestamp)}</p>
+              </Card>
             ))}
           </div>
         )}
-
       </div>
     </PageWrapper>
   );
 }
 
 export default AuditLogs;
-
-/* ================= STYLES ================= */
-
-const container = {
-  maxWidth: "1200px",
-  margin: "auto",
-  padding: "24px 16px",
-};
-
-const headerCard = {
-  background: "rgba(255, 255, 255, 0.95)",
-  borderRadius: "16px",
-  padding: "32px 24px",
-  marginBottom: "24px",
-  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
-  textAlign: "center",
-};
-
-const title = {
-  textAlign: "center",
-  fontSize: "28px",
-  fontWeight: "700",
-  color: "#0f172a",
-  margin: 0,
-  marginBottom: "8px",
-};
-
-const subtitle = {
-  textAlign: "center",
-  fontSize: "14px",
-  color: "#64748b",
-  margin: 0,
-};
-
-const emptyCard = {
-  marginTop: "40px",
-  textAlign: "center",
-  padding: "40px 20px",
-  background: "rgba(255, 255, 255, 0.95)",
-  borderRadius: "14px",
-  color: "#64748b",
-  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
-};
-
-const tableWrap = {
-  background: "rgba(255, 255, 255, 0.95)",
-  padding: "16px",
-  borderRadius: "16px",
-  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
-  overflow: "auto",
-};
-
-const table = {
-  width: "100%",
-  color: "#0f172a",
-  borderCollapse: "collapse",
-  textAlign: "center",
-};
-
-const cardList = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "14px",
-};
-
-const card = {
-  background: "rgba(255, 255, 255, 0.95)",
-  padding: "20px",
-  borderRadius: "16px",
-  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-  border: "1px solid rgba(226, 232, 240, 0.8)",
-  color: "#0f172a",
-};
-
-const cardTop = {
-  display: "flex",
-  gap: "12px",
-  alignItems: "center",
-  marginBottom: "10px",
-};
-
-const avatar = {
-  width: "40px",
-  height: "40px",
-  borderRadius: "50%",
-  background: "linear-gradient(135deg,#6366f1,#22c55e)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontWeight: "800",
-};
-
-const role = {
-  fontSize: "12px",
-  opacity: 0.7,
-};
-
-const row = {
-  display: "flex",
-  justifyContent: "space-between",
-  fontSize: "13px",
-  marginBottom: "6px",
-};
-
-const time = {
-  fontSize: "11px",
-  opacity: 0.65,
-  marginTop: "8px",
-  textAlign: "right",
-};
-
-const badge = (action) => ({
-  padding: "4px 10px",
-  borderRadius: "999px",
-  fontSize: "11px",
-  fontWeight: "700",
-  color: "white",
-  background:
-    action === "ADD"
-      ? "linear-gradient(135deg,#22c55e,#16a34a)"
-      : action === "TRANSFER"
-      ? "linear-gradient(135deg,#3b82f6,#2563eb)"
-      : "linear-gradient(135deg,#ef4444,#dc2626)",
-});

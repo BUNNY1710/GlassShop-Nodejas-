@@ -1,148 +1,94 @@
 import React from 'react';
-import { useResponsive } from '../../hooks/useResponsive';
+import { cn } from '../../lib/utils';
+import { type as typography } from '../../design/typography';
 
-const Input = ({
+const Input = React.forwardRef(({
   label,
   error,
   helperText,
   icon,
   iconPosition = 'left',
   fullWidth = true,
-  size = 'md',
+  className,
+  variant = 'default',
+  id,
   ...props
-}) => {
-  // Responsive input - ensure minimum 16px font to prevent iOS zoom
-  const { isMobile } = useResponsive();
-  const baseStyle = {
-    width: fullWidth ? '100%' : 'auto',
-    padding: size === 'sm' 
-      ? (isMobile ? '12px 16px' : '10px 14px')
-      : size === 'lg' 
-        ? (isMobile ? '18px 20px' : '16px 20px')
-        : (isMobile ? '14px 18px' : '12px 16px'),
-    fontSize: '16px', // Always 16px minimum to prevent iOS zoom
-    borderRadius: '12px',
-    border: error ? '2px solid #ef4444' : '1.5px solid #e2e8f0',
-    background: '#ffffff',
-    color: '#0f172a',
-    transition: 'all 0.2s ease',
-    fontFamily: 'inherit',
-    boxSizing: 'border-box',
-    minHeight: isMobile ? '44px' : 'auto', // Minimum touch target
-  };
+}, ref) => {
+  const inputId = id || (label ? String(label).toLowerCase().replace(/\s+/g, '-') : undefined);
 
-  const inputWrapperStyle = {
-    position: 'relative',
-    width: fullWidth ? '100%' : 'auto',
-    marginBottom: helperText || error ? '20px' : '0',
-  };
+  const inputClass = cn(
+    variant === 'auth' ? 'input-auth' : 'input-field',
+    icon && iconPosition === 'left'  && 'pl-10',
+    icon && iconPosition === 'right' && 'pr-10',
+    error && 'border-red-400 focus:border-red-500 focus:ring-red-500/15 dark:border-red-500/60'
+  );
 
-  const iconStyle = {
-    position: 'absolute',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    ...(iconPosition === 'left' ? { left: '14px' } : { right: '14px' }),
-    fontSize: '18px',
-    color: '#94a3b8',
-    pointerEvents: 'none',
-  };
-
-  // Calculate padding values to avoid shorthand/non-shorthand conflict
-  const getPaddingValues = () => {
-    const paddingValue = size === 'sm' 
-      ? (isMobile ? '12px 16px' : '10px 14px')
-      : size === 'lg' 
-        ? (isMobile ? '18px 20px' : '16px 20px')
-        : (isMobile ? '14px 18px' : '12px 16px');
-    
-    const [paddingTopBottom, paddingLeftRight] = paddingValue.split(' ');
-    
-    if (icon && iconPosition === 'left') {
-      return {
-        paddingTop: paddingTopBottom,
-        paddingBottom: paddingTopBottom,
-        paddingLeft: '44px',
-        paddingRight: paddingLeftRight,
-      };
-    } else if (icon && iconPosition === 'right') {
-      return {
-        paddingTop: paddingTopBottom,
-        paddingBottom: paddingTopBottom,
-        paddingLeft: paddingLeftRight,
-        paddingRight: '44px',
-      };
-    } else {
-      return {
-        padding: paddingValue,
-      };
-    }
-  };
-
-  const inputWithIconStyle = {
-    ...baseStyle,
-    // Remove padding shorthand to avoid conflict
-    padding: undefined,
-    ...getPaddingValues(),
-  };
+  const labelClass =
+    variant === 'auth'
+      ? cn(typography.label, 'text-slate-400 tracking-wider')
+      : cn(typography.label, 'tracking-wide');
 
   return (
-    <div style={inputWrapperStyle}>
+    <div className={cn('flex flex-col gap-1.5', fullWidth ? 'w-full' : 'w-auto', className)}>
       {label && (
-        <label
-          style={{
-            display: 'block',
-            fontSize: '13px',
-            fontWeight: '600',
-            color: '#475569',
-            marginBottom: '8px',
-          }}
-        >
+        <label htmlFor={inputId} className={labelClass}>
           {label}
         </label>
       )}
-      
-      <div style={{ position: 'relative' }}>
+
+      <div className="relative flex items-center">
         {icon && iconPosition === 'left' && (
-          <span style={iconStyle}>{icon}</span>
+          <span
+            className={cn(
+              'absolute left-3 pointer-events-none',
+              variant === 'auth'
+                ? 'text-slate-500'
+                : 'text-slate-400 dark:text-slate-500'
+            )}
+          >
+            {icon}
+          </span>
         )}
-        
+
         <input
-          style={inputWithIconStyle}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = error ? '#ef4444' : '#667eea';
-            e.currentTarget.style.boxShadow = error 
-              ? '0 0 0 3px rgba(239, 68, 68, 0.1)' 
-              : '0 0 0 3px rgba(102, 126, 234, 0.1)';
-            e.currentTarget.style.transform = 'translateY(-1px)';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = error ? '#ef4444' : '#e2e8f0';
-            e.currentTarget.style.boxShadow = 'none';
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
+          ref={ref}
+          id={inputId}
+          className={inputClass}
+          aria-invalid={error ? 'true' : undefined}
+          aria-describedby={
+            error
+              ? `${inputId}-error`
+              : helperText
+              ? `${inputId}-hint`
+              : undefined
+          }
           {...props}
         />
-        
+
         {icon && iconPosition === 'right' && (
-          <span style={iconStyle}>{icon}</span>
+          <span className="absolute right-3 text-slate-400 dark:text-slate-500 pointer-events-none">
+            {icon}
+          </span>
         )}
       </div>
-      
-      {(error || helperText) && (
-        <div
-          style={{
-            fontSize: '12px',
-            marginTop: '6px',
-            color: error ? '#dc2626' : '#64748b',
-            fontWeight: error ? '500' : '400',
-          }}
+
+      {error && (
+        <p
+          id={`${inputId}-error`}
+          className={cn(typography.caption, 'text-red-600 dark:text-red-400 flex items-center gap-1')}
+          role="alert"
         >
-          {error || helperText}
-        </div>
+          {error}
+        </p>
+      )}
+      {!error && helperText && (
+        <p id={`${inputId}-hint`} className={typography.caption}>
+          {helperText}
+        </p>
       )}
     </div>
   );
-};
+});
 
+Input.displayName = 'Input';
 export default Input;
-

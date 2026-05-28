@@ -3,17 +3,22 @@ import PageWrapper from "../components/PageWrapper";
 import { Card, Button, Input, Select } from "../components/ui";
 import api from "../api/api";
 import ConfirmModal from "../components/ConfirmModal";
-import "../styles/design-system.css";
+import { motion } from "framer-motion";
+import { 
+  PackageSearch, Ruler, Maximize2, Hash, Layers, 
+  Settings2, PlusCircle, MinusCircle, RotateCcw, 
+  CheckCircle2, XCircle, Info
+} from "lucide-react";
 
 function StockManager() {
-  const [glassType, setGlassType] = useState(""); // New: Glass type dropdown (Plan, Extra Clear, etc.)
-  const [thickness, setThickness] = useState(""); // Changed: Thickness (was glassTypeStock)
+  const [glassType, setGlassType] = useState("");
+  const [thickness, setThickness] = useState("");
   const [standNo, setStandNo] = useState("");
   const [quantity, setQuantity] = useState("");
   const [stockMessage, setStockMessage] = useState("");
-  const [glassTypeMode, setGlassTypeMode] = useState("SELECT"); // SELECT or MANUAL
-  const [manualGlassType, setManualGlassType] = useState(""); // Manual glass type entry
-  const [thicknessMode, setThicknessMode] = useState("SELECT"); // Changed: was glassMode
+  const [glassTypeMode, setGlassTypeMode] = useState("SELECT");
+  const [manualGlassType, setManualGlassType] = useState("");
+  const [thicknessMode, setThicknessMode] = useState("SELECT");
   const [manualThickness, setManualThickness] = useState("");
   const [thicknessFocused, setThicknessFocused] = useState(false);
   const [height, setHeight] = useState("");
@@ -25,21 +30,11 @@ function StockManager() {
   const [showUndo, setShowUndo] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  // Default glass type options
   const defaultGlassTypeOptions = [
-    "Plan",
-    "Extra Clear",
-    "Grey Tinted",
-    "Brown Tinted",
-    "One Way",
-    "Star",
-    "Karakachi",
-    "Bajari",
-    "Diomand",
-    "Mirror"
+    "Plan", "Extra Clear", "Grey Tinted", "Brown Tinted", "One Way", 
+    "Star", "Karakachi", "Bajari", "Diomand", "Mirror"
   ];
 
-  // Load custom glass types from localStorage
   const [customGlassTypes, setCustomGlassTypes] = useState(() => {
     try {
       const saved = localStorage.getItem("customGlassTypes");
@@ -49,10 +44,8 @@ function StockManager() {
     }
   });
 
-  // Combine default and custom glass types
   const allGlassTypeOptions = [...defaultGlassTypeOptions, ...customGlassTypes];
 
-  // Save custom glass types to localStorage
   useEffect(() => {
     try {
       localStorage.setItem("customGlassTypes", JSON.stringify(customGlassTypes));
@@ -61,17 +54,14 @@ function StockManager() {
     }
   }, [customGlassTypes]);
 
-  // Add custom glass type when manual entry is used
   const addCustomGlassType = (type) => {
     if (type && type.trim() && !allGlassTypeOptions.includes(type.trim())) {
       setCustomGlassTypes([...customGlassTypes, type.trim()]);
     }
   };
 
-  // Remove custom glass type
   const removeCustomGlassType = (typeToRemove) => {
     setCustomGlassTypes(customGlassTypes.filter(type => type !== typeToRemove));
-    // If the removed type was selected, clear it
     if (glassType === typeToRemove) {
       setGlassType("");
     }
@@ -111,7 +101,6 @@ function StockManager() {
       ? parseFloat(thickness) 
       : parseFloat(manualThickness);
     
-    // Add custom glass type if manual entry was used
     if (glassTypeMode === "MANUAL" && finalGlassType) {
       addCustomGlassType(finalGlassType);
     }
@@ -120,8 +109,8 @@ function StockManager() {
       standNo: Number(standNo),
       quantity: Number(quantity),
       action,
-      glassType: finalGlassType, // New: actual glass type (Plan, Extra Clear, etc.)
-      thickness: thicknessValue, // Thickness value
+      glassType: finalGlassType,
+      thickness: thicknessValue,
       height,
       width,
       unit,
@@ -138,7 +127,6 @@ function StockManager() {
       setStockMessage("✅ Stock updated successfully");
       setShowUndo(true);
 
-      // Reset form
       setStandNo("");
       setQuantity("");
       setHeight("");
@@ -184,388 +172,311 @@ function StockManager() {
     }
   };
 
+  const containerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+  };
+
   return (
     <PageWrapper>
-      <div style={getContainerStyle(isMobile)}>
-        {/* Header Section */}
-        <div style={headerSection}>
-          <div>
-            <h1 style={pageTitle}>Manage Stock</h1>
-            <p style={pageSubtitle}>Add or remove stock from your inventory</p>
-          </div>
+      <motion.div 
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="max-w-4xl mx-auto space-y-6 md:space-y-8"
+      >
+        <div>
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">Manage Stock</h1>
+          <p className="text-slate-500 mt-1">Add or remove stock from your inventory</p>
         </div>
 
-        {/* Main Form Card */}
-        <Card style={getFormCardStyle(isMobile)}>
-          {/* Glass Type and Thickness Section */}
-          <div style={section}>
-            <div style={sectionHeader}>
-              <div style={sectionIcon}>🔷</div>
+        <Card padding="lg" className="space-y-10">
+          
+          {/* Glass Type & Thickness Section */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Layers size={24} />
+              </div>
               <div>
-                <h3 style={sectionTitle}>Glass Type & Thickness</h3>
-                <p style={sectionSubtitle}>Select glass type, mode, and thickness</p>
+                <h3 className="text-xl font-bold text-slate-900">Glass Type & Thickness</h3>
+                <p className="text-sm text-slate-500">Configure the material properties</p>
               </div>
             </div>
 
-            <div style={getGlassThicknessGridStyle(isMobile)}>
-              <div style={formGroup}>
-                <Select
-                  label="Glass Type Mode"
-                  value={glassTypeMode}
-                  onChange={e => {
-                    setGlassTypeMode(e.target.value);
-                    setGlassType("");
-                    setManualGlassType("");
-                  }}
-                  icon="🔷"
-                >
-                  <option value="SELECT">Select from list</option>
-                  <option value="MANUAL">Manual entry</option>
-                </Select>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Select
+                label="Type Input Mode"
+                value={glassTypeMode}
+                onChange={e => {
+                  setGlassTypeMode(e.target.value);
+                  setGlassType("");
+                  setManualGlassType("");
+                }}
+                icon={<Settings2 size={18} />}
+              >
+                <option value="SELECT">Select from list</option>
+                <option value="MANUAL">Manual entry</option>
+              </Select>
 
               {glassTypeMode === "SELECT" ? (
-                <div style={formGroup}>
-                  <label style={label}>
-                    Glass Type <span style={required}>*</span>
-                  </label>
-                  <div style={{ position: "relative" }}>
-                    <Select
-                      value={glassType}
-                      onChange={e => setGlassType(e.target.value)}
-                      icon="🔷"
-                      required
-                    >
-                      <option value="">Select glass type</option>
-                      {defaultGlassTypeOptions.map((type) => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                      {customGlassTypes.length > 0 && (
-                        <>
-                          <option disabled>--- Custom Types ---</option>
-                          {customGlassTypes.map((type) => (
-                            <option key={type} value={type}>{type}</option>
-                          ))}
-                        </>
-                      )}
-                    </Select>
+                <div className="space-y-2">
+                  <Select
+                    label="Glass Type"
+                    value={glassType}
+                    onChange={e => setGlassType(e.target.value)}
+                    icon={<Layers size={18} />}
+                    required
+                  >
+                    <option value="">Select glass type</option>
+                    {defaultGlassTypeOptions.map((type) => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
                     {customGlassTypes.length > 0 && (
-                      <div style={{
-                        marginTop: "8px",
-                        padding: "8px",
-                        backgroundColor: "#f8fafc",
-                        borderRadius: "6px",
-                        border: "1px solid #e2e8f0"
-                      }}>
-                        <div style={{ fontSize: "12px", color: "#64748b", marginBottom: "6px", fontWeight: "600" }}>
-                          Custom Glass Types:
-                        </div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                          {customGlassTypes.map((type) => (
-                            <span
-                              key={type}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                padding: "4px 8px",
-                                backgroundColor: "white",
-                                border: "1px solid #d1d5db",
-                                borderRadius: "4px",
-                                fontSize: "12px",
-                                color: "#374151"
-                              }}
-                            >
-                              {type}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  removeCustomGlassType(type);
-                                }}
-                                style={{
-                                  background: "none",
-                                  border: "none",
-                                  color: "#ef4444",
-                                  cursor: "pointer",
-                                  padding: "0",
-                                  marginLeft: "4px",
-                                  fontSize: "14px",
-                                  lineHeight: "1",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center"
-                                }}
-                                title="Remove custom glass type"
-                              >
-                                ✕
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                      <optgroup label="--- Custom Types ---">
+                        {customGlassTypes.map((type) => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </optgroup>
                     )}
-                  </div>
+                  </Select>
+                  
+                  {customGlassTypes.length > 0 && (
+                    <div className="mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <p className="text-xs font-semibold text-slate-500 mb-2">Custom Types:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {customGlassTypes.map((type) => (
+                          <span key={type} className="inline-flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded text-xs font-medium text-slate-700">
+                            {type}
+                            <button
+                              onClick={(e) => { e.preventDefault(); removeCustomGlassType(type); }}
+                              className="text-slate-400 hover:text-red-500 transition-colors"
+                            >
+                              <XCircle size={14} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <div style={formGroup}>
+                <div className="space-y-2">
                   <Input
-                    label="Manual Glass Type"
-                    type="text"
-                    placeholder="Enter custom glass type"
+                    label="Custom Glass Type"
+                    placeholder="Enter new glass type"
                     value={manualGlassType}
                     onChange={e => setManualGlassType(e.target.value)}
-                    icon="🔷"
+                    icon={<PlusCircle size={18} />}
                     required
                   />
-                  <p style={{ marginTop: "4px", fontSize: "12px", color: "#6b7280" }}>
-                    This will be added to the dropdown list after saving
+                  <p className="text-xs text-slate-500 flex items-center gap-1">
+                    <Info size={12} /> Saves automatically for future use
                   </p>
                 </div>
               )}
 
-              <div style={formGroup}>
-                  <Select
-                    label="Selection Mode"
-                    value={thicknessMode} 
-                    onChange={e => {
-                      setThicknessMode(e.target.value);
-                      setThicknessFocused(false);
-                    }}
-                    icon="📏"
-                  >
-                  <option value="SELECT">Select from list</option>
-                  <option value="MANUAL">Manual entry</option>
-                </Select>
-              </div>
+              <Select
+                label="Thickness Mode"
+                value={thicknessMode} 
+                onChange={e => {
+                  setThicknessMode(e.target.value);
+                  setThicknessFocused(false);
+                }}
+                icon={<Settings2 size={18} />}
+              >
+                <option value="SELECT">Select from list</option>
+                <option value="MANUAL">Manual entry</option>
+              </Select>
 
               {thicknessMode === "SELECT" ? (
-                <div style={formGroup}>
-                  <Select
-                    label="Thickness"
-                    value={thickness}
-                    onChange={e => setThickness(e.target.value)}
-                    icon="📏"
-                    required
-                  >
-                    <option value="">Select thickness</option>
-                    <option value="3.5">3.5 MM</option>
-                    <option value="4">4 MM</option>
-                    <option value="5">5 MM</option>
-                    <option value="6">6 MM</option>
-                    <option value="8">8 MM</option>
-                    <option value="10">10 MM</option>
-                    <option value="12">12 MM</option>
-                    <option value="15">15 MM</option>
-                    <option value="19">19 MM</option>
-                  </Select>
-                </div>
+                <Select
+                  label="Thickness"
+                  value={thickness}
+                  onChange={e => setThickness(e.target.value)}
+                  icon={<Ruler size={18} />}
+                  required
+                >
+                  <option value="">Select thickness</option>
+                  {[3.5, 4, 5, 6, 8, 10, 12, 15, 19].map(t => (
+                    <option key={t} value={t}>{t} MM</option>
+                  ))}
+                </Select>
               ) : (
-                <div style={formGroup}>
-                  <Input
-                    label="Manual Thickness (MM)"
-                    type="text"
-                    placeholder="Enter thickness (e.g., 2)"
-                    value={thicknessFocused ? manualThickness : (manualThickness ? `${manualThickness} MM` : "")}
-                    onChange={e => {
-                      let inputVal = e.target.value;
-                      // Remove "MM" if user types it, keep only the number
-                      inputVal = inputVal.replace(/mm/gi, '').trim();
-                      // Extract only numbers and decimal point
-                      inputVal = inputVal.replace(/[^\d.]/g, '');
-                      setManualThickness(inputVal);
-                    }}
-                    onFocus={(e) => {
-                      // On focus, show just the number (remove MM) so user can edit
-                      setThicknessFocused(true);
-                      let inputVal = e.target.value.replace(/mm/gi, '').trim();
-                      inputVal = inputVal.replace(/[^\d.]/g, '');
-                      setManualThickness(inputVal);
-                    }}
-                    onBlur={(e) => {
-                      // On blur (when moving to next field), format with MM if valid number
-                      setThicknessFocused(false);
-                      let inputVal = e.target.value.replace(/mm/gi, '').trim();
-                      inputVal = inputVal.replace(/[^\d.]/g, '');
-                      if (inputVal && !isNaN(parseFloat(inputVal))) {
-                        setManualThickness(inputVal);
-                      } else if (!inputVal) {
-                        setManualThickness("");
-                      }
-                    }}
-                    icon="📏"
-                    required
-                  />
-                </div>
+                <Input
+                  label="Manual Thickness (MM)"
+                  placeholder="e.g., 2"
+                  value={thicknessFocused ? manualThickness : (manualThickness ? `${manualThickness} MM` : "")}
+                  onChange={e => {
+                    let inputVal = e.target.value.replace(/mm/gi, '').trim().replace(/[^\d.]/g, '');
+                    setManualThickness(inputVal);
+                  }}
+                  onFocus={(e) => {
+                    setThicknessFocused(true);
+                    let inputVal = e.target.value.replace(/mm/gi, '').trim().replace(/[^\d.]/g, '');
+                    setManualThickness(inputVal);
+                  }}
+                  onBlur={(e) => {
+                    setThicknessFocused(false);
+                    let inputVal = e.target.value.replace(/mm/gi, '').trim().replace(/[^\d.]/g, '');
+                    setManualThickness(inputVal && !isNaN(parseFloat(inputVal)) ? inputVal : "");
+                  }}
+                  icon={<Ruler size={18} />}
+                  required
+                />
               )}
             </div>
-          </div>
+          </section>
 
           {/* Dimensions Section */}
-          <div style={section}>
-            <div style={sectionHeader}>
-              <div style={sectionIcon}>📐</div>
+          <section className="space-y-6">
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
+              <div className="w-12 h-12 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+                <Maximize2 size={24} />
+              </div>
               <div>
-                <h3 style={sectionTitle}>Dimensions</h3>
-                <p style={sectionSubtitle}>Enter glass dimensions</p>
+                <h3 className="text-xl font-bold text-slate-900">Dimensions</h3>
+                <p className="text-sm text-slate-500">Enter glass measurements</p>
               </div>
             </div>
 
-            <div style={getFormGridStyle(isMobile)}>
-              <div style={formGroup}>
-                <Select
-                  label="Unit"
-                  value={unit} 
-                  onChange={e => setUnit(e.target.value)}
-                  icon="📐"
-                >
-                  <option value="MM">MM (Millimeters)</option>
-                  <option value="INCH">INCH (Inches)</option>
-                  <option value="FEET">FEET (Feet)</option>
-                </Select>
-              </div>
-
-              <div style={formGroup}>
-                <Input
-                  label="Height"
-                  type="text"
-                  placeholder={getPlaceholder("height", unit)}
-                  value={height}
-                  onChange={e => setHeight(e.target.value)}
-                  icon="📏"
-                  required
-                />
-              </div>
-
-              <div style={formGroup}>
-                <Input
-                  label="Width"
-                  type="text"
-                  placeholder={getPlaceholder("width", unit)}
-                  value={width}
-                  onChange={e => setWidth(e.target.value)}
-                  icon="📏"
-                  required
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Select label="Unit" value={unit} onChange={e => setUnit(e.target.value)} icon={<Ruler size={18} />}>
+                <option value="MM">MM (Millimeters)</option>
+                <option value="INCH">INCH (Inches)</option>
+                <option value="FEET">FEET (Feet)</option>
+              </Select>
+              
+              <Input
+                label={`Height (${unit})`}
+                placeholder={getPlaceholder("height", unit)}
+                value={height}
+                onChange={e => setHeight(e.target.value)}
+                icon={<Maximize2 size={18} className="rotate-90" />}
+                required
+              />
+              
+              <Input
+                label={`Width (${unit})`}
+                placeholder={getPlaceholder("width", unit)}
+                value={width}
+                onChange={e => setWidth(e.target.value)}
+                icon={<Maximize2 size={18} />}
+                required
+              />
             </div>
-          </div>
+          </section>
 
           {/* Stock Details Section */}
-          <div style={section}>
-            <div style={sectionHeader}>
-              <div style={sectionIcon}>📦</div>
+          <section className="space-y-6">
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <PackageSearch size={24} />
+              </div>
               <div>
-                <h3 style={sectionTitle}>Stock Details</h3>
-                <p style={sectionSubtitle}>Stand number and quantity</p>
+                <h3 className="text-xl font-bold text-slate-900">Stock Location & Quantity</h3>
+                <p className="text-sm text-slate-500">Where is it and how many?</p>
               </div>
             </div>
 
-            <div style={getFormGridStyle(isMobile)}>
-              <div style={formGroup}>
-                <Input
-                  label="Stand Number"
-                  type="number"
-                  placeholder="Enter stand number"
-                  value={standNo}
-                  onChange={e => setStandNo(e.target.value)}
-                  icon="🏷️"
-                  required
-                />
-              </div>
-
-              <div style={formGroup}>
-                <Input
-                  label="Quantity"
-                  type="number"
-                  placeholder="Enter quantity"
-                  value={quantity}
-                  onChange={e => setQuantity(e.target.value)}
-                  icon="🔢"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-
-          {/* Additional Information Section */}
-          <div style={section}>
-            <div style={sectionHeader}>
-              <div style={sectionIcon}>📋</div>
-              <div>
-                <h3 style={sectionTitle}>Additional Information</h3>
-                <p style={sectionSubtitle}>Optional details for GST</p>
-              </div>
-            </div>
-
-            <div style={formGroup}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Input
-                label="HSN Code (Optional)"
-                type="text"
+                label="Stand Number"
+                type="number"
+                placeholder="Enter stand number"
+                value={standNo}
+                onChange={e => setStandNo(e.target.value)}
+                icon={<Hash size={18} />}
+                required
+              />
+              <Input
+                label="Quantity"
+                type="number"
+                placeholder="Enter quantity"
+                value={quantity}
+                onChange={e => setQuantity(e.target.value)}
+                icon={<Layers size={18} />}
+                required
+              />
+            </div>
+          </section>
+
+          {/* Additional Info */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-4 pb-4 border-b border-slate-100">
+              <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center shrink-0">
+                <Info size={24} />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Additional Information</h3>
+                <p className="text-sm text-slate-500">Optional details for billing</p>
+              </div>
+            </div>
+
+            <div className="md:w-1/2">
+              <Input
+                label="HSN Code"
                 placeholder="e.g., 7003, 7004"
                 value={hsnNo}
                 onChange={e => setHsnNo(e.target.value)}
-                icon="🏷️"
+                icon={<Hash size={18} />}
                 helperText="HSN code for GST billing (optional)"
               />
             </div>
-          </div>
+          </section>
 
-          {/* Action Buttons */}
-          <div style={actionsSection}>
-            <div style={buttonGroup}>
+          {/* Actions */}
+          <div className="pt-8 border-t border-slate-200">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Button
                 variant="success"
                 size="lg"
-                icon="➕"
+                icon={<PlusCircle size={20} />}
                 fullWidth={isMobile}
                 onClick={() => updateStock("ADD")}
-                style={{ flex: isMobile ? "1" : "none" }}
+                className="flex-1"
               >
                 Add Stock
               </Button>
-
               <Button
                 variant="danger"
                 size="lg"
-                icon="➖"
+                icon={<MinusCircle size={20} />}
                 fullWidth={isMobile}
                 onClick={() => updateStock("REMOVE")}
-                style={{ flex: isMobile ? "1" : "none" }}
+                className="flex-1"
               >
                 Remove Stock
               </Button>
             </div>
 
             {showUndo && (
-              <Button
-                variant="outline"
-                size="md"
-                icon="↩"
-                fullWidth
-                onClick={undoLastAction}
-                style={{ marginTop: "12px" }}
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4">
+                <Button variant="outline" size="md" icon={<RotateCcw size={18} />} fullWidth onClick={undoLastAction}>
+                  Undo Last Action
+                </Button>
+              </motion.div>
+            )}
+
+            {/* Message Alert */}
+            {stockMessage && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }} 
+                animate={{ opacity: 1, scale: 1 }}
+                className={`mt-6 p-4 rounded-xl border flex items-center gap-3 ${
+                  stockMessage.includes("✅") 
+                    ? "bg-green-50 border-green-200 text-green-700" 
+                    : "bg-red-50 border-red-200 text-red-700"
+                }`}
               >
-                Undo Last Action
-              </Button>
+                {stockMessage.includes("✅") ? <CheckCircle2 className="shrink-0" /> : <XCircle className="shrink-0" />}
+                <p className="font-medium">{stockMessage.replace(/[✅❌]/g, "").trim()}</p>
+              </motion.div>
             )}
           </div>
-
-          {/* Message Display */}
-          {stockMessage && (
-            <div style={getMessageStyle(stockMessage && typeof stockMessage === 'string' && stockMessage.includes("✅"))}>
-              <span style={messageIcon}>
-                {stockMessage.includes("✅") ? "✅" : "❌"}
-              </span>
-              <span>{stockMessage.replace("✅", "").replace("❌", "").trim()}</span>
-            </div>
-          )}
         </Card>
-      </div>
+      </motion.div>
 
-      {/* Confirmation Modal */}
       <ConfirmModal
         show={showConfirm}
         payload={pendingPayload || {}}
@@ -577,141 +488,3 @@ function StockManager() {
 }
 
 export default StockManager;
-
-/* ================= STYLES ================= */
-
-const getContainerStyle = (isMobile) => ({
-  maxWidth: "1000px",
-  margin: "0 auto",
-  padding: isMobile ? "24px 16px" : "40px 24px",
-  width: "100%",
-});
-
-const headerSection = {
-  marginBottom: "32px",
-};
-
-const pageTitle = {
-  fontSize: "36px",
-  fontWeight: "800",
-  color: "#0f172a",
-  margin: "0 0 8px 0",
-  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-  WebkitBackgroundClip: "text",
-  WebkitTextFillColor: "transparent",
-  backgroundClip: "text",
-};
-
-const pageSubtitle = {
-  fontSize: "16px",
-  color: "#64748b",
-  margin: "0",
-  fontWeight: "400",
-};
-
-const getFormCardStyle = (isMobile) => ({
-  padding: isMobile ? "24px" : "40px",
-});
-
-const section = {
-  marginBottom: "40px",
-  paddingBottom: "32px",
-  borderBottom: "1px solid #e2e8f0",
-};
-
-const sectionHeader = {
-  display: "flex",
-  alignItems: "center",
-  gap: "16px",
-  marginBottom: "24px",
-};
-
-const sectionIcon = {
-  width: "48px",
-  height: "48px",
-  borderRadius: "12px",
-  background: "linear-gradient(135deg, #667eea15, #764ba225)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: "24px",
-  flexShrink: 0,
-};
-
-const sectionTitle = {
-  fontSize: "20px",
-  fontWeight: "700",
-  color: "#0f172a",
-  margin: "0 0 4px 0",
-};
-
-const sectionSubtitle = {
-  fontSize: "14px",
-  color: "#64748b",
-  margin: "0",
-  fontWeight: "400",
-};
-
-const getFormGridStyle = (isMobile) => ({
-  display: "grid",
-  gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(250px, 1fr))",
-  gap: "20px",
-});
-
-const getGlassThicknessGridStyle = (isMobile) => ({
-  display: "grid",
-  gridTemplateColumns: isMobile ? "1fr" : "repeat(4, 1fr)",
-  gap: "20px",
-});
-
-const formGroup = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "8px",
-};
-
-const label = {
-  fontSize: "13px",
-  fontWeight: "600",
-  color: "#475569",
-  marginBottom: "4px",
-};
-
-const required = {
-  color: "#ef4444",
-  marginLeft: "2px",
-};
-
-
-const actionsSection = {
-  marginTop: "32px",
-  paddingTop: "32px",
-  borderTop: "2px solid #e2e8f0",
-};
-
-const buttonGroup = {
-  display: "flex",
-  gap: "16px",
-  flexWrap: "wrap",
-};
-
-const getMessageStyle = (isSuccess) => ({
-  marginTop: "24px",
-  padding: "16px 20px",
-  borderRadius: "12px",
-  background: isSuccess 
-    ? "rgba(34, 197, 94, 0.1)" 
-    : "rgba(239, 68, 68, 0.1)",
-  border: `1.5px solid ${isSuccess ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
-  color: isSuccess ? "#16a34a" : "#dc2626",
-  fontSize: "14px",
-  fontWeight: "500",
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-});
-
-const messageIcon = {
-  fontSize: "20px",
-  flexShrink: 0,
-};

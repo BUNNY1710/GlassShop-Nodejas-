@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
+import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
-import dashboardBg from "../assets/dashboard-bg.jpg";
 import {
   createCustomer,
   getQuotations,
@@ -1316,7 +1316,7 @@ function StaffQuotationManagement() {
   ];
 
   return (
-    <PageWrapper backgroundImage={dashboardBg}>
+    <PageWrapper>
       <div style={{ 
         padding: isMobile ? "8px" : "20px", 
         maxWidth: isMobile ? "100%" : "1400px", 
@@ -3618,7 +3618,7 @@ function StaffQuotationManagement() {
                           }
                         } catch (error) {
                           console.error("Failed to print quotation", error);
-                          alert("Failed to print quotation PDF");
+                          toast.error("Failed to print quotation PDF");
                         }
                       }}
                       style={{
@@ -3654,7 +3654,7 @@ function StaffQuotationManagement() {
                           window.URL.revokeObjectURL(url);
                         } catch (error) {
                           console.error("Failed to download PDF", error);
-                          alert("Failed to download quotation PDF");
+                          toast.error("Failed to download quotation PDF");
                         }
                       }}
                       style={{
@@ -3689,7 +3689,7 @@ function StaffQuotationManagement() {
                           }
                         } catch (error) {
                           console.error("Failed to print cutting-pad", error);
-                          alert("Failed to print cutting-pad PDF");
+                          toast.error("Failed to print cutting-pad PDF");
                         }
                       }}
                       style={{

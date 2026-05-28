@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
-import { Card, Button, Input, Select } from "../components/ui";
+import { Card, Button, Input, Select, Alert, parseMessageType, Badge, Modal, ModalActions } from "../components/ui";
+import { Pencil, Trash2 } from "lucide-react";
 import api from "../api/api";
 import { useResponsive } from "../hooks/useResponsive";
 import { getUserRole } from "../utils/auth";
@@ -448,11 +449,10 @@ function GlassPriceMaster() {
         )}
 
         {/* Message */}
-        {message && (
-          <div style={getMessageStyle(message.includes("✅"))}>
-            {message}
-          </div>
-        )}
+        {message && (() => {
+          const p = parseMessageType(message);
+          return p ? <Alert type={p.type} onDismiss={() => setMessage("")} className="mb-4">{p.text}</Alert> : null;
+        })()}
 
         {/* Price Master Table */}
         <Card style={getTableCardStyle(isMobile)}>
@@ -482,9 +482,9 @@ function GlassPriceMaster() {
                         {entry.thickness ? `${parseFloat(entry.thickness).toFixed(2)} MM` : "—"}
                       </p>
                     </div>
-                    <span style={getStatusBadgeStyle(entry.isPending)}>
-                      {entry.isPending ? "⏳ Pending" : "✅ Approved"}
-                    </span>
+                    <Badge variant={entry.isPending ? "warning" : "success"}>
+                      {entry.isPending ? "Pending" : "Approved"}
+                    </Badge>
                   </div>
                   <div style={getMobileCardContentStyle()}>
                     <div style={getMobileCardRowStyle()}>
@@ -557,16 +557,16 @@ function GlassPriceMaster() {
                           : <span style={{color: "#94a3b8"}}>—</span>}
                       </td>
                       <td style={tableCell}>
-                        <span style={getStatusBadgeStyle(entry.isPending)}>
-                          {entry.isPending ? "⏳ Pending" : "✅ Approved"}
-                        </span>
+                        <Badge variant={entry.isPending ? "warning" : "success"}>
+                          {entry.isPending ? "Pending" : "Approved"}
+                        </Badge>
                       </td>
                       <td style={tableCell}>
                         <div style={actionButtons}>
                           <Button
                             variant="outline"
                             size="sm"
-                            icon="✏️"
+                            icon={<Pencil size={13} />}
                             onClick={() => handleEdit(entry)}
                           >
                             Edit
@@ -574,7 +574,7 @@ function GlassPriceMaster() {
                           <Button
                             variant="danger"
                             size="sm"
-                            icon="🗑️"
+                            icon={<Trash2 size={13} />}
                             onClick={() => handleDelete(entry.id)}
                           >
                             Delete
@@ -590,122 +590,26 @@ function GlassPriceMaster() {
         </Card>
       </div>
         {/* Delete Confirmation Modal */}
-        {confirmDelete && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 10004,
-              padding: isMobile ? "15px" : "20px",
-            }}
-            onClick={() => setConfirmDelete(null)}
-          >
-            <div
-              style={{
-                backgroundColor: "white",
-                padding: isMobile ? "25px" : "35px",
-                borderRadius: "16px",
-                maxWidth: "500px",
-                width: "100%",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ marginBottom: "20px", textAlign: "center" }}>
-                <div
-                  style={{
-                    fontSize: "48px",
-                    marginBottom: "15px",
-                    color: "#ef4444",
-                  }}
-                >
-                  🗑️
-                </div>
-                <h2
-                  style={{
-                    margin: 0,
-                    color: "#1f2937",
-                    fontSize: isMobile ? "20px" : "24px",
-                    fontWeight: "700",
-                    marginBottom: "10px",
-                  }}
-                >
-                  Delete Entry?
-                </h2>
-                <p style={{ margin: "8px 0 0 0", color: "#6b7280", fontSize: "14px", lineHeight: "1.6" }}>
-                  Are you sure you want to permanently delete this entry? This action cannot be undone.
-                </p>
-                <div
-                  style={{
-                    marginTop: "15px",
-                    padding: "12px",
-                    backgroundColor: "#f3f4f6",
-                    borderRadius: "8px",
-                    textAlign: "left",
-                  }}
-                >
-                  <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "4px" }}>Entry Details:</div>
-                  <div style={{ fontSize: "14px", color: "#1f2937", fontWeight: "600" }}>
-                    {confirmDelete.glassType} - {confirmDelete.thickness} MM
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: "12px" }}>
-                <button
-                  onClick={confirmDeleteAction}
-                  style={{
-                    flex: 1,
-                    padding: "12px 24px",
-                    backgroundColor: "#ef4444",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    transition: "all 0.2s",
-                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.2)",
-                  }}
-                  onMouseOver={(e) => {
-                    e.target.style.backgroundColor = "#dc2626";
-                  }}
-                  onMouseOut={(e) => {
-                    e.target.style.backgroundColor = "#ef4444";
-                  }}
-                >
-                  🗑️ Yes, Delete
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(null)}
-                  style={{
-                    flex: 1,
-                    padding: "12px 24px",
-                    backgroundColor: "#6b7280",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseOver={(e) => (e.target.style.backgroundColor = "#4b5563")}
-                  onMouseOut={(e) => (e.target.style.backgroundColor = "#6b7280")}
-                >
-                  ❌ Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <Modal
+          open={!!confirmDelete}
+          onClose={() => setConfirmDelete(null)}
+          title="Delete entry?"
+          description={
+            confirmDelete
+              ? `Permanently delete ${confirmDelete.glassType} — ${confirmDelete.thickness} MM? This cannot be undone.`
+              : undefined
+          }
+          size="sm"
+          footer={
+            <ModalActions
+              onCancel={() => setConfirmDelete(null)}
+              onConfirm={confirmDeleteAction}
+              cancelLabel="Cancel"
+              confirmLabel="Delete"
+              confirmVariant="danger"
+            />
+          }
+        />
     </PageWrapper>
   );
 }
@@ -897,27 +801,6 @@ const actionButtons = {
   flexWrap: "wrap",
 };
 
-const getStatusBadgeStyle = (isPending) => ({
-  padding: "4px 12px",
-  borderRadius: "999px",
-  fontSize: "12px",
-  fontWeight: "600",
-  backgroundColor: isPending ? "#fef3c7" : "#d1fae5",
-  color: isPending ? "#92400e" : "#065f46",
-});
-
-const getMessageStyle = (isSuccess) => ({
-  padding: "16px 20px",
-  borderRadius: "12px",
-  marginBottom: "24px",
-  background: isSuccess 
-    ? "rgba(34, 197, 94, 0.1)" 
-    : "rgba(239, 68, 68, 0.1)",
-  border: `1.5px solid ${isSuccess ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
-  color: isSuccess ? "#16a34a" : "#dc2626",
-  fontSize: "14px",
-  fontWeight: "500",
-});
 
 const loadingState = {
   padding: "60px 20px",

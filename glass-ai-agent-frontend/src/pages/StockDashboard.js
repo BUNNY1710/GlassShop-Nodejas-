@@ -2,7 +2,10 @@ import { useEffect, useState, useMemo } from "react";
 import { toast } from "react-toastify";
 import api from "../api/api";
 import PageWrapper from "../components/PageWrapper";
-import { Card, Button, Input, Select, StatCard } from "../components/ui";
+import { Card, Button, Input, Select, StatCard, PageHeader, Alert, parseMessageType, Badge } from "../components/ui";
+import { inventory as copy } from "../design/copy";
+import { type } from "../design/typography";
+import { Package, AlertTriangle, Layers, RefreshCw, ArrowLeftRight, Plus, Minus, RotateCcw, Pencil, Check } from "lucide-react";
 import ConfirmModal from "../components/ConfirmModal";
 import { getUserRole } from "../utils/auth";
 import "../styles/design-system.css";
@@ -434,79 +437,74 @@ function StockDashboard() {
   return (
     <PageWrapper>
       <div style={getContainerStyle(isMobile)}>
-        {/* Header Section */}
-        <div style={headerSection}>
-          <div>
-            <h1 style={getPageTitleStyle(isMobile)}>View Stock</h1>
-            <p style={pageSubtitle}>Browse and manage your inventory</p>
-          </div>
-        </div>
+        <PageHeader
+          eyebrow={copy.eyebrow}
+          title={copy.title}
+          description={copy.description}
+          icon={<Package size={26} />}
+        />
 
-        {/* Stats Cards */}
         <div style={getStatsGridStyle(isMobile)}>
           <StatCard
-            icon="📦"
-            label="Total Items"
+            icon={<Package size={22} />}
+            label={copy.metrics.totalItems}
             value={totalStock}
-            color="#6366f1"
             loading={loading}
           />
           <StatCard
-            icon="⚠️"
-            label="Low Stock"
+            icon={<AlertTriangle size={22} />}
+            label={copy.metrics.lowStock}
             value={lowStockCount}
-            color="#ef4444"
+            accent={lowStockCount > 0 ? "danger" : "primary"}
             loading={loading}
-            subtitle={lowStockCount > 0 ? "Needs attention" : "All good"}
+            subtitle={lowStockCount > 0 ? copy.metrics.lowStockAlert : copy.metrics.lowStockOk}
           />
           <StatCard
-            icon="🔢"
-            label="Total Quantity"
-            value={totalQuantity.toLocaleString()}
-            color="#22c55e"
+            icon={<Layers size={22} />}
+            label={copy.metrics.totalQuantity}
+            value={totalQuantity}
+            accent="success"
             loading={loading}
           />
         </div>
 
-        {/* Filters Card */}
-        <Card style={getFilterCardStyle(isMobile)}>
-          <div style={filterHeader}>
-            <div style={filterIcon}>🔍</div>
+        <Card style={getFilterCardStyle(isMobile)} glass>
+          <div className="flex gap-4 items-start mb-6">
             <div>
-              <h3 style={filterTitle}>Search & Filter</h3>
-              <p style={filterSubtitle}>Search & Filter stock by type, dimensions, or unit</p>
+              <h3 className={type.h3}>{copy.filters.title}</h3>
+              <p className={type.bodySm}>{copy.filters.description}</p>
             </div>
           </div>
 
           <div style={getFilterGridStyle(isMobile)}>
             <Input
-              placeholder="Thickness (e.g., 5, 8, 10)"
+              label={copy.filters.thickness}
+              placeholder={copy.filters.thicknessPlaceholder}
               value={filterThickness}
               onChange={e => setFilterThickness(e.target.value)}
-              icon="📏"
             />
             <Input
               type="text"
-              placeholder="Height (e.g. 5, 5.5, 5 1/4)"
+              label={copy.filters.height}
+              placeholder={copy.filters.heightPlaceholder}
               value={filterHeight}
               onChange={e => setFilterHeight(e.target.value)}
-              icon="📏"
             />
             <Input
               type="text"
-              placeholder="Width (e.g. 7, 7.5, 7 3/8)"
+              label={copy.filters.width}
+              placeholder={copy.filters.widthPlaceholder}
               value={filterWidth}
               onChange={e => setFilterWidth(e.target.value)}
-              icon="📐"
             />
             <Select
+              label={copy.filters.unit}
               value={searchUnit}
               onChange={e => setSearchUnit(e.target.value)}
-              icon="📏"
             >
-              <option value="MM">MM</option>
-              <option value="INCH">INCH</option>
-              <option value="FEET">FEET</option>
+              <option value="MM">Millimeters</option>
+              <option value="INCH">Inches</option>
+              <option value="FEET">Feet</option>
             </Select>
             <Button
               variant="secondary"
@@ -518,7 +516,7 @@ function StockDashboard() {
               }}
               fullWidth={isMobile}
             >
-              Clear Filters
+              {copy.filters.clear}
             </Button>
           </div>
         </Card>
@@ -535,7 +533,7 @@ function StockDashboard() {
             <Button
               variant="outline"
               size="sm"
-              icon="🔄"
+              icon={<RefreshCw size={14} />}
               onClick={loadStock}
             >
               Refresh
@@ -646,17 +644,9 @@ function StockDashboard() {
                           </td>
                           <td style={tableCell}>
                             <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                              <span style={getStatusBadgeStyle(isLow)}>
-                                {isLow ? "🔴 LOW" : "✅ OK"}
-                              </span>
+                              <Badge variant={isLow ? "warning" : "success"}>{isLow ? "Low" : "OK"}</Badge>
                               {s.status === "PENDING" && (
-                                <span style={{
-                                  fontSize: "11px",
-                                  color: "#f59e0b",
-                                  fontWeight: "600"
-                                }}>
-                                  ⏳ Pending
-                                </span>
+                                <Badge variant="warning">Pending</Badge>
                               )}
                             </div>
                           </td>
@@ -665,7 +655,7 @@ function StockDashboard() {
                               <Button
                                 variant="primary"
                                 size="sm"
-                                icon="➕➖"
+                                icon={<Pencil size={13} />}
                                 onClick={() => openAddRemoveModal(s)}
                                 style={{ minWidth: "auto" }}
                               >
@@ -674,7 +664,7 @@ function StockDashboard() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                icon="🔄"
+                                icon={<ArrowLeftRight size={13} />}
                                 onClick={() => openTransferModal(s)}
                                 style={{ minWidth: "auto" }}
                               >
@@ -740,24 +730,23 @@ function StockDashboard() {
                 placeholder="Enter quantity"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                icon="🔢"
                 required
                 min="1"
               />
 
-              
+
               {/* Status Display */}
               {selectedStock.status && (
                 <div style={{ marginTop: isMobile ? "8px" : "10px", paddingTop: isMobile ? "10px" : "12px", borderTop: "1px solid #e2e8f0" }}>
                   <div style={getInfoItemStyle(isMobile)}>
                     <span style={getInfoLabelStyle(isMobile)}>Status:</span>
-                    <span style={getStatusBadgeStyle(selectedStock.status === "PENDING")}>
-                      {selectedStock.status === "PENDING" ? "⏳ Pending Approval" : "✅ Approved"}
-                    </span>
+                    <Badge variant={selectedStock.status === "PENDING" ? "warning" : "success"}>
+                      {selectedStock.status === "PENDING" ? "Pending Approval" : "Approved"}
+                    </Badge>
                   </div>
                   {selectedStock.status === "PENDING" && (
                     <p style={{ marginTop: "8px", fontSize: "12px", color: "#f59e0b" }}>
-                      ⚠️ This stock is pending price approval from Admin
+                      This stock is pending price approval from Admin
                     </p>
                   )}
                 </div>
@@ -766,7 +755,7 @@ function StockDashboard() {
               <div style={getButtonGroupStyle(isMobile)}>
                 <Button
                   variant="success"
-                  icon="➕"
+                  icon={<Plus size={14} />}
                   fullWidth={isMobile}
                   onClick={() => updateStock("ADD")}
                 >
@@ -774,7 +763,7 @@ function StockDashboard() {
                 </Button>
                 <Button
                   variant="danger"
-                  icon="➖"
+                  icon={<Minus size={14} />}
                   fullWidth={isMobile}
                   onClick={() => updateStock("REMOVE")}
                 >
@@ -785,7 +774,7 @@ function StockDashboard() {
               {showUndo && (
                 <Button
                   variant="outline"
-                  icon="↩"
+                  icon={<RotateCcw size={14} />}
                   fullWidth
                   onClick={undoLastAction}
                 >
@@ -793,14 +782,10 @@ function StockDashboard() {
                 </Button>
               )}
 
-              {stockMessage && (
-                <div style={getMessageStyle(stockMessage.includes("✅"))}>
-                  <span style={messageIcon}>
-                    {stockMessage.includes("✅") ? "✅" : "❌"}
-                  </span>
-                  <span>{stockMessage.replace("✅", "").replace("❌", "").trim()}</span>
-                </div>
-              )}
+              {stockMessage && (() => {
+                const p = parseMessageType(stockMessage);
+                return p ? <Alert type={p.type} onDismiss={() => setStockMessage("")}>{p.text}</Alert> : null;
+              })()}
             </div>
           </Card>
         </div>
@@ -853,7 +838,6 @@ function StockDashboard() {
                 placeholder="Enter destination stand number"
                 value={toStand}
                 onChange={(e) => setToStand(e.target.value)}
-                icon="🏷️"
                 required
                 min="1"
               />
@@ -864,7 +848,6 @@ function StockDashboard() {
                 placeholder="Enter quantity"
                 value={transferQuantity}
                 onChange={(e) => setTransferQuantity(e.target.value)}
-                icon="🔢"
                 required
                 min="1"
                 helperText={`Maximum: ${transferStock.quantity} units`}
@@ -872,21 +855,17 @@ function StockDashboard() {
 
               <Button
                 variant="primary"
-                icon="🔄"
+                icon={<ArrowLeftRight size={14} />}
                 fullWidth
                 onClick={handleTransfer}
               >
                 Transfer Stock
               </Button>
 
-              {transferMessage && (
-                <div style={getMessageStyle(transferMessage && typeof transferMessage === 'string' && transferMessage.includes("✅"))}>
-                  <span style={messageIcon}>
-                    {transferMessage.includes("✅") ? "✅" : "❌"}
-                  </span>
-                  <span>{transferMessage.replace("✅", "").replace("❌", "").trim()}</span>
-                </div>
-              )}
+              {transferMessage && (() => {
+                const p = parseMessageType(transferMessage);
+                return p ? <Alert type={p.type} onDismiss={() => setTransferMessage("")}>{p.text}</Alert> : null;
+              })()}
             </div>
           </Card>
         </div>
@@ -946,7 +925,7 @@ function StockDashboard() {
                 </Button>
                 <Button
                   variant="primary"
-                  icon="✅"
+                  icon={<Check size={14} />}
                   fullWidth={isMobile}
                   onClick={confirmTransfer}
                 >
@@ -1153,18 +1132,6 @@ const tableCell = {
   boxSizing: "border-box",
 };
 
-const getStatusBadgeStyle = (isLow) => ({
-  display: "inline-block",
-  padding: "6px 12px",
-  borderRadius: "8px",
-  fontWeight: "600",
-  fontSize: "12px",
-  background: isLow ? "rgba(239, 68, 68, 0.1)" : "rgba(34, 197, 94, 0.1)",
-  color: isLow ? "#dc2626" : "#16a34a",
-  width: "85px", // Fixed width to accommodate both "🔴 LOW" and "✅ OK"
-  textAlign: "center",
-  boxSizing: "border-box",
-});
 
 const actionButtonsContainer = {
   display: "flex",
@@ -1333,22 +1300,3 @@ const getButtonGroupStyle = (isMobile) => ({
   flexWrap: "wrap",
 });
 
-const getMessageStyle = (isSuccess) => ({
-  padding: "16px",
-  borderRadius: "12px",
-  background: isSuccess 
-    ? "rgba(34, 197, 94, 0.1)" 
-    : "rgba(239, 68, 68, 0.1)",
-  border: `1.5px solid ${isSuccess ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)"}`,
-  color: isSuccess ? "#16a34a" : "#dc2626",
-  fontSize: "14px",
-  fontWeight: "500",
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-});
-
-const messageIcon = {
-  fontSize: "20px",
-  flexShrink: 0,
-};

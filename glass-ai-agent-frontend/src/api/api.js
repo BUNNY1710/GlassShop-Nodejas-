@@ -1,60 +1,82 @@
+import axios from 'axios';
+import { isAuthEndpoint } from '../utils/apiError';
 
-import axios from "axios";
+/**
+ * Normalize API base URL — ensures port 3001 for http URLs without an explicit port
+ * (common misconfiguration: REACT_APP_API_URL=http://ec2-ip without :3001).
+ */
+function normalizeBaseURL(url) {
+  const trimmed = String(url || '').trim().replace(/\/+$/, '');
+  if (!trimmed) return 'http://localhost:3001';
 
-// Determine API base URL
-// Priority:
-// 1. REACT_APP_API_URL environment variable (explicitly set)
-// 2. Auto-detect S3 deployment and use EC2 backend
-// 3. localhost:8080 for development
+  try {
+    const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+    const parsed = new URL(withProtocol);
+
+    if (!parsed.port && parsed.protocol === 'http:') {
+      parsed.port = '3001';
+    }
+
+    return parsed.origin;
+  } catch {
+    return trimmed;
+  }
+}
+
 const getBaseURL = () => {
-  // If REACT_APP_API_URL is explicitly set, use it
   if (process.env.REACT_APP_API_URL) {
-    return process.env.REACT_APP_API_URL;
+    return normalizeBaseURL(process.env.REACT_APP_API_URL);
   }
-  
-  // Auto-detect S3 deployment (hostname contains 's3-website' or 'amazonaws.com')
+
   const hostname = window.location.hostname;
-  if (hostname.includes('s3-website') || hostname.includes('amazonaws.com') || hostname.includes('cloudfront.net')) {
-    // S3/CloudFront deployment - use EC2 backend with port 8080
-    return 'http://16.16.73.29:8080';
+  if (
+    hostname.includes('s3-website') ||
+    hostname.includes('amazonaws.com') ||
+    hostname.includes('cloudfront.net')
+  ) {
+    return normalizeBaseURL('http://16.16.73.29:3001');
   }
-  
-  // Development: use localhost:8080
-  return "http://localhost:8080";
+
+  return 'http://localhost:3001';
 };
 
 const api = axios.create({
   baseURL: getBaseURL(),
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// 🔐 ADD JWT TOKEN TO EVERY REQUEST
 api.interceptors.request.use(
   (config) => {
-    const token = sessionStorage.getItem("token");
-
+    const token = sessionStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// 🔄 HANDLE 401 UNAUTHORIZED - REDIRECT TO LOGIN
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Clear token and role
-      sessionStorage.removeItem("token");
-      sessionStorage.removeItem("role");
-      
-      // Redirect to login (only if not already on login page)
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
+    const status = error.response?.status;
+    const requestUrl = error.config?.url || '';
+
+    if (status === 401 && !isAuthEndpoint(requestUrl)) {
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('role');
+      sessionStorage.removeItem('username');
+
+      const path = window.location.pathname;
+      const isPublicAuthPage = path === '/login' || path === '/register';
+
+      if (!isPublicAuthPage) {
+        window.location.href = '/login';
       }
     }
+
     return Promise.reject(error);
   }
 );

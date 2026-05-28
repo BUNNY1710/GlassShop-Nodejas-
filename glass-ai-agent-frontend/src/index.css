@@ -1,206 +1,369 @@
-/* body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
-}
-
-@keyframes blink {
-  0% {
-    opacity: 1;
+@layer base {
+  :root {
+    /* Surface tokens */
+    --surface:          255 255 255;
+    --surface-elevated: 255 255 255;
+    --border-subtle:    226 232 240;
+    /* Accent: sky-600 */
+    --accent:           2 132 199;
+    --accent-light:     224 242 254;
+    /* Sidebar width */
+    --sidebar-w: 16rem;
   }
-  50% {
-    opacity: 0.35;
+
+  .dark {
+    --surface:          13 17 30;
+    --surface-elevated: 17 24 39;
+    --border-subtle:    31 41 55;
+    --accent:           14 165 233;
+    --accent-light:     8 47 73;
   }
-  100% {
-    opacity: 1;
+
+  html {
+    @apply scroll-smooth antialiased;
   }
-} */
 
-/* Import Design System */
-@import './styles/design-system.css';
-@import './styles/responsive.css';
-@import './styles/responsive-mobile.css';
-@import './styles/responsive-utilities.css';
+  html,
+  body {
+    height: 100%;
+  }
 
-/* ================= GLOBAL RESET ================= */
+  body {
+    @apply text-slate-600 font-sans text-base overflow-x-hidden;
+    background-color: #f8fafc;
+    font-feature-settings: 'cv01', 'cv03', 'ss01', 'ss03';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
 
-* {
-  box-sizing: border-box;
+  /* Ensure flex + nested scrollers behave on mobile/WebView */
+  #root {
+    height: 100%;
+  }
+
+  .dark body {
+    background-color: #060d1a;
+    @apply text-slate-400;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display text-slate-900 dark:text-white font-semibold tracking-tight;
+    font-feature-settings: 'ss01' on;
+  }
+
+  h1 { @apply text-3xl sm:text-4xl leading-[1.1]; }
+  h2 { @apply text-2xl sm:text-3xl leading-tight; }
+  h3 { @apply text-xl leading-snug; }
+  h4 { @apply text-lg leading-snug; }
+
+  p {
+    @apply text-[0.9375rem] leading-relaxed text-slate-600 dark:text-slate-400;
+  }
+
+  label {
+    @apply text-[0.8125rem] font-medium text-slate-700 dark:text-slate-300 tracking-wide;
+  }
+
+  button, [type='button'], [type='submit'] {
+    @apply font-sans text-sm font-semibold tracking-tight;
+  }
+
+  ::placeholder {
+    @apply text-slate-400 dark:text-slate-500 font-normal;
+  }
+
+  ::selection {
+    @apply bg-sky-200/70 text-sky-950;
+  }
+
+  .dark ::selection {
+    @apply bg-sky-500/25 text-sky-100;
+  }
 }
 
-/* ================= BODY ================= */
+@layer components {
+  /* ── Layout containers ──────────────────────────────────── */
+  .page-container {
+    @apply max-w-[1400px] mx-auto w-full;
+  }
 
-body {
-  margin: 0;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
-    "Helvetica Neue", sans-serif;
+  .page-section {
+    @apply space-y-6;
+  }
 
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* ── Clean card surface (replaces heavy glassmorphism) ─── */
+  .glass-premium {
+    @apply relative overflow-hidden rounded-2xl;
+    @apply bg-white dark:bg-gray-900;
+    @apply border border-slate-200/80 dark:border-gray-800;
+    @apply shadow-card;
+  }
 
-  background-color: #f8fafc;
-  color: #0f172a;
+  .glass-panel {
+    @apply glass-premium;
+  }
 
-  /* ✅ PREVENT MOBILE HORIZONTAL SCROLL */
-  overflow-x: hidden;
+  /* ── Auth inputs ────────────────────────────────────────── */
+  .input-auth {
+    @apply w-full px-4 py-3 rounded-xl text-[0.9375rem] leading-normal;
+    @apply bg-white/[0.06] border border-white/[0.10];
+    @apply text-white placeholder:text-slate-500;
+    @apply transition-all duration-200;
+    @apply focus:outline-none focus:border-sky-500/50 focus:ring-4 focus:ring-sky-500/10;
+    @apply hover:border-white/[0.16];
+  }
+
+  /* ── App inputs ─────────────────────────────────────────── */
+  .input-field {
+    @apply w-full px-4 py-2.5 rounded-lg text-[0.9375rem] leading-normal;
+    @apply bg-white dark:bg-gray-900;
+    @apply border border-slate-200 dark:border-gray-700;
+    @apply text-slate-900 dark:text-slate-100;
+    @apply placeholder:text-slate-400 dark:placeholder:text-slate-500;
+    @apply shadow-xs transition-all duration-150;
+    @apply focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/15;
+    @apply hover:border-slate-300 dark:hover:border-gray-600;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50 dark:disabled:bg-gray-950;
+  }
+
+  /* ── Data tables ────────────────────────────────────────── */
+  .data-table {
+    @apply w-full text-sm text-left border-collapse;
+  }
+
+  .data-table thead th {
+    @apply px-4 py-3 text-[0.6875rem] font-semibold uppercase tracking-[0.10em];
+    @apply text-slate-500 dark:text-slate-500;
+    @apply bg-slate-50 dark:bg-gray-900/80;
+    @apply border-b border-slate-200 dark:border-gray-800;
+  }
+
+  .data-table thead th:first-child { @apply pl-5; }
+  .data-table thead th:last-child  { @apply pr-5; }
+
+  .data-table tbody td {
+    @apply px-4 py-3.5 text-sm text-slate-700 dark:text-slate-300;
+    @apply border-b border-slate-100 dark:border-gray-800/60;
+  }
+
+  .data-table tbody td:first-child { @apply pl-5; }
+  .data-table tbody td:last-child  { @apply pr-5; }
+
+  .data-table tbody tr {
+    @apply transition-colors duration-100;
+  }
+
+  .data-table tbody tr:hover {
+    @apply bg-sky-50/50 dark:bg-sky-950/10;
+  }
+
+  .data-table tbody tr:last-child td {
+    @apply border-b-0;
+  }
+
+  .table-wrapper {
+    @apply rounded-xl overflow-hidden;
+    @apply border border-slate-200 dark:border-gray-800;
+    @apply bg-white dark:bg-gray-900 shadow-card;
+  }
+
+  .table-scroll {
+    @apply overflow-x-auto;
+  }
+
+  /* ── Skeleton shimmer ───────────────────────────────────── */
+  .skeleton {
+    @apply rounded-lg;
+    background: linear-gradient(
+      90deg,
+      rgba(226,232,240,0.8) 0%,
+      rgba(241,245,249,1) 50%,
+      rgba(226,232,240,0.8) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2.2s ease-in-out infinite;
+  }
+
+  .dark .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(31,41,55,0.8) 0%,
+      rgba(55,65,81,0.9) 50%,
+      rgba(31,41,55,0.8) 100%
+    );
+    background-size: 200% 100%;
+  }
+
+  /* ── Active nav item (clean, no glow) ───────────────────── */
+  .nav-active {
+    @apply relative;
+    @apply bg-sky-50 dark:bg-sky-950/40;
+    @apply text-sky-700 dark:text-sky-300;
+    @apply border border-sky-200/60 dark:border-sky-800/30;
+  }
+
+  /* Keep legacy class name for backward compat */
+  .nav-active-glow {
+    @apply nav-active;
+  }
+
+  /* ── Typography scale ───────────────────────────────────── */
+  .type-display {
+    @apply font-display text-3xl sm:text-4xl font-semibold tracking-display text-slate-900 dark:text-white leading-[1.1];
+  }
+  .type-h1 {
+    @apply font-display text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white leading-tight;
+  }
+  .type-h2 {
+    @apply font-display text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 dark:text-white leading-snug;
+  }
+  .type-h3 {
+    @apply font-display text-lg font-semibold tracking-tight text-slate-900 dark:text-white leading-snug;
+  }
+  .type-body     { @apply font-sans text-[0.9375rem] leading-relaxed text-slate-600 dark:text-slate-400; }
+  .type-body-sm  { @apply font-sans text-sm leading-relaxed text-slate-600 dark:text-slate-400; }
+  .type-label    { @apply font-sans text-[0.8125rem] font-medium leading-none text-slate-700 dark:text-slate-300 tracking-wide; }
+  .type-caption  { @apply font-sans text-xs leading-normal text-slate-500 dark:text-slate-500; }
+  .type-overline { @apply font-sans text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-sky-600 dark:text-sky-400; }
+  .type-metric   { @apply font-display text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900 dark:text-white tabular-nums lining-nums; }
+  .type-metric-label { @apply font-sans text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-500; }
+
+  /* ── Gradient text ──────────────────────────────────────── */
+  .text-gradient-premium {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #0284c7 0%, #0ea5e9 50%, #38bdf8 100%);
+  }
+
+  .dark .text-gradient-premium {
+    background-image: linear-gradient(135deg, #7dd3fc 0%, #38bdf8 50%, #0ea5e9 100%);
+  }
+
+  /* ── Premium badge ──────────────────────────────────────── */
+  .badge-premium {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-2xs font-semibold tracking-wide;
+    @apply bg-sky-50 text-sky-700 dark:text-sky-300;
+    @apply border border-sky-200/70 dark:border-sky-700/30 dark:bg-sky-950/40;
+  }
+
+  /* ── Button shine sweep ─────────────────────────────────── */
+  .btn-shine {
+    @apply relative overflow-hidden;
+  }
+  .btn-shine::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full pointer-events-none;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255,255,255,0.18),
+      transparent
+    );
+    transition: transform 0.50s ease;
+  }
+  .btn-shine:hover::after {
+    transform: translateX(100%);
+  }
+
+  /* ── Divider ────────────────────────────────────────────── */
+  .divider {
+    @apply border-t border-slate-200 dark:border-gray-800;
+  }
 }
 
-/* ================= CODE FONT ================= */
+@layer utilities {
+  /* Focus ring */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950;
+  }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-    monospace;
+  /* Safe-area padding (iOS + Android gesture nav) */
+  .safe-pt {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+  .safe-pb {
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
+  .safe-pl {
+    padding-left: max(0px, env(safe-area-inset-left));
+  }
+  .safe-pr {
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+
+  /* Better mobile scrolling behavior inside WebViews */
+  .scroll-y-touch {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  /* Gradient text utility */
+  .text-gradient {
+    @apply text-gradient-premium;
+  }
+
+  /* Noise texture overlay — very subtle */
+  .noise-overlay {
+    opacity: 0.014;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
 }
 
-/* ================= FORM ELEMENTS ================= */
-
-/* ✅ Prevent zoom on mobile */
-input,
-select,
-textarea,
-button {
-  font-size: 16px;
-  font-family: inherit;
-}
-
-/* Improve touch experience */
-button {
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-/* Remove default outline but keep accessibility */
-input:focus,
-select:focus,
-textarea:focus,
-button:focus {
-  outline: none;
-}
-
-/* ================= TABLE RESPONSIVENESS ================= */
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-/* ================= SCROLLBAR (MODERN STYLING) ================= */
-
+/* ── Scrollbars ─────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
 }
 
-/* ================= ANIMATIONS ================= */
-
-@keyframes blink {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-  100% {
-    opacity: 1;
-  }
+::-webkit-scrollbar-thumb {
+  background: rgba(148,163,184,0.4);
+  border-radius: 9999px;
 }
 
-@keyframes skeleton-loading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(71,85,105,0.5);
 }
 
-/* AI Assistant Animations */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(2,132,199,0.45);
 }
 
-@keyframes bounce {
-  0%, 80%, 100% {
-    transform: scale(0);
-  }
-  40% {
-    transform: scale(1);
-  }
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
+/* ── Keyframes (non-Tailwind extras) ────────────────────────── */
 @keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
-/* ================= MOBILE SAFETY ================= */
+.animate-fadeIn  { animation: fadeIn 0.3s cubic-bezier(0.22,1,0.36,1); }
+.animate-scaleIn { animation: scaleIn 0.3s cubic-bezier(0.22,1,0.36,1); }
 
-img {
-  max-width: 100%;
-  height: auto;
+/* ── Accessibility — reduced motion ────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

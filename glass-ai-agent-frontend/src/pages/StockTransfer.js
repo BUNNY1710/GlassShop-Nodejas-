@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
-import dashboardBg from "../assets/dashboard-bg.jpg";
+import { PageHeader, Alert, parseMessageType, Modal, ModalActions } from "../components/ui";
+import { ArrowLeftRight } from "lucide-react";
 import api from "../api/api";
 
 function StockTransfer() {
-  const navigate = useNavigate();
   const [step, setStep] = useState(1); // 1: Enter source stand, 2: Select stock, 3: Enter destination, 4: Confirm
   const [sourceStand, setSourceStand] = useState("");
   const [destinationStand, setDestinationStand] = useState("");
@@ -235,53 +234,20 @@ function StockTransfer() {
   };
 
   return (
-    <PageWrapper backgroundImage={dashboardBg}>
+    <PageWrapper>
       <div style={{ padding: isMobile ? "15px" : "20px", maxWidth: "1200px", margin: "0 auto" }}>
-        <div style={{ marginBottom: "25px", padding: "20px", backgroundColor: "rgba(0,0,0,0.5)", borderRadius: "12px", backdropFilter: "blur(10px)" }}>
-          <h1 style={{ color: "#fff", marginBottom: "8px", fontSize: isMobile ? "26px" : "32px", fontWeight: "800", textShadow: "2px 2px 4px rgba(0,0,0,0.5)" }}>
-            🔁 Transfer Stock
-          </h1>
-          <p style={{ color: "#fff", fontSize: "15px", margin: 0, fontWeight: "500", textShadow: "1px 1px 2px rgba(0,0,0,0.5)" }}>
-            Move stock between stands safely
-          </p>
-        </div>
+        <PageHeader
+          eyebrow="Inventory"
+          title="Transfer stock"
+          description="Move stock between stands safely."
+          icon={<ArrowLeftRight size={22} />}
+          className="mb-6"
+        />
 
-        {message && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 10000,
-              padding: isMobile ? "15px" : "20px",
-            }}
-            onClick={() => setMessage("")}
-          >
-            <div
-              style={{
-                backgroundColor: message.includes("✅") ? "#22c55e" : message.includes("⚠️") ? "#f59e0b" : "#ef4444",
-                color: "white",
-                padding: "20px 30px",
-                borderRadius: "12px",
-                fontSize: "16px",
-                fontWeight: "600",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-                maxWidth: "400px",
-                width: "100%",
-                textAlign: "center",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {message}
-            </div>
-          </div>
-        )}
+        {message && (() => {
+          const p = parseMessageType(message);
+          return p ? <Alert type={p.type} onDismiss={() => setMessage("")} className="mb-4">{p.text}</Alert> : null;
+        })()}
 
         <div
           style={{
@@ -433,7 +399,7 @@ function StockTransfer() {
                 onMouseOver={(e) => !loading && (e.target.style.backgroundColor = "#4f46e5")}
                 onMouseOut={(e) => !loading && (e.target.style.backgroundColor = "#6366f1")}
               >
-                {loading ? "⏳ Loading..." : "➡️ Next: View Stock"}
+                {loading ? "Loading..." : "Next: View Stock"}
               </button>
             </form>
           )}
@@ -443,7 +409,7 @@ function StockTransfer() {
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
                 <h3 style={{ margin: 0, color: "#1f2937", fontSize: "20px", fontWeight: "600" }}>
-                  📦 Available Stock in Stand {sourceStand}
+                  Available Stock in Stand {sourceStand}
                 </h3>
                 <div style={{ display: "flex", gap: "8px" }}>
                   {availableStock.length > 0 && (
@@ -516,7 +482,7 @@ function StockTransfer() {
                       cursor: "pointer",
                     }}
                   >
-                    ➡️ Proceed to Destination
+                    Proceed to Destination
                   </button>
                 </div>
               )}
@@ -749,7 +715,7 @@ function StockTransfer() {
                   onMouseOver={(e) => !loading && (e.target.style.backgroundColor = "#4f46e5")}
                   onMouseOut={(e) => !loading && (e.target.style.backgroundColor = "#6366f1")}
                 >
-                  {loading ? "⏳ Processing..." : "➡️ Review & Confirm"}
+                  {loading ? "Processing..." : "Review & Confirm"}
                 </button>
               </div>
             </form>
@@ -757,139 +723,51 @@ function StockTransfer() {
         </div>
 
         {/* Confirmation Modal */}
-        {showConfirm && selectedStockItems.length > 0 && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: "rgba(0,0,0,0.7)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 10005,
-              padding: isMobile ? "15px" : "20px",
-            }}
-            onClick={() => setShowConfirm(false)}
-          >
-            <div
-              style={{
-                backgroundColor: "white",
-                padding: isMobile ? "25px" : "35px",
-                borderRadius: "16px",
-                maxWidth: "500px",
-                width: "100%",
-                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={{ marginBottom: "20px", textAlign: "center" }}>
-                <div style={{ fontSize: "48px", marginBottom: "15px", color: "#6366f1" }}>⚠️</div>
-                <h2
-                  style={{
-                    margin: 0,
-                    color: "#1f2937",
-                    fontSize: isMobile ? "20px" : "24px",
-                    fontWeight: "700",
-                    marginBottom: "10px",
-                  }}
-                >
-                  Confirm Stock Transfer?
-                </h2>
-                <p style={{ margin: "8px 0 0 0", color: "#6b7280", fontSize: "14px", lineHeight: "1.6" }}>
-                  Please review the transfer details before confirming
-                </p>
-              </div>
-
-              <div
-                style={{
-                  marginTop: "20px",
-                  padding: "20px",
-                  backgroundColor: "#f3f4f6",
-                  borderRadius: "12px",
-                  marginBottom: "20px",
-                  maxHeight: "400px",
-                  overflowY: "auto",
-                }}
-              >
-                <div style={{ fontSize: "14px", color: "#374151", lineHeight: "1.8" }}>
-                  {selectedStockItems.map((stock, idx) => (
-                    <div key={stock.id} style={{ marginBottom: idx < selectedStockItems.length - 1 ? "16px" : "0", paddingBottom: idx < selectedStockItems.length - 1 ? "16px" : "0", borderBottom: idx < selectedStockItems.length - 1 ? "1px solid #d1d5db" : "none" }}>
-                      <div style={{ fontWeight: "600", color: "#1f2937", marginBottom: "8px" }}>
-                        {stock.glass?.type || "N/A"}
-                      </div>
-                      {stock.height && stock.width && (
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                          <span style={{ color: "#6b7280" }}>Size:</span>
-                          <span style={{ fontWeight: "600", color: "#1f2937" }}>
-                            {stock.height} × {stock.width}
-                          </span>
-                        </div>
-                      )}
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                        <span style={{ color: "#6b7280" }}>Quantity:</span>
-                        <span style={{ fontWeight: "600", color: "#1f2937" }}>{transferQuantities[stock.id] || 0} pieces</span>
-                      </div>
-                    </div>
-                  ))}
-                  <hr style={{ border: "none", borderTop: "1px solid #d1d5db", margin: "12px 0" }} />
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                    <span style={{ color: "#6b7280" }}>From Stand:</span>
-                    <span style={{ fontWeight: "600", color: "#1f2937" }}>#{sourceStand}</span>
+        <Modal
+          open={showConfirm && selectedStockItems.length > 0}
+          onClose={() => setShowConfirm(false)}
+          title="Confirm stock transfer"
+          description="Please review the transfer details before confirming."
+          size="sm"
+          footer={
+            <ModalActions
+              onCancel={() => setShowConfirm(false)}
+              onConfirm={confirmTransfer}
+              cancelLabel="Cancel"
+              confirmLabel="Confirm Transfer"
+              confirmVariant="primary"
+              loading={loading}
+            />
+          }
+        >
+          <div className="space-y-3 text-sm">
+            {selectedStockItems.map((stock, idx) => (
+              <div key={stock.id} className={idx < selectedStockItems.length - 1 ? "pb-3 border-b border-slate-100 dark:border-slate-800" : ""}>
+                <p className="font-medium text-slate-900 dark:text-white mb-1">{stock.glass?.type || "N/A"}</p>
+                {stock.height && stock.width && (
+                  <div className="flex justify-between text-slate-500 dark:text-zinc-400">
+                    <span>Size</span>
+                    <span className="font-medium text-slate-700 dark:text-zinc-300">{stock.height} × {stock.width}</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "#6b7280" }}>To Stand:</span>
-                    <span style={{ fontWeight: "600", color: "#1f2937" }}>#{destinationStand}</span>
-                  </div>
+                )}
+                <div className="flex justify-between text-slate-500 dark:text-zinc-400">
+                  <span>Quantity</span>
+                  <span className="font-medium text-slate-700 dark:text-zinc-300">{transferQuantities[stock.id] || 0} pieces</span>
                 </div>
               </div>
-
-              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: "12px" }}>
-                <button
-                  onClick={() => setShowConfirm(false)}
-                  style={{
-                    flex: 1,
-                    padding: "12px 24px",
-                    backgroundColor: "#6b7280",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseOver={(e) => (e.target.style.backgroundColor = "#4b5563")}
-                  onMouseOut={(e) => (e.target.style.backgroundColor = "#6b7280")}
-                >
-                  ❌ Cancel
-                </button>
-                <button
-                  onClick={confirmTransfer}
-                  disabled={loading}
-                  style={{
-                    flex: 1,
-                    padding: "12px 24px",
-                    backgroundColor: loading ? "#9ca3af" : "#22c55e",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    transition: "all 0.2s",
-                  }}
-                  onMouseOver={(e) => !loading && (e.target.style.backgroundColor = "#16a34a")}
-                  onMouseOut={(e) => !loading && (e.target.style.backgroundColor = "#22c55e")}
-                >
-                  {loading ? "⏳ Transferring..." : "✅ Confirm Transfer"}
-                </button>
+            ))}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+              <div className="flex justify-between text-slate-500 dark:text-zinc-400">
+                <span>From Stand</span>
+                <span className="font-medium text-slate-700 dark:text-zinc-300">#{sourceStand}</span>
+              </div>
+              <div className="flex justify-between text-slate-500 dark:text-zinc-400">
+                <span>To Stand</span>
+                <span className="font-medium text-slate-700 dark:text-zinc-300">#{destinationStand}</span>
               </div>
             </div>
           </div>
-        )}
+        </Modal>
       </div>
     </PageWrapper>
   );
